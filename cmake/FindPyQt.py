@@ -34,8 +34,7 @@
 import os
 
 def get_pyqt_sip_dir():
-    # This is based on QScintilla's configure.py, and only works
-    # for a few popular locations of PyQt SIP directory.
+    # Only works for a few popular locations of PyQt4 SIP directory.
     import sipconfig
     sipcfg = sipconfig.Configuration()
     default_sip_dir = sipcfg.default_sip_dir
@@ -45,7 +44,7 @@ def get_pyqt_sip_dir():
         if os.path.exists(pyqt_sip_dir) and os.path.exists(
                 os.path.join(pyqt_sip_dir, 'QtCore')):
             return pyqt_sip_dir
-    raise ValueError('Cannot find SIP directory in default locations')
+    return default_sip_dir
 
 
 def get_pyqt_bin_dir():
