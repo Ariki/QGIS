@@ -206,6 +206,26 @@ bool QgsMessageBar::clearWidgets()
   return !mCurrentItem && mItems.empty();
 }
 
+void QgsMessageBar::pushSuccess( const QString& title, const QString& message )
+{
+  pushMessage( title, message, SUCCESS );
+}
+
+void QgsMessageBar::pushInfo( const QString& title, const QString& message )
+{
+  pushMessage( title, message, INFO );
+}
+
+void QgsMessageBar::pushWarning( const QString& title, const QString& message )
+{
+  pushMessage( title, message, WARNING );
+}
+
+void QgsMessageBar::pushCritical( const QString& title, const QString& message )
+{
+  pushMessage( title, message, CRITICAL );
+}
+
 void QgsMessageBar::showItem( QgsMessageBarItem *item )
 {
   Q_ASSERT( item );
@@ -253,7 +273,7 @@ void QgsMessageBar::pushItem( QgsMessageBarItem *item )
   showItem( item );
 }
 
-QgsMessageBarItem* QgsMessageBar::pushWidget( QWidget *widget , QgsMessageBar::MessageLevel level, int duration )
+QgsMessageBarItem* QgsMessageBar::pushWidget( QWidget *widget, QgsMessageBar::MessageLevel level, int duration )
 {
   QgsMessageBarItem *item;
   item = dynamic_cast<QgsMessageBarItem*>( widget );

@@ -31,22 +31,21 @@ You also need the Windows SDK for Windows 7 and .NET Framework 4:
 Download and install following packages:
 
 || Tool | Website |
-| CMake | http://www.cmake.org/files/v2.8/cmake-2.8.12.2-win32-x86.exe |
-| Flex | http://gnuwin32.sourceforge.net/downlinks/flex.php |
-| Bison | http://gnuwin32.sourceforge.net/downlinks/bison.php |
-| GIT | https://github.com/msysgit/msysgit/releases/download/Git-1.9.4-preview20140611/Git-1.9.4-preview20140611.exe | 
+| CMake | http://www.cmake.org/files/v3.0/cmake-3.0.2-win32-x86.exe |
+| GNU flex, GNU bison and GIT | http://cygwin.com/setup-x86.exe (32bit) or http://cygwin.com/setup-x86_64.exe (64bit) |
 | OSGeo4W | http://download.osgeo.org/osgeo4w/osgeo4w-setup-x86.exe (32bit) or http://download.osgeo.org/osgeo4w/osgeo4w-setup-x86_64.exe (64bit) |
-
-You can also use flex, bison & git from
-
-	http://cygwin.com
 
 OSGeo4W does not only provide ready packages for the current QGIS release and
 nightly builds of master, but also offers most of the dependencies needs to
 build it.
 
-For the QGIS build you need to install following packages from OSGeo4W (select
-//Advanced Installation//):
+For the QGIS build you need to install following packages from cygwin:
+- bison
+- flex
+- git
+-
+
+and from OSGeo4W (select //Advanced Installation//):
 
 - expat
 - fcgi
@@ -71,25 +70,28 @@ or the SVN repository.
 
 === Setting up the Visual Studio project with CMake ===
 
+/!\ Consider this section as example.  It tends to outdate, when OSGeo4W and
+SDKs move on.  ``ms-windows/osgeo4w/package-nightly.cmd`` is used for the
+nightly builds and constantly updated and hence might contain necessary
+updates that are not yet reflected here.
+
 To start a command prompt with an environment that both has the VC++ and the OSGeo4W
 variables create the following batch file (assuming the above packages were
 installed in the default locations):
 
 ```
 @echo off
-path %SYSTEMROOT%\system32;%SYSTEMROOT%;%SYSTEMROOT%\System32\Wbem;%PROGRAMFILES%\CMake 2.8\bin;%PROGRAMFILES%\subversion\bin;%PROGRAMFILES%\GnuWin32\bin
-set PYTHONPATH=
-
 set VS90COMNTOOLS=%PROGRAMFILES%\Microsoft Visual Studio 9.0\Common7\Tools\
 call "%PROGRAMFILES%\Microsoft Visual Studio 9.0\VC\vcvarsall.bat" x86
 
-set INCLUDE=%INCLUDE%;%PROGRAMFILES%\Microsoft Platform SDK for Windows Server 2003 R2\include
-set LIB=%LIB%;%PROGRAMFILES%\Microsoft Platform SDK for Windows Server 2003 R2\lib
+set INCLUDE=%INCLUDE%;%PROGRAMFILES%\Microsoft SDKs\Windows\v7.1\include
+set LIB=%LIB%;%PROGRAMFILES%\Microsoft SDKs\Windows\v7.1\lib
 
 set OSGEO4W_ROOT=C:\OSGeo4W
 call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
+path %PATH%;%PROGRAMFILES%\CMake\bin;c:\cygwin\bin
 
-@set GRASS_PREFIX=c:/OSGeo4W/apps/grass/grass-6.4.0
+@set GRASS_PREFIX=c:/OSGeo4W/apps/grass/grass-6.4.4
 @set INCLUDE=%INCLUDE%;%OSGEO4W_ROOT%\include
 @set LIB=%LIB%;%OSGEO4W_ROOT%\lib;%OSGEO4W_ROOT%\lib
 

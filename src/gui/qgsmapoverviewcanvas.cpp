@@ -17,6 +17,8 @@
  ***************************************************************************/
 
 #include "qgsmapcanvas.h"
+#include "qgsmaplayer.h"
+#include "qgsmaplayerregistry.h"
 #include "qgsmapoverviewcanvas.h"
 #include "qgsmaprenderersequentialjob.h"
 #include "qgsmaptopixel.h"
@@ -40,7 +42,7 @@ class QgsPanningWidget : public QWidget
       setAttribute( Qt::WA_NoSystemBackground );
     }
 
-    void resizeEvent( QResizeEvent* r )
+    void resizeEvent( QResizeEvent* r ) override
     {
       QSize s = r->size();
       QRegion reg( 0, 0, s.width(), s.height() );
@@ -50,7 +52,7 @@ class QgsPanningWidget : public QWidget
     }
 
 
-    void paintEvent( QPaintEvent* pe )
+    void paintEvent( QPaintEvent* pe ) override
     {
       Q_UNUSED( pe );
 
@@ -74,8 +76,6 @@ QgsMapOverviewCanvas::QgsMapOverviewCanvas( QWidget * parent, QgsMapCanvas* mapC
 {
   setObjectName( "theOverviewCanvas" );
   mPanningWidget = new QgsPanningWidget( this );
-
-  setBackgroundColor( palette().window().color() );
 
   mSettings.setFlag( QgsMapSettings::DrawLabeling, false );
 
@@ -158,7 +158,7 @@ void QgsMapOverviewCanvas::drawExtentRect()
   if ( y1 > y2 )
     std::swap( y1, y2 );
 
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
   // setGeometry (Qt 4.2) is causing Mac window corruption (decorations
   // are drawn at odd locations) if both coords are at limit. This may
   // have something to do with Qt calculating dimensions as x2 - x1 + 1.
@@ -223,16 +223,7 @@ void QgsMapOverviewCanvas::mouseReleaseEvent( QMouseEvent * e )
     QRect rect = mPanningWidget->geometry();
 
     QgsPoint center = cXf.toMapCoordinates( rect.center() );
-    QgsRectangle oldExtent = mMapCanvas->extent();
-    QgsRectangle ext;
-    ext.setXMinimum( center.x() - oldExtent.width() / 2 );
-    ext.setXMaximum( center.x() + oldExtent.width() / 2 );
-    ext.setYMinimum( center.y() - oldExtent.height() / 2 );
-    ext.setYMaximum( center.y() + oldExtent.height() / 2 );
-
-    QgsDebugMsg( QString( "panning: new position: [%1,%2] [%3x%4]" ).arg( rect.left() ).arg( rect.top() ).arg( rect.width() ).arg( rect.height() ) );
-
-    mMapCanvas->setExtent( ext );
+    mMapCanvas->setCenter( center );
     mMapCanvas->refresh();
   }
 }
@@ -281,6 +272,8 @@ void QgsMapOverviewCanvas::refresh()
   connect( mJob, SIGNAL( finished() ), this, SLOT( mapRenderingFinished() ) );
   mJob->start();
 
+  setBackgroundColor( mMapCanvas->mapSettings().backgroundColor() );
+
   // schedule repaint
   update();
 
@@ -300,6 +293,11 @@ void QgsMapOverviewCanvas::mapRenderingFinished()
   update();
 }
 
+void QgsMapOverviewCanvas::layerRepaintRequested()
+{
+  refresh();
+}
+
 
 void QgsMapOverviewCanvas::setBackgroundColor( const QColor& color )
 {
@@ -314,7 +312,21 @@ void QgsMapOverviewCanvas::setBackgroundColor( const QColor& color )
 void QgsMapOverviewCanvas::setLayerSet( const QStringList& layerSet )
 {
   QgsDebugMsg( "layerSet: " + layerSet.join( ", " ) );
+
+  foreach ( const QString& layerID, mSettings.layers() )
+  {
+    if ( QgsMapLayer* ml = QgsMapLayerRegistry::instance()->mapLayer( layerID ) )
+      disconnect( ml, SIGNAL( repaintRequested() ), this, SLOT( layerRepaintRequested() ) );
+  }
+
   mSettings.setLayers( layerSet );
+
+  foreach ( const QString& layerID, mSettings.layers() )
+  {
+    if ( QgsMapLayer* ml = QgsMapLayerRegistry::instance()->mapLayer( layerID ) )
+      connect( ml, SIGNAL( repaintRequested() ), this, SLOT( layerRepaintRequested() ) );
+  }
+
   updateFullExtent();
 }
 

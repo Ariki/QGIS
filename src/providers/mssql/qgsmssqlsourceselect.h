@@ -43,8 +43,8 @@ class QgsMssqlSourceSelectDelegate : public QItemDelegate
         : QItemDelegate( parent )
     {}
 
-    QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
-    void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const;
+    QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const override;
+    void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const override;
 };
 
 // A class that determines the geometry type of a given database
@@ -59,7 +59,7 @@ class QgsMssqlGeomColumnTypeThread : public QThread
 
     // These functions get the layer types and pass that information out
     // by emitting the setLayerType() signal.
-    virtual void run();
+    virtual void run() override;
 
   signals:
     void setLayerType( QgsMssqlLayerProperty layerProperty );
@@ -158,7 +158,7 @@ class QgsMssqlSourceSelect : public QDialog, private Ui::QgsDbSourceSelectBase
     bool mEmbeddedMode;
 
     // queue another query for the thread
-    void addSearchGeometryColumn( QString connectionName, QgsMssqlLayerProperty layerProperty , bool estimateMetadata );
+    void addSearchGeometryColumn( QString connectionName, QgsMssqlLayerProperty layerProperty, bool estimateMetadata );
 
     // Set the position of the database connection list to the last
     // used one.

@@ -17,7 +17,7 @@
 
 #include "qgsvectorlayer.h"
 
-const QString QgsLegacyHelpers::convertEditType( QgsVectorLayer::EditType editType, QgsEditorWidgetConfig& cfg, QgsVectorLayer* vl, const QString& name, const QDomElement editTypeElement )
+const QString QgsLegacyHelpers::convertEditType( QgsVectorLayer::EditType editType, QgsEditorWidgetConfig& cfg, QgsVectorLayer* vl, const QString& name, const QDomElement &editTypeElement )
 {
   QString widgetType = "TextEdit"; // Fallback
 
@@ -104,7 +104,7 @@ const QString QgsLegacyHelpers::convertEditType( QgsVectorLayer::EditType editTy
     {
       widgetType = "DateTime";
       cfg.insert( "display_format", editTypeElement.attribute( "dateFormat" ) );
-      cfg.insert( "field_format", "yyyy-mm-dd" );
+      cfg.insert( "field_format", "yyyy-MM-dd" );
       break;
     }
 

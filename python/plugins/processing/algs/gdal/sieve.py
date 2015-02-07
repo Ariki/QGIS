@@ -28,12 +28,12 @@ __revision__ = '$Format:%H$'
 
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterSelection import ParameterSelection
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.outputs.OutputRaster import OutputRaster
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterSelection
+from processing.core.parameters import ParameterNumber
+from processing.core.outputs import OutputRaster
 
-from processing.tools.system import *
+from processing.tools.system import isWindows
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 
@@ -50,13 +50,13 @@ class sieve(GdalAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Sieve'
         self.group = '[GDAL] Analysis'
-        self.addParameter(ParameterRaster(self.INPUT, 'Input layer', False))
-        self.addParameter(ParameterNumber(self.THRESHOLD, 'Threshold', 0,
-                          9999, 2))
+        self.addParameter(ParameterRaster(self.INPUT, self.tr('Input layer'), False))
+        self.addParameter(ParameterNumber(self.THRESHOLD,
+            self.tr('Threshold'), 0, 9999, 2))
         self.addParameter(ParameterSelection(self.CONNECTIONS,
-                          'Pixel connection', self.PIXEL_CONNECTIONS, 0))
+            self.tr('Pixel connection'), self.PIXEL_CONNECTIONS, 0))
 
-        self.addOutput(OutputRaster(self.OUTPUT, 'Output layer'))
+        self.addOutput(OutputRaster(self.OUTPUT, self.tr('Output layer')))
 
     def processAlgorithm(self, progress):
         output = self.getOutputValue(self.OUTPUT)
@@ -66,8 +66,8 @@ class sieve(GdalAlgorithm):
         arguments.append(str(self.getParameterValue(self.THRESHOLD)))
 
         arguments.append('-' +
-                self.PIXEL_CONNECTIONS[self.getParameterValue(
-                        self.CONNECTIONS)])
+            self.PIXEL_CONNECTIONS[self.getParameterValue(
+                self.CONNECTIONS)])
 
         arguments.append('-of')
         arguments.append(GdalUtils.getFormatShortNameFromFilename(output))

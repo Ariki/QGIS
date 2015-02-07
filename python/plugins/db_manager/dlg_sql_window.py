@@ -22,12 +22,22 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from PyQt4.QtCore import Qt, QObject, QSettings, QByteArray, SIGNAL
+from PyQt4.QtGui import QDialog, QAction, QKeySequence, QDialogButtonBox, QApplication, QCursor, QMessageBox, QClipboard
+from PyQt4.Qsci import QsciAPIs
+
+from qgis.core import QgsProject
 
 from .db_plugins.plugin import BaseError
 from .dlg_db_error import DlgDbError
+
+try:
+    from qgis.gui import QgsCodeEditorSQL
+except:
+    from .sqledit import SqlEdit
+    from qgis import gui
+    gui.QgsCodeEditorSQL = SqlEdit
+
 
 from .ui.ui_DlgSqlWindow import Ui_DbManagerDlgSqlWindow as Ui_Dialog
 
@@ -49,7 +59,7 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
 
     self.editSql.setFocus()
     self.editSql.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-    self.editSql.initCompleter(self.db)
+    self.initCompleter()
 
     # allow to copy results
     copyAction = QAction("copy", self)
@@ -129,7 +139,13 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
     self.editSql.setFocus()
 
   def executeSql(self):
-    sql = self.editSql.text()
+
+    sql = ""
+    if self.editSql.hasSelectedText():
+        sql = self.editSql.selectedText()
+    else:
+        sql = self.editSql.text()
+
     if sql == "":
         return
 
@@ -167,12 +183,16 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
     geomFieldName = self.geomCombo.currentText()
 
     if geomFieldName == "" or uniqueFieldName == "":
-      QMessageBox.warning(self, self.tr( "Sorry" ), self.tr( "You must fill the required fields: \ngeometry column - column with unique integer values" ) )
+      QMessageBox.warning(self, self.tr( "DB Manager" ), self.tr( "You must fill the required fields: \ngeometry column - column with unique integer values" ) )
       return
 
     query = self.editSql.text()
     if query == "":
       return
+
+    # remove a trailing ';' from query if present
+    if query.strip().endswith(';'):
+       query = query.strip()[:-1]
 
     QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 
@@ -217,6 +237,10 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
         break
       aliasIndex += 1
 
+    # remove a trailing ';' from query if present
+    if query.strip().endswith(';'):
+       query = query.strip()[:-1]
+
     # get all the columns
     cols = []
     connector = self.db.connector
@@ -237,9 +261,29 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
         c.close()
         del c
 
+    # get sensible default columns. do this before sorting in case there's hints in the column order (eg, id is more likely to be first)
+    try:
+      defaultGeomCol = next(col for col in cols if col in ['geom','geometry','the_geom'])
+    except:
+      defaultGeomCol = None
+    try:
+      defaultUniqueCol = [col for col in cols if 'id' in col][0]
+    except:
+      defaultUniqueCol = None
+
     cols.sort()
     self.uniqueCombo.addItems( cols )
     self.geomCombo.addItems( cols )
+
+    # set sensible default columns
+    try:
+      self.geomCombo.setCurrentIndex( cols.index(defaultGeomCol) )
+    except:
+      pass
+    try:
+      self.uniqueCombo.setCurrentIndex( cols.index(defaultUniqueCol) )
+    except:
+      pass
 
     QApplication.restoreOverrideCursor()
 
@@ -256,3 +300,23 @@ class DlgSqlWindow(QDialog, Ui_Dialog):
     QApplication.clipboard().setText( text, QClipboard.Selection )
     QApplication.clipboard().setText( text, QClipboard.Clipboard )
 
+  def initCompleter(self):
+    dictionary = None
+    if self.db:
+        dictionary = self.db.connector.getSqlDictionary()
+    if not dictionary:
+        # use the generic sql dictionary
+        from .sql_dictionary import getSqlDictionary
+        dictionary = getSqlDictionary()
+
+    wordlist = []
+    for name, value in dictionary.iteritems():
+        wordlist += value   # concat lists
+    wordlist = list(set(wordlist))  # remove duplicates
+
+    api = QsciAPIs(self.editSql.lexer())
+    for word in wordlist:
+        api.add(word)
+
+    api.prepare()
+    self.editSql.lexer().setAPIs(api)

@@ -96,20 +96,51 @@ const QPixmap& QgsColorButton::transpBkgrd()
 
 void QgsColorButton::onButtonClicked()
 {
-  //QgsDebugMsg( "entered" );
   QColor newColor;
   QSettings settings;
-  if ( mAcceptLiveUpdates && settings.value( "/qgis/live_color_dialogs", false ).toBool() )
+
+  //using native color dialogs?
+  bool useNative = settings.value( "/qgis/native_color_dialogs", false ).toBool();
+
+  if ( useNative )
   {
-    newColor = QgsColorDialog::getLiveColor(
-                 color(), this, SLOT( setValidColor( const QColor& ) ),
-                 this->parentWidget(), mColorDialogTitle, mColorDialogOptions );
+    if ( mAcceptLiveUpdates && settings.value( "/qgis/live_color_dialogs", false ).toBool() )
+    {
+      newColor = QgsColorDialog::getLiveColor(
+                   color(), this, SLOT( setValidColor( const QColor& ) ),
+                   this->parentWidget(), mColorDialogTitle, mColorDialogOptions );
+    }
+    else
+    {
+      newColor = QColorDialog::getColor( color(), this->parentWidget(), mColorDialogTitle, mColorDialogOptions );
+    }
   }
   else
   {
-    newColor = QColorDialog::getColor( color(), this->parentWidget(), mColorDialogTitle, mColorDialogOptions );
+    //use QGIS style color dialogs
+    if ( mAcceptLiveUpdates && settings.value( "/qgis/live_color_dialogs", false ).toBool() )
+    {
+      newColor = QgsColorDialogV2::getLiveColor(
+                   color(), this, SLOT( setValidColor( const QColor& ) ),
+                   this->parentWidget(), mColorDialogTitle, mColorDialogOptions & QColorDialog::ShowAlphaChannel );
+    }
+    else
+    {
+      QgsColorDialogV2 dialog( this, 0, color() );
+      dialog.setTitle( mColorDialogTitle );
+      dialog.setAllowAlpha( mColorDialogOptions & QColorDialog::ShowAlphaChannel );
+
+      if ( dialog.exec() )
+      {
+        newColor = dialog.color();
+      }
+    }
   }
-  setValidColor( newColor );
+
+  if ( newColor.isValid() )
+  {
+    setValidColor( newColor );
+  }
 
   // reactivate button's window
   activateWindow();
@@ -312,9 +343,14 @@ void QgsColorButton::showContextMenu( QMouseEvent *event )
   QAction* pasteColorAction = new QAction( tr( "Paste color" ), 0 );
   pasteColorAction->setEnabled( false );
   colorContextMenu.addAction( pasteColorAction );
+#ifndef Q_OS_MAC
+  //disabled for OSX, as it is impossible to grab the mouse under OSX
+  //see note for QWidget::grabMouse() re OSX Cocoa
+  //http://qt-project.org/doc/qt-4.8/qwidget.html#grabMouse
   QAction* pickColorAction = new QAction( tr( "Pick color" ), 0 );
   colorContextMenu.addSeparator();
   colorContextMenu.addAction( pickColorAction );
+#endif
 
   QColor clipColor;
   if ( colorFromMimeData( QApplication::clipboard()->mimeData(), clipColor ) )
@@ -322,7 +358,7 @@ void QgsColorButton::showContextMenu( QMouseEvent *event )
     pasteColorAction->setEnabled( true );
   }
 
-  QAction* selectedAction = colorContextMenu.exec( event->globalPos( ) );
+  QAction* selectedAction = colorContextMenu.exec( event->globalPos() );
   if ( selectedAction == copyColorAction )
   {
     //copy color
@@ -333,6 +369,7 @@ void QgsColorButton::showContextMenu( QMouseEvent *event )
     //paste color
     setColor( clipColor );
   }
+#ifndef Q_OS_MAC
   else if ( selectedAction == pickColorAction )
   {
     //pick color
@@ -341,10 +378,11 @@ void QgsColorButton::showContextMenu( QMouseEvent *event )
     grabMouse();
     mPickingColor = true;
   }
+  delete pickColorAction;
+#endif
 
   delete copyColorAction;
   delete pasteColorAction;
-  delete pickColorAction;
 }
 
 void QgsColorButton::setValidColor( const QColor& newColor )

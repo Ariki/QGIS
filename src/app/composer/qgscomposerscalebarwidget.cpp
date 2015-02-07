@@ -54,13 +54,26 @@ QgsComposerScaleBarWidget::QgsComposerScaleBarWidget( QgsComposerScaleBar* scale
   mUnitsComboBox->insertItem( 3, tr( "Nautical Miles" ), 3 );
 
   mFillColorButton->setColorDialogTitle( tr( "Select fill color" ) );
-  mFillColorButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mFillColorButton->setAllowAlpha( true );
+  mFillColorButton->setContext( "composer" );
+  mFillColorButton->setNoColorString( tr( "Transparent fill" ) );
+  mFillColorButton->setShowNoColor( true );
+
   mFillColor2Button->setColorDialogTitle( tr( "Select alternate fill color" ) );
-  mFillColor2Button->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mFillColor2Button->setAllowAlpha( true );
+  mFillColor2Button->setContext( "composer" );
+  mFillColor2Button->setNoColorString( tr( "Transparent fill" ) );
+  mFillColor2Button->setShowNoColor( true );
+
   mFontColorButton->setColorDialogTitle( tr( "Select font color" ) );
-  mFontColorButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mFontColorButton->setAllowAlpha( true );
+  mFontColorButton->setContext( "composer" );
+
   mStrokeColorButton->setColorDialogTitle( tr( "Select stroke color" ) );
-  mStrokeColorButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mStrokeColorButton->setAllowAlpha( true );
+  mStrokeColorButton->setContext( "composer" );
+  mStrokeColorButton->setNoColorString( tr( "Transparent stroke" ) );
+  mStrokeColorButton->setShowNoColor( true );
 
   blockMemberSignals( false );
   setGuiElements(); //set the GUI elements to the state of scaleBar
@@ -298,7 +311,7 @@ void QgsComposerScaleBarWidget::on_mFontButton_clicked()
 
   bool dialogAccepted;
   QFont oldFont = mComposerScaleBar->font();
-#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
+#if defined(Q_OS_MAC) && defined(QT_MAC_USE_COCOA)
   // Native Mac dialog works only for Qt Carbon
   QFont newFont = QFontDialog::getFont( &dialogAccepted, oldFont, 0, QString(), QFontDialog::DontUseNativeDialog );
 #else

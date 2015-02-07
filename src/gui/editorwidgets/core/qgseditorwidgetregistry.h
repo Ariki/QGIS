@@ -23,6 +23,8 @@
 
 class QgsMapLayer;
 class QDomNode;
+class QgsMapCanvas;
+class QgsMessageBar;
 
 /**
  * This class manages all known edit widget factories
@@ -36,9 +38,27 @@ class GUI_EXPORT QgsEditorWidgetRegistry : public QObject
      * This class is a singleton and has therefore to be accessed with this method instead
      * of a constructor.
      *
-     * @return
+     * @return The one and only instance of the editor widget registry
      */
     static QgsEditorWidgetRegistry* instance();
+
+    /**
+     * Registers all the default widgets.
+     * Only call this once on startup of an application.
+     *
+     * @param mapCanvas  Specify a map canvas with which the widgets (relation reference) work
+     * @param messageBar Specify a message bar on which messages by widgets will be shown while working with the map canvas
+     *
+     * @note Added in QGIS 2.8
+     * @note Not required for plugins, the QGIS application does that already
+     */
+    static void initEditors( QgsMapCanvas* mapCanvas = 0, QgsMessageBar* messageBar = 0 );
+
+    /**
+     * Destructor
+     *
+     * Deletes all the registered widgets
+     */
     ~QgsEditorWidgetRegistry();
 
     /**
@@ -51,11 +71,17 @@ class GUI_EXPORT QgsEditorWidgetRegistry : public QObject
      * @param config    A configuration which should be used for the widget creation
      * @param editor    An editor widget which will be used instead of an autocreated widget
      * @param parent    The parent which will be used for the created wrapper and the created widget
-     * @param context   The editor context
+     * @param context   The editor context (not available in python bindings)
      *
      * @return A new widget wrapper
      */
-    QgsEditorWidgetWrapper* create( const QString& widgetId, QgsVectorLayer* vl, int fieldIdx, const QgsEditorWidgetConfig& config, QWidget* editor, QWidget* parent, const QgsAttributeEditorContext context = QgsAttributeEditorContext() );
+    QgsEditorWidgetWrapper* create( const QString& widgetId,
+                                    QgsVectorLayer* vl,
+                                    int fieldIdx,
+                                    const QgsEditorWidgetConfig& config,
+                                    QWidget* editor,
+                                    QWidget* parent,
+                                    const QgsAttributeEditorContext context = QgsAttributeEditorContext() );
 
     /**
      * Creates a configuration widget
@@ -111,7 +137,7 @@ class GUI_EXPORT QgsEditorWidgetRegistry : public QObject
      * @param mapLayer
      * @param layerElem
      */
-    void readMapLayer( QgsMapLayer* mapLayer , const QDomElement& layerElem );
+    void readMapLayer( QgsMapLayer* mapLayer, const QDomElement& layerElem );
 
     /**
      * Read all old-style editor widget configuration from a map node. Will update
@@ -131,7 +157,33 @@ class GUI_EXPORT QgsEditorWidgetRegistry : public QObject
      * @param layerElem  The XML element to which the config will be written
      * @param doc        The document from which to create elements
      */
-    void writeMapLayer( QgsMapLayer* mapLayer , QDomElement& layerElem, QDomDocument& doc );
+    void writeMapLayer( QgsMapLayer* mapLayer, QDomElement& layerElem, QDomDocument& doc ) const;
+
+    /**
+     * Will connect to appropriate signals from map layers to load and save style
+     *
+     * @param mapLayer The layer to connect
+     */
+    void mapLayerAdded( QgsMapLayer* mapLayer );
+
+    /**
+     * Loads layer symbology for the layer that emitted the signal
+     *
+     * @param element The XML element containing the style information
+     *
+     * @param errorMessage Errors will be written into this string (unused)
+     */
+    void readSymbology( const QDomElement& element, QString& errorMessage );
+
+    /**
+     * Saves layer symbology for the layer that emitted the signal
+     *
+     * @param element The XML element where the style information be written to
+     * @param doc     The XML document where the style information be written to
+     *
+     * @param errorMessage Errors will be written into this string (unused)
+     */
+    void writeSymbology( QDomElement& element, QDomDocument& doc, QString& errorMessage );
 
   private:
     QMap<QString, QgsEditorWidgetFactory*> mWidgetFactories;

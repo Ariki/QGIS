@@ -87,7 +87,7 @@ QgsCptCityArchive::QgsCptCityArchive( QString archiveName, QString baseDir )
   mSelectionItems.prepend( allRampsItem );
 }
 
-QgsCptCityArchive::~QgsCptCityArchive( )
+QgsCptCityArchive::~QgsCptCityArchive()
 {
   foreach ( QgsCptCityDataItem* item, mRootItems )
     delete item;
@@ -104,7 +104,7 @@ QString QgsCptCityArchive::baseDir() const
   if ( ! mBaseDir.isNull() )
     return mBaseDir;
   else
-    return QgsCptCityArchive::defaultBaseDir( );
+    return QgsCptCityArchive::defaultBaseDir();
 }
 
 QString QgsCptCityArchive::baseDir( QString archiveName )
@@ -665,7 +665,7 @@ void QgsCptCityDataItem::refresh()
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
-  QVector<QgsCptCityDataItem*> items = createChildren( );
+  QVector<QgsCptCityDataItem*> items = createChildren();
 
   // Remove no more present items
   QVector<QgsCptCityDataItem*> remove;
@@ -730,7 +730,7 @@ QgsCptCityColorRampItem::QgsCptCityColorRampItem( QgsCptCityDataItem* parent,
 }
 
 // TODO only load file when icon is requested...
-void QgsCptCityColorRampItem::init( )
+void QgsCptCityColorRampItem::init()
 {
   if ( mInitialised )
     return;
@@ -794,8 +794,10 @@ bool QgsCptCityColorRampItem::equal( const QgsCptCityDataItem *other )
   }
   //const QgsCptCityColorRampItem *o = qobject_cast<const QgsCptCityColorRampItem *> ( other );
   const QgsCptCityColorRampItem *o = dynamic_cast<const QgsCptCityColorRampItem *>( other );
-  return ( mPath == o->mPath && mName == o->mName &&
-           ramp().variantName() == o->ramp().variantName() );
+  return o &&
+         mPath == o->mPath &&
+         mName == o->mName &&
+         ramp().variantName() == o->ramp().variantName();
 }
 
 QIcon QgsCptCityColorRampItem::icon()
@@ -811,7 +813,7 @@ QIcon QgsCptCityColorRampItem::icon( const QSize& size )
       return icon;
   }
 
-  QIcon icon( size );
+  QIcon icon;
 
   init();
 
@@ -1355,7 +1357,7 @@ QgsCptCityBrowserModel::~QgsCptCityBrowserModel()
   removeRootItems();
 }
 
-void QgsCptCityBrowserModel::addRootItems( )
+void QgsCptCityBrowserModel::addRootItems()
 {
   if ( mViewType == Authors )
   {

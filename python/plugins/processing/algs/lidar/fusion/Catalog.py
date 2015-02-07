@@ -24,9 +24,9 @@ __copyright__ = '(C) 2014, Agresta S. Coop'
 __revision__ = '$Format:%H$'
 
 import os
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterString import ParameterString
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterString
+from processing.core.outputs import OutputFile
 from FusionUtils import FusionUtils
 from FusionAlgorithm import FusionAlgorithm
 
@@ -43,18 +43,30 @@ class Catalog(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Catalog'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input las layer'))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output files'))
-        density = ParameterString(self.DENSITY, 'Density - area, min, max (set blank if not used)', '', False, True)
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input las layer')))
+        self.addOutput(OutputFile(self.OUTPUT, self.tr('Output files')))
+        density = ParameterString(
+            self.DENSITY,
+            self.tr('Density - area, min, max (set blank if not used)'),
+            '', False, True)
         density.isAdvanced = True
         self.addParameter(density)
-        firest_density = ParameterString(self.FIRSTDENSITY, 'First Density - area, min, max (set blank if not used)', '', False, True)
+        firest_density = ParameterString(
+            self.FIRSTDENSITY,
+            self.tr('First Density - area, min, max (set blank if not used)'),
+            '', False, True)
         firest_density.isAdvanced = True
         self.addParameter(firest_density)
-        intensity = ParameterString(self.INTENSITY, 'Intensity - area, min, max (set blank if not used)', '', False, True)
+        intensity = ParameterString(
+            self.INTENSITY,
+            self.tr('Intensity - area, min, max (set blank if not used)'),
+            '', False, True)
         intensity.isAdvanced = True
         self.addParameter(intensity)
-        advanced_modifiers = ParameterString(self.ADVANCED_MODIFIERS, 'Additional modifiers', '', False, True)
+        advanced_modifiers = ParameterString(
+            self.ADVANCED_MODIFIERS,
+            self.tr('Additional modifiers'), '', False, True)
         advanced_modifiers.isAdvanced = True
         self.addParameter(advanced_modifiers)
 

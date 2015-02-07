@@ -23,6 +23,8 @@ class QWebPage;
 class QImage;
 class QgsFeature;
 class QgsVectorLayer;
+class QgsNetworkContentFetcher;
+class QgsDistanceArea;
 
 class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
 {
@@ -38,7 +40,10 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
     };
 
     QgsComposerHtml( QgsComposition* c, bool createUndoCommands );
+
+    //should be private - fix for QGIS 3.0
     QgsComposerHtml();
+
     ~QgsComposerHtml();
 
     /**Sets the source mode for item's HTML content.
@@ -117,17 +122,6 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
      */
     void setEvaluateExpressions( bool evaluateExpressions );
 
-    QSizeF totalSize() const;
-    void render( QPainter* p, const QRectF& renderExtent );
-
-    bool writeXML( QDomElement& elem, QDomDocument & doc, bool ignoreFrames = false ) const;
-    bool readXML( const QDomElement& itemElem, const QDomDocument& doc, bool ignoreFrames = false );
-
-    void addFrame( QgsComposerFrame* frame, bool recalcFrameSizes = true );
-
-    //overriden to break frames without dividing lines of text
-    double findNearbyPageBreak( double yPos );
-
     /**Returns whether html item is using smart breaks. Smart breaks prevent
      * the html frame contents from breaking mid-way though a line of text.
      * @returns true if html item is using smart breaks
@@ -168,15 +162,67 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
      */
     double maxBreakDistance() const { return mMaxBreakDistance; }
 
+    /**Sets the user stylesheet CSS rules to use while rendering the HTML content. These
+     * allow for overriding the styles specified within the HTML source. Setting the stylesheet
+     * using this function does not automatically refresh the item's contents. Call loadHtml
+     * to trigger a refresh of the item after setting the stylesheet rules.
+     * @param stylesheet CSS rules for user stylesheet
+     * @see userStylesheet
+     * @see setUserStylesheetEnabled
+     * @see loadHtml
+     * @note added in 2.5
+     */
+    void setUserStylesheet( const QString stylesheet );
+
+    /**Returns the user stylesheet CSS rules used while rendering the HTML content. These
+     * overriding the styles specified within the HTML source.
+     * @returns CSS rules for user stylesheet
+     * @see setUserStylesheet
+     * @see userStylesheetEnabled
+     * @note added in 2.5
+     */
+    QString userStylesheet() const { return mUserStylesheet; }
+
+    /**Sets whether user stylesheets are enabled for the HTML content.
+     * @param stylesheetEnabled set to true to enable user stylesheets
+     * @see userStylesheetEnabled
+     * @see setUserStylesheet
+     * @note added in 2.5
+     */
+    void setUserStylesheetEnabled( const bool stylesheetEnabled );
+
+    /**Returns whether user stylesheets are enabled for the HTML content.
+     * @returns true if user stylesheets are enabled
+     * @see setUserStylesheetEnabled
+     * @see userStylesheet
+     * @note added in 2.5
+     */
+    bool userStylesheetEnabled() const { return mEnableUserStylesheet; }
+
+    virtual QString displayName() const override;
+    QSizeF totalSize() const override;
+    void render( QPainter* p, const QRectF& renderExtent, const int frameIndex ) override;
+    bool writeXML( QDomElement& elem, QDomDocument & doc, bool ignoreFrames = false ) const override;
+    bool readXML( const QDomElement& itemElem, const QDomDocument& doc, bool ignoreFrames = false ) override;
+    void addFrame( QgsComposerFrame* frame, bool recalcFrameSizes = true ) override;
+    //overriden to break frames without dividing lines of text
+    double findNearbyPageBreak( double yPos ) override;
+
   public slots:
 
     /**Reloads the html source from the url and redraws the item.
+     * @param useCache set to true to use a cached copy of remote html
+     * content
      * @see setUrl
      * @see url
      */
-    void loadHtml();
+    void loadHtml( const bool useCache = false );
 
+    /**Recalculates the frame sizes for the current viewport dimensions*/
+    void recalculateFrameSizes() override;
     void refreshExpressionContext();
+
+    virtual void refreshDataDefinedProperty( const QgsComposerObject::DataDefinedProperty property = QgsComposerObject::AllProperties ) override;
 
   private slots:
     void frameLoaded( bool ok = true );
@@ -186,6 +232,9 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
     QUrl mUrl;
     QWebPage* mWebPage;
     QString mHtml;
+    QString mFetchedHtml;
+    QString mLastFetchedUrl;
+    QString mActualFetchedUrl; //may be different if page was redirected
     bool mLoaded;
     QSizeF mSize; //total size in mm
     double mHtmlUnitsToMM;
@@ -196,6 +245,12 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
 
     QgsFeature* mExpressionFeature;
     QgsVectorLayer* mExpressionLayer;
+    QgsDistanceArea* mDistanceArea;
+
+    QString mUserStylesheet;
+    bool mEnableUserStylesheet;
+
+    QgsNetworkContentFetcher* mFetcher;
 
     double htmlUnitsToMM(); //calculate scale factor
 
@@ -207,6 +262,9 @@ class CORE_EXPORT QgsComposerHtml: public QgsComposerMultiFrame
 
     /** Sets the current feature, the current layer and a list of local variable substitutions for evaluating expressions */
     void setExpressionContext( QgsFeature* feature, QgsVectorLayer* layer );
+
+    /**calculates the max width of frames in the html multiframe*/
+    double maxFrameWidth() const;
 };
 
 #endif // QGSCOMPOSERHTML_H

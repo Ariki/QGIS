@@ -29,33 +29,19 @@ import os
 import time
 import uuid
 import importlib
-from qgis.core import *
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+
+from qgis.core import QgsRasterLayer
 from qgis.utils import iface
+
+from PyQt4.QtGui import QIcon
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingLog import ProcessingLog
-from processing.core.WrongHelpFileException import WrongHelpFileException
-from processing.core.GeoAlgorithmExecutionException import \
-    GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 
-from processing.parameters.ParameterFactory import ParameterFactory
-from processing.parameters.ParameterTable import ParameterTable
-from processing.parameters.ParameterMultipleInput import ParameterMultipleInput
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterVector import ParameterVector
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterExtent import ParameterExtent
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.parameters.ParameterString import ParameterString
-from processing.parameters.ParameterSelection import ParameterSelection
-from processing.outputs.OutputRaster import OutputRaster
-from processing.outputs.OutputHTML import OutputHTML
-from processing.outputs.OutputVector import OutputVector
-from processing.outputs.OutputFactory import OutputFactory
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import getParameterFromString, ParameterVector, ParameterMultipleInput, ParameterExtent, ParameterNumber, ParameterSelection, ParameterRaster, ParameterTable, ParameterBoolean, ParameterString
+from processing.core.outputs import getOutputFromString, OutputRaster, OutputVector, OutputHTML, OutputFile
 
 from Grass7Utils import Grass7Utils
 
@@ -97,26 +83,22 @@ class Grass7Algorithm(GeoAlgorithm):
 
     def getParameterDescriptions(self):
         descs = {}
+        _, helpfile = self.help()
         try:
-            _, helpfile = self.help()
-        except WrongHelpFileException:
-            return descs
-        if helpfile:
-            try:
-                infile = open(helpfile)
-                lines = infile.readlines()
-                for i in range(len(lines)):
-                    if lines[i].startswith('<DT><b>'):
-                        for param in self.parameters:
-                            searchLine = '<b>' + param.name + '</b>'
-                            if searchLine in lines[i]:
-                                i += 1
-                                descs[param.name] = (lines[i])[4:-6]
-                                break
+            infile = open(helpfile)
+            lines = infile.readlines()
+            for i in range(len(lines)):
+                if lines[i].startswith('<DT><b>'):
+                    for param in self.parameters:
+                        searchLine = '<b>' + param.name + '</b>'
+                        if searchLine in lines[i]:
+                            i += 1
+                            descs[param.name] = (lines[i])[4:-6]
+                            break
 
-                infile.close()
-            except Exception:
-                pass
+            infile.close()
+        except Exception:
+            pass
         return descs
 
     def defineCharacteristicsFromFile(self):
@@ -130,23 +112,24 @@ class Grass7Algorithm(GeoAlgorithm):
         hasRasterOutput = False
         hasVectorInput = False
         vectorOutputs = 0
+        line = lines.readline().strip('\n').strip()
         while line != '':
             try:
                 line = line.strip('\n').strip()
                 if line.startswith('Parameter'):
-                    parameter = ParameterFactory.getFromString(line)
+                    parameter = getParameterFromString(line)
                     self.addParameter(parameter)
                     if isinstance(parameter, ParameterVector):
                         hasVectorInput = True
                     if isinstance(parameter, ParameterMultipleInput) \
-                        and parameter.datatype < 3:
+                       and parameter.datatype < 3:
                         hasVectorInput = True
                 elif line.startswith('*Parameter'):
-                    param = ParameterFactory.getFromString(line[1:])
+                    param = getParameterFromString(line[1:])
                     param.isAdvanced = True
                     self.addParameter(param)
                 else:
-                    output = OutputFactory.getFromString(line)
+                    output = getOutputFromString(line)
                     self.addOutput(output)
                     if isinstance(output, OutputRaster):
                         hasRasterOutput = True
@@ -154,18 +137,20 @@ class Grass7Algorithm(GeoAlgorithm):
                         vectorOutputs += 1
                 line = lines.readline().strip('\n').strip()
             except Exception, e:
-                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                       'Could not open GRASS GIS 7 algorithm: '
-                                       + self.descriptionFile + '\n' + line)
+                ProcessingLog.addToLog(
+                    ProcessingLog.LOG_ERROR,
+                    self.tr('Could not open GRASS GIS 7 algorithm: %s\n%s' % (self.descriptionFile, line)))
                 raise e
         lines.close()
 
-        self.addParameter(ParameterExtent(self.GRASS_REGION_EXTENT_PARAMETER,
-                          'GRASS GIS 7 region extent'))
+        self.addParameter(ParameterExtent(
+            self.GRASS_REGION_EXTENT_PARAMETER,
+            self.tr('GRASS GIS 7 region extent'))
+        )
         if hasRasterOutput:
             self.addParameter(ParameterNumber(
                 self.GRASS_REGION_CELLSIZE_PARAMETER,
-                'GRASS GIS 7 region cellsize (leave 0 for default)',
+                self.tr('GRASS GIS 7 region cellsize (leave 0 for default)'),
                 0, None, 0.0))
         if hasVectorInput:
             param = ParameterNumber(self.GRASS_SNAP_TOLERANCE_PARAMETER,
@@ -202,10 +187,11 @@ class Grass7Algorithm(GeoAlgorithm):
                     for layername in layers:
                         layer = dataobjects.getObjectFromUri(layername)
                         if isinstance(layer, QgsRasterLayer):
-                            cellsize = max(cellsize,
-                                    (layer.extent().xMaximum()
-                                    - layer.extent().xMinimum())
-                                    / layer.width())
+                            cellsize = max(cellsize, (
+                                layer.extent().xMaximum()
+                                - layer.extent().xMinimum())
+                                / layer.width()
+                            )
 
         if cellsize == 0:
             cellsize = 1
@@ -215,9 +201,9 @@ class Grass7Algorithm(GeoAlgorithm):
         if system.isWindows():
             path = Grass7Utils.grassPath()
             if path == '':
-                raise GeoAlgorithmExecutionException('GRASS GIS 7 folder is not \
-                    configured.\nPlease configure it before running GRASS GIS 7\
-                    algorithms.')
+                raise GeoAlgorithmExecutionException(
+                    self.tr('GRASS GIS 7 folder is not configured. Please '
+                            'configure it before running GRASS GIS 7 algorithms.'))
 
         commands = []
         self.exportedLayers = {}
@@ -281,8 +267,7 @@ class Grass7Algorithm(GeoAlgorithm):
 
         self.setSessionProjectionFromProject(commands)
 
-        region = \
-            str(self.getParameterValue(self.GRASS_REGION_EXTENT_PARAMETER))
+        region = str(self.getParameterValue(self.GRASS_REGION_EXTENT_PARAMETER))
         regionCoords = region.split(',')
         command = 'g.region'
         command += ' n=' + str(regionCoords[3])
@@ -307,11 +292,11 @@ class Grass7Algorithm(GeoAlgorithm):
             if param.value is None or param.value == '':
                 continue
             if param.name == self.GRASS_REGION_CELLSIZE_PARAMETER \
-                or param.name == self.GRASS_REGION_EXTENT_PARAMETER \
-                or param.name == self.GRASS_MIN_AREA_PARAMETER or param.name \
-                == self.GRASS_SNAP_TOLERANCE_PARAMETER or param.name \
-                == self.GRASS_OUTPUT_TYPE_PARAMETER or param.name \
-                == self.GRASS_REGION_ALIGN_TO_RESOLUTION:
+               or param.name == self.GRASS_REGION_EXTENT_PARAMETER \
+               or param.name == self.GRASS_MIN_AREA_PARAMETER \
+               or param.name == self.GRASS_SNAP_TOLERANCE_PARAMETER \
+               or param.name == self.GRASS_OUTPUT_TYPE_PARAMETER \
+               or param.name == self.GRASS_REGION_ALIGN_TO_RESOLUTION:
                 continue
             if isinstance(param, (ParameterRaster, ParameterVector)):
                 value = param.value
@@ -395,7 +380,7 @@ class Grass7Algorithm(GeoAlgorithm):
                 filename = out.value
                 # FIXME: check if needed: -c   Also export features without category (not labeled). Otherwise only features with category are exported.
                 command = 'v.out.ogr -s -e input=' + out.name + uniqueSufix
-                command += ' dsn="' + os.path.dirname(out.value) + '"'
+                command += ' output="' + os.path.dirname(out.value) + '"'
                 command += ' format=ESRI_Shapefile'
                 command += ' olayer=' + os.path.basename(out.value)[:-4]
                 typeidx = \
@@ -409,14 +394,14 @@ class Grass7Algorithm(GeoAlgorithm):
         # 4: Run GRASS
 
         loglines = []
-        loglines.append('GRASS GIS 7 execution commands')
+        loglines.append(self.tr('GRASS GIS 7 execution commands'))
         for line in commands:
             progress.setCommand(line)
             loglines.append(line)
         if ProcessingConfig.getSetting(Grass7Utils.GRASS_LOG_COMMANDS):
             ProcessingLog.addToLog(ProcessingLog.LOG_INFO, loglines)
         self.consoleOutput = Grass7Utils.executeGrass7(commands, progress,
-                outputCommands)
+                                                       outputCommands)
         self.postProcessResults()
 
         # If the session has been created outside of this algorithm, add
@@ -463,7 +448,7 @@ class Grass7Algorithm(GeoAlgorithm):
         command += ' min_area=' + str(min_area)
         snap = self.getParameterValue(self.GRASS_SNAP_TOLERANCE_PARAMETER)
         command += ' snap=' + str(snap)
-        command += ' dsn="' + os.path.dirname(filename) + '"'
+        command += ' input="' + os.path.dirname(filename) + '"'
         command += ' layer=' + os.path.basename(filename)[:-4]
         command += ' output=' + destFilename
         command += ' --overwrite -o'
@@ -510,11 +495,13 @@ class Grass7Algorithm(GeoAlgorithm):
     def checkBeforeOpeningParametersDialog(self):
         msg = Grass7Utils.checkGrass7IsInstalled()
         if msg is not None:
-            html = '<p>This algorithm requires GRASS GIS 7 to be run. \
-                Unfortunately, it seems that GRASS GIS 7 is not installed in \
-                your system, or it is not correctly configured to be used \
-                from QGIS</p>'
-            html += '<p><a href="http://docs.qgis.org/2.0/en/docs/user_manual/processing/3rdParty.html">Click here</a> to know more about how to install and configure GRASS GIS 7 to be used with QGIS</p>' # FIXME update URL or page
+            html = self.tr(
+                '<p>This algorithm requires GRASS GIS 7 to be run. '
+                'Unfortunately, it seems that GRASS GIS 7 is not installed in '
+                'your system, or it is not correctly configured to be used '
+                'from QGIS</p>'
+                '<p><a href="http://docs.qgis.org/testing/en/docs/user_manual/processing/3rdParty.html">Click here</a> '
+                'to know more about how to install and configure GRASS GIS 7 to be used with QGIS</p>') # FIXME update URL or page
             return html
 
     def checkParameterValuesBeforeExecuting(self):
@@ -530,15 +517,17 @@ class Grass7Algorithm(GeoAlgorithm):
     def getPostProcessingErrorMessage(self, wrongLayers):
         html = GeoAlgorithm.getPostProcessingErrorMessage(self, wrongLayers)
         msg = Grass7Utils.checkGrass7IsInstalled(True)
-        html += '<p>This algorithm requires GRASS GIS 7 to be run. A test \
-            to check if GRASS GIS 7 is correctly installed and configured in \
-            your system has been performed, with the following \
-            result:</p><ul><i>'
+        html += self.tr(
+            '<p>This algorithm requires GRASS GIS 7 to be run. A test '
+            'to check if GRASS GIS 7 is correctly installed and configured in '
+            'your system has been performed, with the following result:</p><ul><i>')
         if msg is None:
-            html += 'GRASS GIS 7 seems to be correctly installed and \
-                configured</i></li></ul>'
+            html += self.tr(
+                'GRASS GIS 7 seems to be correctly installed and configured</i></li></ul>')
         else:
             html += msg + '</i></li></ul>'
-            html += '<p><a href= "http://docs.qgis.org/2.0/en/docs/user_manual/processing/3rdParty.html">Click here</a> to know more about how to install and configure GRASS GIS 7 to be used with QGIS</p>'
+            html += self.tr(
+                '<p><a href="http://docs.qgis.org/testing/en/docs/user_manual/processing/3rdParty.html">Click here</a> '
+                'to know more about how to install and configure GRASS GIS 7 to be used with QGIS</p>')
 
         return html

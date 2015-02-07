@@ -16,6 +16,7 @@
 
 #include "qgssingleboxscalebarstyle.h"
 #include "qgscomposerscalebar.h"
+#include "qgscomposerutils.h"
 #include <QList>
 #include <QPainter>
 
@@ -40,13 +41,12 @@ void QgsSingleBoxScaleBarStyle::draw( QPainter* p, double xOffset ) const
   {
     return;
   }
-  double barTopPosition = mScaleBar->fontAscentMillimeters( mScaleBar->font() ) + mScaleBar->labelBarSpace() + mScaleBar->boxContentSpace();
+  double barTopPosition = QgsComposerUtils::fontAscentMM( mScaleBar->font() ) + mScaleBar->labelBarSpace() + mScaleBar->boxContentSpace();
 
   p->save();
   //antialiasing on
   p->setRenderHint( QPainter::Antialiasing, true );
   p->setPen( mScaleBar->pen() );
-
 
   QList<QPair<double, double> > segmentInfo;
   mScaleBar->segmentPositions( segmentInfo );

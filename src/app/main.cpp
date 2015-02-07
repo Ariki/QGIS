@@ -29,7 +29,9 @@
 #include <QString>
 #include <QStringList>
 #include <QStyle>
+#if QT_VERSION < 0x050000
 #include <QPlastiqueStyle>
+#endif
 #include <QTranslator>
 #include <QImageReader>
 #include <QMessageBox>
@@ -85,7 +87,7 @@ typedef SInt32 SRefCon;
 #include "qgsrectangle.h"
 #include "qgslogger.h"
 
-#if (defined(linux) && !defined(ANDROID)) || defined(__FreeBSD__)
+#if ((defined(linux) || defined(__linux__)) && !defined(ANDROID)) || defined(__FreeBSD__)
 #include <unistd.h>
 #include <execinfo.h>
 #include <signal.h>
@@ -165,6 +167,7 @@ void myPrint( const char *fmt, ... )
 #else
   vfprintf( stderr, fmt, ap );
 #endif
+  va_end( ap );
 }
 
 static void dumpBacktrace( unsigned int depth )
@@ -172,7 +175,7 @@ static void dumpBacktrace( unsigned int depth )
   if ( depth == 0 )
     depth = 20;
 
-#if (defined(linux) && !defined(ANDROID)) || defined(__FreeBSD__)
+#if ((defined(linux) || defined(__linux__)) && !defined(ANDROID)) || defined(__FreeBSD__)
   int stderr_fd = -1;
   if ( access( "/usr/bin/c++filt", X_OK ) < 0 )
   {
@@ -204,12 +207,14 @@ static void dumpBacktrace( unsigned int depth )
     close( STDERR_FILENO );  // close stderr
 
     // stderr to pipe
-    if ( dup( fd[1] ) != STDERR_FILENO )
+    int stderr_new = dup( fd[1] );
+    if ( stderr_new != STDERR_FILENO )
     {
+      close( stderr_new );
       QgsDebugMsg( "dup to stderr failed" );
     }
 
-    close( fd[1] );          // close duped pipe
+    close( fd[1] );  // close duped pipe
   }
 
   void **buffer = new void *[ depth ];
@@ -231,7 +236,7 @@ static void dumpBacktrace( unsigned int depth )
   void **buffer = new void *[ depth ];
 
   SymSetOptions( SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_UNDNAME );
-  SymInitialize( GetCurrentProcess(), "http://msdl.microsoft.com/download/symbols", TRUE );
+  SymInitialize( GetCurrentProcess(), "http://msdl.microsoft.com/download/symbols;http://download.osgeo.org/osgeo4w/symstore", TRUE );
 
   unsigned short nFrames = CaptureStackBackTrace( 1, depth, buffer, NULL );
   SYMBOL_INFO *symbol = ( SYMBOL_INFO * ) qgsMalloc( sizeof( SYMBOL_INFO ) + 256 );
@@ -596,7 +601,7 @@ int main( int argc, char *argv[] )
   // Initialise the application and the translation stuff
   /////////////////////////////////////////////////////////////////////
 
-#ifdef Q_WS_X11
+#ifdef Q_OS_UNIX
   bool myUseGuiFlag = getenv( "DISPLAY" ) != 0;
 #else
   bool myUseGuiFlag = true;
@@ -628,7 +633,7 @@ int main( int argc, char *argv[] )
   QgsApplication myApp( argc, argv, myUseGuiFlag, configpath );
 
 // (if Windows/Mac, use icon from resource)
-#if !defined(Q_WS_WIN) && !defined(Q_WS_MAC)
+#if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
   myApp.setWindowIcon( QIcon( QgsApplication::iconsPath() + "qgis-icon-60x60.png" ) );
 #endif
 
@@ -724,7 +729,7 @@ int main( int argc, char *argv[] )
 
         if ( systemEnvVars.contains( envVarName ) && envVarApply == "unset" )
         {
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
           putenv( envVarName.toUtf8().constData() );
 #else
           unsetenv( envVarName.toUtf8().constData() );
@@ -732,7 +737,7 @@ int main( int argc, char *argv[] )
         }
         else
         {
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
           if ( envVarApply != "undefined" || !getenv( envVarName.toUtf8().constData() ) )
             putenv( QString( "%1=%2" ).arg( envVarName ).arg( envVarValue ).toUtf8().constData() );
 #else
@@ -752,9 +757,11 @@ int main( int argc, char *argv[] )
   QString style = mySettings.value( "/qgis/style" ).toString();
   if ( !style.isNull() )
     QApplication::setStyle( style );
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
+#if QT_VERSION < 0x050000
   else
     QApplication::setStyle( new QPlastiqueStyle );
+#endif
 #endif
 
   /* Translation file for QGIS.
@@ -823,7 +830,7 @@ int main( int argc, char *argv[] )
   // we need to be sure we can find the qt image
   // plugins. In mac be sure to look in the
   // application bundle...
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
   QCoreApplication::addLibraryPath( QApplication::applicationDirPath()
                                     + QDir::separator() + "qtplugins" );
 #endif
@@ -962,7 +969,7 @@ int main( int argc, char *argv[] )
 
   if ( !pythonfile.isEmpty() )
   {
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
     //replace backslashes with forward slashes
     pythonfile.replace( "\\", "/" );
 #endif

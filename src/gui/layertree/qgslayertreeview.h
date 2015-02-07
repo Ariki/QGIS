@@ -49,7 +49,7 @@ class GUI_EXPORT QgsLayerTreeView : public QTreeView
     ~QgsLayerTreeView();
 
     //! Overridden setModel() from base class. Only QgsLayerTreeModel is an acceptable model.
-    virtual void setModel( QAbstractItemModel* model );
+    virtual void setModel( QAbstractItemModel* model ) override;
 
     //! Get access to the model casted to QgsLayerTreeModel
     QgsLayerTreeModel* layerTreeModel() const;
@@ -90,7 +90,7 @@ class GUI_EXPORT QgsLayerTreeView : public QTreeView
     void currentLayerChanged( QgsMapLayer* layer );
 
   protected:
-    void contextMenuEvent( QContextMenuEvent* event );
+    void contextMenuEvent( QContextMenuEvent* event ) override;
 
     void updateExpandedStateFromNode( QgsLayerTreeNode* node );
 
@@ -105,14 +105,15 @@ class GUI_EXPORT QgsLayerTreeView : public QTreeView
 
     void onCurrentChanged();
     void onExpandedChanged( QgsLayerTreeNode* node, bool expanded );
+    void onModelReset();
 
   protected:
     //! helper class with default actions. Lazily initialized.
     QgsLayerTreeViewDefaultActions* mDefaultActions;
     //! Context menu provider. Owned by the view.
     QgsLayerTreeViewMenuProvider* mMenuProvider;
-    //! Keeps track of current index (to check when to emit signal about change of current layer)
-    QPersistentModelIndex mCurrentIndex;
+    //! Keeps track of current layer ID (to check when to emit signal about change of current layer)
+    QString mCurrentLayerID;
 };
 
 

@@ -40,10 +40,14 @@ QgsGml::QgsGml(
     : QObject()
     , mTypeName( typeName )
     , mGeometryAttribute( geometryAttribute )
+    , mWkbType( NULL )
     , mFinished( false )
     , mCurrentFeature( 0 )
     , mFeatureCount( 0 )
+    , mCurrentWKB( NULL )
     , mCurrentWKBSize( 0 )
+    , mDimension( 2 )
+    , mCoorMode( QgsGml::coordinate )
     , mEpsg( 0 )
 {
   mThematicAttributes.clear();
@@ -184,7 +188,7 @@ int QgsGml::getFeatures( const QByteArray &data, QGis::WkbType* wkbType, QgsRect
   return 0;
 }
 
-void QgsGml::setFinished( )
+void QgsGml::setFinished()
 {
   mFinished = true;
 }
@@ -334,7 +338,7 @@ void QgsGml::endElement( const XML_Char* el )
 
   if (( theParseMode == coordinate && elementName == GML_NAMESPACE + NS_SEPARATOR + "coordinates" )
       || ( theParseMode == posList && (
-             elementName == GML_NAMESPACE + NS_SEPARATOR + "posList"
+             elementName == GML_NAMESPACE + NS_SEPARATOR + "pos"
              || elementName == GML_NAMESPACE + NS_SEPARATOR + "posList" ) ) )
   {
     mParseModeStack.pop();
@@ -427,6 +431,7 @@ void QgsGml::endElement( const XML_Char* el )
       else
       {
         QgsDebugMsg( "No wkb fragments" );
+        delete [] wkb;
       }
     }
   }
@@ -492,6 +497,7 @@ void QgsGml::endElement( const XML_Char* el )
     }
     else
     {
+      delete[] wkb;
       QgsDebugMsg( "no wkb fragments" );
     }
   }

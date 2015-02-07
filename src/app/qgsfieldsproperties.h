@@ -84,9 +84,9 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
 
         // QTreeWidget interface
       protected:
-        virtual QStringList mimeTypes() const;
+        virtual QStringList mimeTypes() const override;
 
-        virtual QMimeData* mimeData( const QList<QTableWidgetItem*> items ) const;
+        virtual QMimeData* mimeData( const QList<QTableWidgetItem*> items ) const override;
     };
 
 
@@ -103,15 +103,15 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
         QTreeWidgetItem* addContainer( QTreeWidgetItem* parent, QString title );
 
       protected:
-        virtual void dragMoveEvent( QDragMoveEvent *event );
-        virtual void dropEvent( QDropEvent *event );
-        virtual bool dropMimeData( QTreeWidgetItem * parent, int index, const QMimeData * data, Qt::DropAction action );
+        virtual void dragMoveEvent( QDragMoveEvent *event ) override;
+        virtual void dropEvent( QDropEvent *event ) override;
+        virtual bool dropMimeData( QTreeWidgetItem * parent, int index, const QMimeData * data, Qt::DropAction action ) override;
         /* Qt::DropActions supportedDropActions() const;*/
 
         // QTreeWidget interface
       protected:
-        virtual QStringList mimeTypes() const;
-        virtual QMimeData* mimeData( const QList<QTreeWidgetItem*> items ) const;
+        virtual QStringList mimeTypes() const override;
+        virtual QMimeData* mimeData( const QList<QTreeWidgetItem*> items ) const override;
     };
 
     /**
@@ -150,7 +150,6 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     void init();
     void apply();
 
-    void updateButtons();
     void loadRows();
     void setRow( int row, int idx, const QgsField &field );
 
@@ -162,7 +161,7 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
   signals:
     void toggleEditing();
 
-  public slots:
+  private slots:
     void on_mAddAttributeButton_clicked();
     void on_mDeleteAttributeButton_clicked();
     void on_mCalculateFieldButton_clicked();
@@ -170,7 +169,6 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     void on_pbnSelectEditForm_clicked();
     void on_mEditorLayoutComboBox_currentIndexChanged( int index );
 
-    void addAttribute();
     void attributeAdded( int idx );
     void attributeDeleted( int idx );
     void attributeTypeDialog();
@@ -183,11 +181,13 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
 
     void attributesListCellChanged( int row, int column );
 
-  protected slots:
+
     /** editing of layer was toggled */
     void editingToggled();
 
   protected:
+    void updateButtons();
+
     FieldConfig configForRow( int row );
     void setConfigForRow( int row, FieldConfig cfg );
 

@@ -12,7 +12,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <QtTest>
+#include <QtTest/QtTest>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -48,9 +48,9 @@
 /** \ingroup UnitTests
  * This is a unit test for the QgsRasterLayer class.
  */
-class TestQgsRasterLayer: public QObject
+class TestQgsRasterLayer : public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
@@ -90,7 +90,7 @@ class TestQgsRasterLayer: public QObject
 
 class TestSignalReceiver : public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     TestSignalReceiver() : QObject( 0 ),
@@ -152,6 +152,8 @@ void TestQgsRasterLayer::initTestCase()
 //runs after all tests
 void TestQgsRasterLayer::cleanupTestCase()
 {
+  QgsApplication::exitQgis();
+
   QString myReportFile = QDir::tempPath() + QDir::separator() + "qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
@@ -363,10 +365,11 @@ void TestQgsRasterLayer::checkScaleOffset()
   QVERIFY( myRasterLayer );
   if ( ! myRasterLayer->isValid() )
   {
-    qDebug() << QString( "raster layer %1 invalid" ).arg( myRasterFileInfo.filePath() ) ;
-    mReport += QString( "raster layer %1 invalid" ).arg( myRasterFileInfo.filePath() ) ;
+    qDebug() << QString( "raster layer %1 invalid" ).arg( myRasterFileInfo.filePath() );
+    mReport += QString( "raster layer %1 invalid" ).arg( myRasterFileInfo.filePath() );
     delete myRasterLayer;
     QVERIFY( false );
+    return;
   }
 
   QFile::remove( myRasterFileInfo.filePath() + ".aux.xml" ); // remove cached stats
@@ -580,8 +583,7 @@ void TestQgsRasterLayer::setRenderer()
   mpRasterLayer->setRenderer( renderer );
   QCOMPARE( receiver.rendererChanged, true );
   QCOMPARE( mpRasterLayer->renderer(), renderer );
-  delete renderer;
 }
 
 QTEST_MAIN( TestQgsRasterLayer )
-#include "moc_testqgsrasterlayer.cxx"
+#include "testqgsrasterlayer.moc"

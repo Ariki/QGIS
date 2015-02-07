@@ -23,6 +23,7 @@ which are not wrapped by PyQt:
 %Feature QSETINT_CONVERSION
 %Feature QSETTYPE_CONVERSION
 %Feature QLISTCONSTPTR_CONVERSION
+%Feature QVECTORINT_CONVERSION
 
 %ModuleHeaderCode
 
@@ -1354,6 +1355,66 @@ template<double, TYPE2>
 %End
 };
 
+%MappedType QList < QPair< QgsVectorLayer *, int > >
+{
+%TypeHeaderCode
+#include <QPair>
+#include <QList>
+%End
+
+%ConvertFromTypeCode
+//convert map to a python dictionary
+    PyObject *d;
+
+    if ((d = PyList_New( sipCpp->size() )) == NULL)
+      return NULL;
+
+    for ( int i = 0; i<sipCpp->size(); i++ )
+    {
+      PyObject *p;
+      if ((p = PyList_New(2) ) == NULL)
+      {
+	Py_DECREF(d);
+	return NULL;
+      }
+
+      PyObject *t1obj = sipConvertFromNewType(sipCpp->at(i).first, sipType_QgsVectorLayer, sipTransferObj);
+      PyObject *t2obj = PyInt_FromLong( (long) sipCpp->at(i).second );
+      PyList_SetItem( p, 0, t1obj );
+      PyList_SetItem( p, 1, t2obj );
+
+      PyList_SetItem( d, i, p );
+    }
+
+    return d;
+%End
+%ConvertToTypeCode
+#if PY_VERSION_HEX >= 0x02050000
+    Py_ssize_t i = 0;
+#else
+    int i = 0;
+#endif
+    QList < QPair< QgsVectorLayer *, int > > *qm = new QList< QPair< QgsVectorLayer *, int > >;
+
+    for ( i = 0; i < PyList_GET_SIZE(sipPy); i++ )
+    {
+	  int state;
+
+      PyObject *sipPair = PyList_GetItem( sipPy, i );
+      PyObject *sipLayer = PyList_GetItem( sipPair, 0 );
+      PyObject *sipIdx = PyList_GetItem( sipPair, 1 );
+
+      QgsVectorLayer *t1 = reinterpret_cast<QgsVectorLayer *>(sipConvertToType(sipLayer, sipType_QgsVectorLayer, sipTransferObj, SIP_NOT_NONE, &state, sipIsErr));
+      int idx = PyLong_AsLongLong(sipIdx);
+      qm->append( qMakePair<QgsVectorLayer *, int>( t1, idx ) );
+      sipReleaseType(t1, sipType_QgsVectorLayer, state);
+    }
+
+    *sipCppPtr = qm;
+
+    return sipGetState(sipTransferObj);
+%End
+};
 
 
 template <TYPE>
@@ -1512,3 +1573,55 @@ template <TYPE>
     return sipGetState(sipTransferObj);
 %End
 };
+
+%If (QVECTORINT_CONVERSION)
+// QVector<int> is implemented as a Python list of integers.
+%MappedType QVector<int> /DocType="list-of-int"/
+{
+%TypeHeaderCode
+#include <qvector.h>
+%End
+
+%ConvertFromTypeCode
+    // Create the list.
+    PyObject *l;
+
+    if ((l = PyList_New(sipCpp->size())) == NULL)
+        return NULL;
+
+    // Set the list elements.
+    for (int i = 0; i < sipCpp->size(); ++i)
+    {
+        PyObject *pobj;
+
+        // Convert to a Python long to make sure it doesn't get interpreted as
+        // a signed value.
+        if ((pobj = SIPLong_FromLong(sipCpp->value(i))) == NULL)
+        {
+            Py_DECREF(l);
+
+            return NULL;
+        }
+
+        PyList_SET_ITEM(l, i, pobj);
+    }
+
+    return l;
+%End
+
+%ConvertToTypeCode
+    // Check the type if that is all that is required.
+    if (sipIsErr == NULL)
+        return PyList_Check(sipPy);
+
+    QVector<int> *qv = new QVector<int>;
+
+    for (SIP_SSIZE_T i = 0; i < PyList_GET_SIZE(sipPy); ++i)
+        qv->append(SIPLong_AsLong(PyList_GET_ITEM(sipPy, i)));
+
+    *sipCppPtr = qv;
+
+    return sipGetState(sipTransferObj);
+%End
+};
+%End

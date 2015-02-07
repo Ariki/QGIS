@@ -19,6 +19,7 @@
 #include <QSet>
 #include <QSettings>
 
+#include "qgsactionmenu.h"
 #include "qgsattributetabledelegate.h"
 #include "qgsattributetablefiltermodel.h"
 #include "qgsattributetablemodel.h"
@@ -34,9 +35,10 @@
 
 QgsFeatureListView::QgsFeatureListView( QWidget *parent )
     : QListView( parent )
-    , mCurrentEditSelectionModel( NULL )
-    , mFeatureSelectionModel( NULL )
-    , mItemDelegate( NULL )
+    , mModel( 0 )
+    , mCurrentEditSelectionModel( 0 )
+    , mFeatureSelectionModel( 0 )
+    , mItemDelegate( 0 )
     , mEditSelectionDrag( false )
 {
   setSelectionMode( QAbstractItemView::ExtendedSelection );
@@ -100,7 +102,7 @@ QString QgsFeatureListView::parserErrorString()
 QgsFeatureIds QgsFeatureListView::currentEditSelection()
 {
   QgsFeatureIds selection;
-  Q_FOREACH( QModelIndex idx, mCurrentEditSelectionModel->selectedIndexes() )
+  Q_FOREACH ( QModelIndex idx, mCurrentEditSelectionModel->selectedIndexes() )
   {
     selection << idx.data( QgsAttributeTableModel::FeatureIdRole ).value<QgsFeatureId>();
   }
@@ -115,20 +117,27 @@ void QgsFeatureListView::setCurrentFeatureEdited( bool state )
 
 void QgsFeatureListView::mousePressEvent( QMouseEvent *event )
 {
-  QPoint pos = event->pos();
-
-  QModelIndex index = indexAt( pos );
-
-  if ( QgsFeatureListViewDelegate::EditElement == mItemDelegate->positionToElement( event->pos() ) )
+  if ( mModel )
   {
-    mEditSelectionDrag = true;
-    setEditSelection( mModel->mapToMaster( index ), QItemSelectionModel::ClearAndSelect );
+    QPoint pos = event->pos();
+
+    QModelIndex index = indexAt( pos );
+
+    if ( QgsFeatureListViewDelegate::EditElement == mItemDelegate->positionToElement( event->pos() ) )
+    {
+      mEditSelectionDrag = true;
+      setEditSelection( mModel->mapToMaster( index ), QItemSelectionModel::ClearAndSelect );
+    }
+    else
+    {
+      mFeatureSelectionModel->enableSync( false );
+      selectRow( index, true );
+      repaintRequested();
+    }
   }
   else
   {
-    mFeatureSelectionModel->enableSync( false );
-    selectRow( index, true );
-    repaintRequested();
+    QgsDebugMsg( "No model assigned to this view" );
   }
 }
 
@@ -287,6 +296,19 @@ void QgsFeatureListView::keyPressEvent( QKeyEvent *event )
   else
   {
     QListView::keyPressEvent( event );
+  }
+}
+
+void QgsFeatureListView::contextMenuEvent( QContextMenuEvent *event )
+{
+  QModelIndex index = indexAt( event->pos() );
+
+  if ( index.isValid() )
+  {
+    QgsFeature feature = mModel->data( index, QgsFeatureListModel::FeatureRole ).value<QgsFeature>();
+
+    QgsActionMenu menu( mModel->layerCache()->layer(), &feature, this );
+    menu.exec( event->globalPos() );
   }
 }
 

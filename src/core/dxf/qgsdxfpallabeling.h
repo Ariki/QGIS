@@ -24,14 +24,14 @@
 
 class QgsDxfExport;
 
-class CORE_EXPORT QgsDxfPalLabeling: public QgsPalLabeling
+class CORE_EXPORT QgsDxfPalLabeling : public QgsPalLabeling
 {
   public:
     QgsDxfPalLabeling( QgsDxfExport* dxf, const QgsRectangle& bbox, double scale, QGis::UnitType mapUnits );
     ~QgsDxfPalLabeling();
 
     QgsRenderContext& renderContext() { return mRenderContext; }
-    void drawLabel( pal::LabelPosition* label, QgsRenderContext& context, QgsPalLayerSettings& tmpLyr, DrawLabelType drawType, double dpiRatio = 1.0 );
+    void drawLabel( pal::LabelPosition* label, QgsRenderContext& context, QgsPalLayerSettings& tmpLyr, DrawLabelType drawType, double dpiRatio = 1.0 ) override;
 
   private:
     QgsDxfExport* mDxfExport;

@@ -43,7 +43,7 @@ class CORE_EXPORT QgsColorRampShader : public QgsRasterShaderFunction
     {
       //! default constructor
       ColorRampItem() {}
-      //! convenience constructor - added in v1.6
+      //! convenience constructor
       ColorRampItem( double val, QColor col, QString lbl = QString() ) : label( lbl ), value( val ), color( col ) {}
 
       QString label;
@@ -86,12 +86,12 @@ class CORE_EXPORT QgsColorRampShader : public QgsRasterShaderFunction
     void setMaximumColorCacheSize( int theSize ) { mMaximumColorCacheSize = theSize; }
 
     /** \brief Generates and new RGB value based on one input value */
-    bool shade( double, int*, int*, int*, int* );
+    bool shade( double, int*, int*, int*, int* ) override;
 
     /** \brief Generates and new RGB value based on original RGB value */
-    bool shade( double, double, double, double, int*, int*, int*, int* );
+    bool shade( double, double, double, double, int*, int*, int*, int* ) override;
 
-    void legendSymbologyItems( QList< QPair< QString, QColor > >& symbolItems ) const;
+    void legendSymbologyItems( QList< QPair< QString, QColor > >& symbolItems ) const override;
 
     void setClip( bool clip ) { mClip = clip; }
     bool clip() const { return mClip; }

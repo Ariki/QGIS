@@ -115,10 +115,11 @@ class GUI_EXPORT QgsFeatureListView : public QListView
     void setCurrentFeatureEdited( bool state );
 
   protected:
-    virtual void mouseMoveEvent( QMouseEvent *event );
-    virtual void mousePressEvent( QMouseEvent *event );
-    virtual void mouseReleaseEvent( QMouseEvent *event );
-    virtual void keyPressEvent( QKeyEvent *event );
+    virtual void mouseMoveEvent( QMouseEvent *event ) override;
+    virtual void mousePressEvent( QMouseEvent *event ) override;
+    virtual void mouseReleaseEvent( QMouseEvent *event ) override;
+    virtual void keyPressEvent( QKeyEvent *event ) override;
+    virtual void contextMenuEvent( QContextMenuEvent *event ) override;
 
   signals:
     /**
@@ -155,7 +156,7 @@ class GUI_EXPORT QgsFeatureListView : public QListView
     /**
      * Select all currently visible features
      */
-    virtual void selectAll();
+    virtual void selectAll() override;
 
     void repaintRequested( QModelIndexList indexes );
     void repaintRequested();

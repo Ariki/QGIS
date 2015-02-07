@@ -18,10 +18,10 @@
 #include "qgsmapcanvas.h"
 #include "qgspointrotationitem.h"
 #include "qgsrendererv2.h"
+#include "qgssnappingutils.h"
 #include "qgssymbolv2.h"
 #include "qgsvectorlayer.h"
 #include <QGraphicsPixmapItem>
-#include <QMessageBox>
 #include <QMouseEvent>
 
 QgsMapToolRotatePointSymbols::QgsMapToolRotatePointSymbols( QgsMapCanvas* canvas ): QgsMapToolEdit( canvas ),
@@ -92,15 +92,14 @@ void QgsMapToolRotatePointSymbols::canvasPressEvent( QMouseEvent *e )
   }
 
   //find the closest feature to the pressed position
-  QgsMapCanvasSnapper canvasSnapper( mCanvas );
-  QList<QgsSnappingResult> snapResults;
-  if ( canvasSnapper.snapToCurrentLayer( e->pos(), snapResults, QgsSnapper::SnapToVertex, -1 ) != 0 || snapResults.size() < 1 )
+  QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
+  if ( !m.isValid() )
   {
-    QMessageBox::critical( 0, tr( "No point feature" ), tr( "No point feature was detected at the clicked position. Please click closer to the feature or enhance the search tolerance under Settings->Options->Digitizing->Serch radius for vertex edits" ) );
+    emit messageEmitted( tr( "No point feature was detected at the clicked position. Please click closer to the feature or enhance the search tolerance under Settings->Options->Digitizing->Serch radius for vertex edits" ), QgsMessageBar::CRITICAL );
     return; //error during snapping
   }
 
-  mFeatureNumber = snapResults.at( 0 ).snappedAtGeometry;
+  mFeatureNumber = m.featureId();
 
   //get list with renderer rotation attributes
   if ( layerRotationAttributes( mActiveLayer, mCurrentRotationAttributes ) != 0 )
@@ -110,11 +109,11 @@ void QgsMapToolRotatePointSymbols::canvasPressEvent( QMouseEvent *e )
 
   if ( mCurrentRotationAttributes.size() < 1 )
   {
-    QMessageBox::critical( 0, tr( "No rotation Attributes" ), tr( "The active point layer does not have a rotation attribute" ) );
+    emit messageEmitted( tr( "The active point layer does not have a rotation attribute." ), QgsMessageBar::CRITICAL );
     return;
   }
 
-  mSnappedPoint = toCanvasCoordinates( snapResults.at( 0 ).snappedVertex );
+  mSnappedPoint = toCanvasCoordinates( m.point() );
 
   //find out initial arrow direction
   QgsFeature pointFeature;
@@ -132,7 +131,7 @@ void QgsMapToolRotatePointSymbols::canvasPressEvent( QMouseEvent *e )
   createPixmapItem( pointFeature );
   if ( mRotationItem )
   {
-    mRotationItem->setPointLocation( snapResults.at( 0 ).snappedVertex );
+    mRotationItem->setPointLocation( m.point() );
   }
   mCurrentMouseAzimut = calculateAzimut( e->pos() );
   setPixmapItemRotation(( int )( mCurrentMouseAzimut ) );

@@ -22,50 +22,16 @@
 #include <QKeyEvent>
 #include <QSettings>
 
-QgsMapToolEdit::QgsMapToolEdit( QgsMapCanvas* canvas )
-    : QgsMapTool( canvas )
-{
-  mSnapper.setMapCanvas( canvas );
-}
 
+QgsMapToolEdit::QgsMapToolEdit( QgsMapCanvas* canvas )
+    : QgsMapToolAdvancedDigitizing( canvas )
+{
+}
 
 QgsMapToolEdit::~QgsMapToolEdit()
 {
-
 }
 
-int QgsMapToolEdit::insertSegmentVerticesForSnap( const QList<QgsSnappingResult>& snapResults, QgsVectorLayer* editedLayer )
-{
-  QgsPoint layerPoint;
-
-  if ( !editedLayer || !editedLayer->isEditable() )
-  {
-    return 1;
-  }
-
-  //transform snaping coordinates to layer crs first
-  QList<QgsSnappingResult> transformedSnapResults = snapResults;
-  QList<QgsSnappingResult>::iterator it = transformedSnapResults.begin();
-  for ( ; it != transformedSnapResults.constEnd(); ++it )
-  {
-    QgsPoint layerPoint = toLayerCoordinates( editedLayer, it->snappedVertex );
-    it->snappedVertex = layerPoint;
-  }
-
-  return editedLayer->insertSegmentVerticesForSnap( transformedSnapResults );
-}
-
-QgsPoint QgsMapToolEdit::snapPointFromResults( const QList<QgsSnappingResult>& snapResults, const QPoint& screenCoords )
-{
-  if ( snapResults.size() < 1 )
-  {
-    return toMapCoordinates( screenCoords );
-  }
-  else
-  {
-    return snapResults.constBegin()->snappedVertex;
-  }
-}
 
 QgsRubberBand* QgsMapToolEdit::createRubberBand( QGis::GeometryType geometryType, bool alternativeBand )
 {
@@ -75,10 +41,10 @@ QgsRubberBand* QgsMapToolEdit::createRubberBand( QGis::GeometryType geometryType
   QColor color( settings.value( "/qgis/digitizing/line_color_red", 255 ).toInt(),
                 settings.value( "/qgis/digitizing/line_color_green", 0 ).toInt(),
                 settings.value( "/qgis/digitizing/line_color_blue", 0 ).toInt() );
-  double myAlpha = settings.value( "/qgis/digitizing/line_color_alpha", 200 ).toInt() / 255.0 ;
+  double myAlpha = settings.value( "/qgis/digitizing/line_color_alpha", 200 ).toInt() / 255.0;
   if ( alternativeBand )
   {
-    myAlpha = myAlpha * settings.value( "/qgis/digitizing/line_color_alpha_scale" , 0.75 ).toDouble();
+    myAlpha = myAlpha * settings.value( "/qgis/digitizing/line_color_alpha_scale", 0.75 ).toDouble();
     rb->setLineStyle( Qt::DotLine );
   }
   if ( geometryType == QGis::Polygon )

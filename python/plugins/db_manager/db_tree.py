@@ -20,10 +20,11 @@ email                : brush.tyler@gmail.com
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtCore import SIGNAL, SLOT
+from PyQt4.QtGui import QWidget, QTreeView, QMenu, QLabel
 
-from qgis.core import QgsMapLayerRegistry
+from qgis.core import QgsMapLayerRegistry, QgsMessageLog
+from qgis.gui import QgsMessageBar, QgsMessageBarItem
 
 from .db_model import DBModel
 from .db_plugins.plugin import DBPlugin, Schema, Table
@@ -48,9 +49,9 @@ class DBTree(QTreeView):
     self.connect(self.model(), SIGNAL("notPopulated"), self.collapse)
 
   def refreshItem(self, item=None):
-    if item == None:
+    if item is None:
       item = self.currentItem()
-      if item == None: return
+      if item is None: return
     self.model().refreshItem(item)
 
   def showSystemTables(self, show):
@@ -65,7 +66,7 @@ class DBTree(QTreeView):
 
   def currentDatabase(self):
     item = self.currentItem()
-    if item == None: return
+    if item is None: return
 
     if isinstance(item, (DBPlugin, Schema, Table)):
       return item.database()
@@ -73,7 +74,7 @@ class DBTree(QTreeView):
 
   def currentSchema(self):
     item = self.currentItem()
-    if item == None: return
+    if item is None: return
 
     if isinstance(item, (Schema, Table)):
       return item.schema()
@@ -81,7 +82,7 @@ class DBTree(QTreeView):
 
   def currentTable(self):
     item = self.currentItem()
-    if item == None: return
+    if item is None: return
 
     if isinstance(item, Table):
       return item
@@ -140,10 +141,19 @@ class DBTree(QTreeView):
   def addLayer(self):
     table = self.currentTable()
     if table is not None:
-      QgsMapLayerRegistry.instance().addMapLayers([table.toMapLayer()])
+      layer = table.toMapLayer()
+      layers = QgsMapLayerRegistry.instance().addMapLayers([layer])
+      if len(layers) != 1:
+        QgsMessageLog.instance().logMessage( self.tr( "%1 is an invalid layer - not loaded" ).replace( "%1", layer.publicSource() ) )
+        msgLabel = QLabel( self.tr( "%1 is an invalid layer and cannot be loaded. Please check the <a href=\"#messageLog\">message log</a> for further info." ).replace( "%1", layer.publicSource() ), self.mainWindow.infoBar )
+        msgLabel.setWordWrap( True )
+        self.connect( msgLabel, SIGNAL("linkActivated( QString )" ),
+                      self.mainWindow.iface.mainWindow().findChild( QWidget, "MessageLog" ), SLOT( "show()" ) )
+        self.connect( msgLabel, SIGNAL("linkActivated( QString )" ),
+                      self.mainWindow.iface.mainWindow(), SLOT( "raise()" ) )
+        self.mainWindow.infoBar.pushItem( QgsMessageBarItem( msgLabel, QgsMessageBar.WARNING ) )
 
   def reconnect(self):
     db = self.currentDatabase()
     if db is not None:
       self.mainWindow.invokeCallback(db.reconnectActionSlot)
-

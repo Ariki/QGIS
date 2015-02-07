@@ -14,10 +14,11 @@
  ***************************************************************************/
 
 
-#include <QtTest>
+#include <QtTest/QtTest>
 #include <QObject>
 #include <QString>
 #include <QObject>
+#include <QSharedPointer>
 #include <QCoreApplication>
 #include <QWidget>
 
@@ -29,7 +30,7 @@
 
 class TestQgsRubberband: public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
   private slots:
     void initTestCase(); // will be called before the first testfunction is executed.
     void cleanupTestCase(); // will be called after the last testfunction was executed.
@@ -72,6 +73,8 @@ void TestQgsRubberband::cleanupTestCase()
   delete mRubberband;
   delete mPolygonLayer;
   delete mCanvas;
+
+  QgsApplication::exitQgis();
 }
 
 void TestQgsRubberband::init()
@@ -87,18 +90,18 @@ void TestQgsRubberband::cleanup()
 void TestQgsRubberband::testAddSingleMultiGeometries()
 {
   mRubberband = new QgsRubberBand( mCanvas, mPolygonLayer->geometryType() );
-  QgsGeometry* geomSinglePart = QgsGeometry::fromWkt( "POLYGON((-0.00022418 -0.00000279,-0.0001039 0.00002395,-0.00008677 -0.00005313,-0.00020705 -0.00007987,-0.00022418 -0.00000279))" );
-  QgsGeometry* geomMultiPart = QgsGeometry::fromWkt( "MULTIPOLYGON(((-0.00018203 0.00012178,-0.00009444 0.00014125,-0.00007861 0.00007001,-0.00016619 0.00005054,-0.00018203 0.00012178)),((-0.00030957 0.00009464,-0.00021849 0.00011489,-0.00020447 0.00005184,-0.00029555 0.00003158,-0.00030957 0.00009464)))" );
+  QSharedPointer<QgsGeometry> geomSinglePart( QgsGeometry::fromWkt( "POLYGON((-0.00022418 -0.00000279,-0.0001039 0.00002395,-0.00008677 -0.00005313,-0.00020705 -0.00007987,-0.00022418 -0.00000279))" ) );
+  QSharedPointer<QgsGeometry> geomMultiPart( QgsGeometry::fromWkt( "MULTIPOLYGON(((-0.00018203 0.00012178,-0.00009444 0.00014125,-0.00007861 0.00007001,-0.00016619 0.00005054,-0.00018203 0.00012178)),((-0.00030957 0.00009464,-0.00021849 0.00011489,-0.00020447 0.00005184,-0.00029555 0.00003158,-0.00030957 0.00009464)))" ) );
 
   mCanvas->setExtent( QgsRectangle( -1e-3, -1e-3, 1e-3, 1e-3 ) ); // otherwise point cannot be converted to canvas coord
 
-  mRubberband->addGeometry( geomSinglePart, mPolygonLayer );
-  mRubberband->addGeometry( geomMultiPart, mPolygonLayer );
+  mRubberband->addGeometry( geomSinglePart.data(), mPolygonLayer );
+  mRubberband->addGeometry( geomMultiPart.data(), mPolygonLayer );
   QVERIFY( mRubberband->numberOfVertices() == 15 );
 }
 
 QTEST_MAIN( TestQgsRubberband )
-#include "moc_testqgsrubberband.cxx"
+#include "testqgsrubberband.moc"
 
 
 

@@ -45,6 +45,11 @@ void QgsAttributeAction::addAction( QgsAction::ActionType type, QString name, QS
   mActions << QgsAction( type, name, action, capture );
 }
 
+void QgsAttributeAction::addAction( QgsAction::ActionType type, QString name, QString action, const QString& icon, bool capture )
+{
+  mActions << QgsAction( type, name, action, icon, capture );
+}
+
 void QgsAttributeAction::removeAction( int index )
 {
   if ( index >= 0 && index < mActions.size() )
@@ -53,7 +58,7 @@ void QgsAttributeAction::removeAction( int index )
   }
 }
 
-void QgsAttributeAction::doAction( int index, QgsFeature &feat, int defaultValueIndex )
+void QgsAttributeAction::doAction( int index, const QgsFeature& feat, int defaultValueIndex )
 {
   QMap<QString, QVariant> substitutionMap;
   if ( defaultValueIndex >= 0 )
@@ -66,8 +71,7 @@ void QgsAttributeAction::doAction( int index, QgsFeature &feat, int defaultValue
   doAction( index, feat, &substitutionMap );
 }
 
-void QgsAttributeAction::doAction( int index, QgsFeature &feat,
-                                   const QMap<QString, QVariant> *substitutionMap )
+void QgsAttributeAction::doAction( int index, const QgsFeature &feat, const QMap<QString, QVariant> *substitutionMap )
 {
   if ( index < 0 || index >= size() )
     return;
@@ -77,7 +81,7 @@ void QgsAttributeAction::doAction( int index, QgsFeature &feat,
     return;
 
   // search for expressions while expanding actions
-  QString expandedAction = QgsExpression::replaceExpressionText( action.action(), &feat, mLayer , substitutionMap );
+  QString expandedAction = QgsExpression::replaceExpressionText( action.action(), &feat, mLayer, substitutionMap );
   if ( expandedAction.isEmpty() )
     return;
 
@@ -237,6 +241,7 @@ bool QgsAttributeAction::writeXML( QDomNode& layer_node, QDomDocument& doc ) con
     QDomElement actionSetting = doc.createElement( "actionsetting" );
     actionSetting.setAttribute( "type", mActions[i].type() );
     actionSetting.setAttribute( "name", mActions[i].name() );
+    actionSetting.setAttribute( "icon", mActions[i].iconPath() );
     actionSetting.setAttribute( "action", mActions[i].action() );
     actionSetting.setAttribute( "capture", mActions[i].capture() );
     aActions.appendChild( actionSetting );
@@ -261,6 +266,7 @@ bool QgsAttributeAction::readXML( const QDomNode& layer_node )
       addAction(( QgsAction::ActionType ) setting.attributeNode( "type" ).value().toInt(),
                 setting.attributeNode( "name" ).value(),
                 setting.attributeNode( "action" ).value(),
+                setting.attributeNode( "icon" ).value(),
                 setting.attributeNode( "capture" ).value().toInt() != 0 );
     }
   }

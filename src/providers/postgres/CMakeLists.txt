@@ -8,6 +8,7 @@ SET(PG_SRCS
   qgspostgresconnpool.cpp
   qgspostgresdataitems.cpp
   qgspostgresfeatureiterator.cpp
+  qgspostgrestransaction.cpp
   qgspgsourceselect.cpp
   qgspgnewconnection.cpp
   qgspgtablemodel.cpp
@@ -24,6 +25,9 @@ SET(PG_MOC_HDRS
   qgscolumntypethread.h
 )
 
+SET(PG_HDRS
+  qgspostgrestransaction.h
+)
 
 ########################################################
 # Build
@@ -34,12 +38,13 @@ INCLUDE_DIRECTORIES(
   ../../core
   ${POSTGRES_INCLUDE_DIR}
   ${GEOS_INCLUDE_DIR}
+  ${QSCINTILLA_INCLUDE_DIR}
   ../../core
   ../../gui
   ${CMAKE_CURRENT_BINARY_DIR}/../../ui
 )
 
-ADD_LIBRARY (postgresprovider MODULE ${PG_SRCS} ${PG_MOC_SRCS})
+ADD_LIBRARY (postgresprovider MODULE ${PG_SRCS} ${PG_HDRS} ${PG_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES (postgresprovider
   ${POSTGRES_LIBRARY}

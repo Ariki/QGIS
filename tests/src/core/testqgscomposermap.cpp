@@ -23,30 +23,19 @@
 #include "qgsmaprenderer.h"
 #include "qgsmultibandcolorrenderer.h"
 #include "qgsrasterlayer.h"
-#include "qgsfontutils.h"
 #include <QObject>
-#include <QtTest>
+#include <QtTest/QtTest>
 
-class TestQgsComposerMap: public QObject
+class TestQgsComposerMap : public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
     void init();// will be called before each testfunction is executed.
     void cleanup();// will be called after every testfunction.
     void render(); //test if rendering of the composition with composr map is correct
-    void grid(); //test if grid and grid annotation works
-    void crossGrid(); //test if grid "cross" mode works
-    void markerGrid(); //test if grid "marker" mode works
-    void overviewMap(); //test if overview map frame works
-    void overviewMapRotated(); //test if overview map frame works with rotated overview
-    void overviewMapRotated2(); //test if overview map frame works with rotated map
-    void overviewMapBlending(); //test if blend modes with overview map frame works
-    void overviewMapInvert(); //test if invert of overview map frame works
     void uniqueId(); //test if map id is adapted when doing copy paste
-    void zebraStyle(); //test zebra map border style
-    void overviewMapCenter(); //test if centering of overview map frame works
     void worldFileGeneration(); // test world file generation
     void mapPolygonVertices(); // test mapPolygon function with no map rotation
 
@@ -87,7 +76,6 @@ void TestQgsComposerMap::initTestCase()
 void TestQgsComposerMap::cleanupTestCase()
 {
   delete mComposition;
-  delete mRasterLayer;
 
   QString myReportFile = QDir::tempPath() + QDir::separator() + "qgistest.html";
   QFile myFile( myReportFile );
@@ -97,6 +85,8 @@ void TestQgsComposerMap::cleanupTestCase()
     myQTextStream << mReport;
     myFile.close();
   }
+
+  QgsApplication::exitQgis();
 }
 
 void TestQgsComposerMap::init()
@@ -113,156 +103,7 @@ void TestQgsComposerMap::render()
   mComposerMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3345223.125 ) );
   QgsCompositionChecker checker( "composermap_render", mComposition );
 
-  QVERIFY( checker.testComposition( mReport, 0, 100 ) );
-}
-
-void TestQgsComposerMap::grid()
-{
-  mComposerMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3345223.125 ) );
-  mComposerMap->setGridEnabled( true );
-  mComposerMap->setGridIntervalX( 2000 );
-  mComposerMap->setGridIntervalY( 2000 );
-  mComposerMap->setShowGridAnnotation( true );
-  mComposerMap->setGridPenWidth( 0.5 );
-  mComposerMap->setGridPenColor( QColor( 0, 255, 0 ) );
-  mComposerMap->setGridAnnotationFont( QgsFontUtils::getStandardTestFont() );
-  mComposerMap->setGridAnnotationPrecision( 0 );
-  mComposerMap->setGridAnnotationPosition( QgsComposerMap::Disabled, QgsComposerMap::Left );
-  mComposerMap->setGridAnnotationPosition( QgsComposerMap::OutsideMapFrame, QgsComposerMap::Right );
-  mComposerMap->setGridAnnotationPosition( QgsComposerMap::Disabled, QgsComposerMap::Top );
-  mComposerMap->setGridAnnotationPosition( QgsComposerMap::OutsideMapFrame, QgsComposerMap::Bottom );
-  mComposerMap->setGridAnnotationDirection( QgsComposerMap::Horizontal, QgsComposerMap::Right );
-  mComposerMap->setGridAnnotationDirection( QgsComposerMap::Horizontal, QgsComposerMap::Bottom );
-  mComposerMap->setAnnotationFontColor( QColor( 255, 0, 0, 150 ) );
-  mComposerMap->setGridBlendMode( QPainter::CompositionMode_Overlay );
-  qWarning() << "grid annotation font: " << mComposerMap->gridAnnotationFont().toString() << " exactMatch:" << mComposerMap->gridAnnotationFont().exactMatch();
-  QgsCompositionChecker checker( "composermap_grid", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposerMap->setGridEnabled( false );
-  mComposerMap->setShowGridAnnotation( false );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::crossGrid()
-{
-  mComposerMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3345223.125 ) );
-  mComposerMap->setGridEnabled( true );
-  mComposerMap->setGridStyle( QgsComposerMap::Cross );
-  mComposerMap->setCrossLength( 2.0 );
-  mComposerMap->setGridIntervalX( 2000 );
-  mComposerMap->setGridIntervalY( 2000 );
-  mComposerMap->setShowGridAnnotation( false );
-  mComposerMap->setGridPenWidth( 0.5 );
-  mComposerMap->setGridPenColor( QColor( 0, 255, 0 ) );
-  mComposerMap->setGridBlendMode( QPainter::CompositionMode_SourceOver );
-  QgsCompositionChecker checker( "composermap_crossgrid", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposerMap->setGridStyle( QgsComposerMap::Solid );
-  mComposerMap->setGridEnabled( false );
-  mComposerMap->setShowGridAnnotation( false );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::markerGrid()
-{
-  mComposerMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3345223.125 ) );
-  mComposerMap->setGridEnabled( true );
-  mComposerMap->setGridStyle( QgsComposerMap::Markers );
-  mComposerMap->setGridIntervalX( 2000 );
-  mComposerMap->setGridIntervalY( 2000 );
-  mComposerMap->setShowGridAnnotation( false );
-  mComposerMap->setGridBlendMode( QPainter::CompositionMode_SourceOver );
-  QgsCompositionChecker checker( "composermap_markergrid", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposerMap->setGridStyle( QgsComposerMap::Solid );
-  mComposerMap->setGridEnabled( false );
-  mComposerMap->setShowGridAnnotation( false );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMap()
-{
-  QgsComposerMap* overviewMap = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMap->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMap );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375, 3341423.125, 789262.375, 3343323.125 ) ); //zoom in
-  overviewMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMap->setOverviewFrameMap( mComposerMap->id() );
-  QgsCompositionChecker checker( "composermap_overview", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMap );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMapRotated()
-{
-  QgsComposerMap* overviewMap = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMap->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMap );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375, 3341423.125, 789262.375, 3343323.125 ) ); //zoom in
-  mComposerMap->setMapRotation( 30 );
-  overviewMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMap->setOverviewFrameMap( mComposerMap->id() );
-  QgsCompositionChecker checker( "composermap_overview_rotated", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMap );
-  mComposerMap->setMapRotation( 0 );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMapRotated2()
-{
-  QgsComposerMap* overviewMap = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMap->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMap );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375, 3341423.125, 789262.375, 3343323.125 ) ); //zoom in
-  overviewMap->setMapRotation( 30 );
-  overviewMap->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMap->setOverviewFrameMap( mComposerMap->id() );
-  QgsCompositionChecker checker( "composermap_overview_rotated2", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMap );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMapBlending()
-{
-  QgsComposerMap* overviewMapBlend = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMapBlend->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMapBlend );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375, 3341423.125, 789262.375, 3343323.125 ) ); //zoom in
-  overviewMapBlend->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMapBlend->setOverviewFrameMap( mComposerMap->id() );
-  overviewMapBlend->setOverviewBlendMode( QPainter::CompositionMode_Multiply );
-
-  QgsCompositionChecker checker( "composermap_overview_blending", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMapBlend );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMapInvert()
-{
-  QgsComposerMap* overviewMapInvert = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMapInvert->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMapInvert );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375, 3341423.125, 789262.375, 3343323.125 ) ); //zoom in
-  overviewMapInvert->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMapInvert->setOverviewFrameMap( mComposerMap->id() );
-  overviewMapInvert->setOverviewInverted( true );
-
-  QgsCompositionChecker checker( "composermap_overview_invert", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMapInvert );
-  QVERIFY( testResult );
+  QVERIFY( checker.testComposition( mReport, 0, 0 ) );
 }
 
 void TestQgsComposerMap::uniqueId()
@@ -290,44 +131,6 @@ void TestQgsComposerMap::uniqueId()
   mComposition->removeComposerItem( const_cast<QgsComposerMap*>( newMap ) );
 
   QVERIFY( oldId != newId );
-}
-
-void TestQgsComposerMap::zebraStyle()
-{
-  mComposerMap->setGridPenColor( QColor( 0, 0, 0 ) );
-  mComposerMap->setAnnotationFontColor( QColor( 0, 0, 0, 0 ) );
-  mComposerMap->setGridBlendMode( QPainter::CompositionMode_SourceOver );
-
-  mComposerMap->setGridFrameStyle( QgsComposerMap::Zebra );
-  mComposerMap->setGridFrameWidth( 10 );
-  mComposerMap->setGridFramePenSize( 1 );
-  mComposerMap->setGridFramePenColor( QColor( 255, 100, 0, 200 ) );
-  mComposerMap->setGridFrameFillColor1( QColor( 50, 90, 50, 100 ) );
-  mComposerMap->setGridFrameFillColor2( QColor( 200, 220, 100, 60 ) );
-  mComposerMap->setGridEnabled( true );
-
-  QgsCompositionChecker checker( "composermap_zebrastyle", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  QVERIFY( testResult );
-}
-
-void TestQgsComposerMap::overviewMapCenter()
-{
-  QgsComposerMap* overviewMapCenter = new QgsComposerMap( mComposition, 20, 130, 70, 70 );
-  overviewMapCenter->setFrameEnabled( true );
-  mComposition->addComposerMap( overviewMapCenter );
-  mComposerMap->setNewExtent( QgsRectangle( 785462.375 + 5000, 3341423.125, 789262.375 + 5000, 3343323.125 ) ); //zoom in
-  mComposerMap->setGridEnabled( false );
-  overviewMapCenter->setNewExtent( QgsRectangle( 781662.375, 3339523.125, 793062.375, 3350923.125 ) );
-  overviewMapCenter->setOverviewFrameMap( mComposerMap->id() );
-  overviewMapCenter->setOverviewCentered( true );
-
-  QgsCompositionChecker checker( "composermap_overview_center", mComposition );
-
-  bool testResult = checker.testComposition( mReport, 0, 100 );
-  mComposition->removeComposerItem( overviewMapCenter );
-  QVERIFY( testResult );
 }
 
 void TestQgsComposerMap::worldFileGeneration()
@@ -368,6 +171,9 @@ void TestQgsComposerMap::mapPolygonVertices()
   QVERIFY( fabs( visibleExtent[3].x() - 781662.375 ) < 0.001 );
   QVERIFY( fabs( visibleExtent[3].y() - 3339523.125 ) < 0.001 );
 
+  //polygon should be closed
+  QVERIFY( visibleExtent.isClosed() );
+
   //now test with rotated map
   mComposerMap->setMapRotation( 10 );
   visibleExtent = mComposerMap->visibleExtentPolygon();
@@ -382,9 +188,12 @@ void TestQgsComposerMap::mapPolygonVertices()
   QVERIFY( fabs( visibleExtent[3].x() - 782243.868114 ) < 0.001 );
   QVERIFY( fabs( visibleExtent[3].y() - 3338576.62829 ) < 0.001 );
 
+  //polygon should be closed
+  QVERIFY( visibleExtent.isClosed() );
+
   mComposerMap->setMapRotation( 0 );
 
 }
 
 QTEST_MAIN( TestQgsComposerMap )
-#include "moc_testqgscomposermap.cxx"
+#include "testqgscomposermap.moc"

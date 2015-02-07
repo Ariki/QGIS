@@ -17,6 +17,8 @@
 #define QGSRENDERERV2_H
 
 #include "qgis.h"
+#include "qgsrectangle.h"
+#include "qgsrendercontext.h"
 
 #include <QList>
 #include <QString>
@@ -27,7 +29,6 @@
 #include <QDomElement>
 
 class QgsSymbolV2;
-class QgsRenderContext;
 class QgsFeature;
 class QgsFields;
 class QgsVectorLayer;
@@ -39,6 +40,9 @@ typedef QMap<QString, QgsSymbolV2* > QgsSymbolV2Map;
 
 typedef QList< QPair<QString, QPixmap> > QgsLegendSymbologyList;
 typedef QList< QPair<QString, QgsSymbolV2*> > QgsLegendSymbolList;
+
+#include "qgslegendsymbolitemv2.h"
+
 
 #define RENDERER_TAG_NAME   "renderer-v2"
 
@@ -82,6 +86,14 @@ class CORE_EXPORT QgsFeatureRendererV2
      */
     virtual QgsSymbolV2* symbolForFeature( QgsFeature& feature ) = 0;
 
+    /**
+     * Return symbol for feature. The difference compared to symbolForFeature() is that it returns original
+     * symbol which can be used as an identifier for renderer's rule - the former may return a temporary replacement
+     * of a symbol for use in rendering.
+     * @note added in 2.6
+     */
+    virtual QgsSymbolV2* originalSymbolForFeature( QgsFeature& feature ) { return symbolForFeature( feature ); }
+
     virtual void startRender( QgsRenderContext& context, const QgsFields& fields ) = 0;
 
     //! @deprecated since 2.4 - not using QgsVectorLayer directly anymore
@@ -93,7 +105,7 @@ class CORE_EXPORT QgsFeatureRendererV2
 
     virtual ~QgsFeatureRendererV2() {}
 
-    virtual QgsFeatureRendererV2* clone() = 0;
+    virtual QgsFeatureRendererV2* clone() const = 0;
 
     virtual bool renderFeature( QgsFeature& feature, QgsRenderContext& context, int layer = -1, bool selected = false, bool drawVertexMarker = false );
 
@@ -110,7 +122,6 @@ class CORE_EXPORT QgsFeatureRendererV2
     };
 
     //! returns bitwise OR-ed capabilities of the renderer
-    //! \note added in 2.0
     virtual int capabilities() { return 0; }
 
     //! for symbol levels
@@ -126,8 +137,11 @@ class CORE_EXPORT QgsFeatureRendererV2
     virtual QDomElement save( QDomDocument& doc );
 
     //! create the SLD UserStyle element following the SLD v1.1 specs
-    //! @note added in 1.9
-    virtual QDomElement writeSld( QDomDocument& doc, const QgsVectorLayer &layer ) const;
+    //! @deprecated since 2.8 - use the other override with styleName
+    Q_DECL_DEPRECATED virtual QDomElement writeSld( QDomDocument& doc, const QgsVectorLayer &layer ) const;
+    //! create the SLD UserStyle element following the SLD v1.1 specs with the given name
+    //! @note added in 2.8
+    virtual QDomElement writeSld( QDomDocument& doc, const QString& styleName ) const;
 
     /** create a new renderer according to the information contained in
      * the UserStyle element of a SLD style document
@@ -138,12 +152,10 @@ class CORE_EXPORT QgsFeatureRendererV2
      * @param errorMessage it will contain the error message if something
      * went wrong
      * @return the renderer
-     * @note added in 1.9
      */
     static QgsFeatureRendererV2* loadSld( const QDomNode &node, QGis::GeometryType geomType, QString &errorMessage );
 
     //! used from subclasses to create SLD Rule elements following SLD v1.1 specs
-    //! @note added in 1.9
     virtual void toSld( QDomDocument& doc, QDomElement &element ) const
     { element.appendChild( doc.createComment( QString( "FeatureRendererV2 %1 not implemented yet" ).arg( type() ) ) ); }
 
@@ -156,38 +168,55 @@ class CORE_EXPORT QgsFeatureRendererV2
 
     //! items of symbology items in legend is checked
     //! @note added in 2.5
-    virtual bool legendSymbolItemChecked( int index );
+    virtual bool legendSymbolItemChecked( QString key );
 
     //! item in symbology was checked
     //! @note added in 2.5
-    virtual void checkLegendSymbolItem( int index, bool state = true );
+    virtual void checkLegendSymbolItem( QString key, bool state = true );
 
     //! return a list of item text / symbol
-    //! @note: this method was added in version 1.5
     //! @note not available in python bindings
     virtual QgsLegendSymbolList legendSymbolItems( double scaleDenominator = -1, QString rule = "" );
+
+    //! Return a list of symbology items for the legend. Better choice than legendSymbolItems().
+    //! Default fallback implementation just uses legendSymbolItems() implementation
+    //! @note added in 2.6
+    virtual QgsLegendSymbolListV2 legendSymbolItemsV2() const;
+
+    //! If supported by the renderer, return classification attribute for the use in legend
+    //! @note added in 2.6
+    virtual QString legendClassificationAttribute() const { return QString(); }
 
     //! set type and size of editing vertex markers for subsequent rendering
     void setVertexMarkerAppearance( int type, int size );
 
     //! return rotation field name (or empty string if not set or not supported by renderer)
-    //! @note added in 1.9
     virtual QString rotationField() const { return ""; }
     //! sets rotation field of renderer (if supported by the renderer)
-    //! @note added in 1.9
     virtual void setRotationField( QString fieldName ) { Q_UNUSED( fieldName ); }
 
     //! return whether the renderer will render a feature or not.
     //! Must be called between startRender() and stopRender() calls.
     //! Default implementation uses symbolForFeature().
-    //! @note added in 1.9
     virtual bool willRenderFeature( QgsFeature& feat ) { return symbolForFeature( feat ) != NULL; }
 
     //! return list of symbols used for rendering the feature.
     //! For renderers that do not support MoreSymbolsPerFeature it is more efficient
     //! to use symbolForFeature()
-    //! @note added in 1.9
     virtual QgsSymbolV2List symbolsForFeature( QgsFeature& feat );
+
+    //! Equivalent of originalSymbolsForFeature() call
+    //! extended to support renderers that may use more symbols per feature - similar to symbolsForFeature()
+    //! @note added in 2.6
+    virtual QgsSymbolV2List originalSymbolsForFeature( QgsFeature& feat );
+
+    /**Allows for a renderer to modify the extent of a feature request prior to rendering
+     * @param extent reference to request's filter extent. Modify extent to change the
+     * extent of feature request
+     * @param context render context
+     * @note added in QGIS 2.7
+     */
+    virtual void modifyRequestExtent( QgsRectangle& extent, QgsRenderContext& context ) { Q_UNUSED( extent ); Q_UNUSED( context ); }
 
   protected:
     QgsFeatureRendererV2( QString type );

@@ -208,7 +208,7 @@ QgsProviderRegistry::~QgsProviderRegistry()
 
   while ( it != mProviders.end() )
   {
-    QgsDebugMsg( QString( "cleanup:%1" ).arg( it->first ) );
+    QgsDebugMsg( QString( "cleanup: %1" ).arg( it->first ) );
     QString lib = it->second->library();
     QLibrary myLib( lib );
     if ( myLib.isLoaded() )
@@ -371,6 +371,23 @@ QgsDataProvider *QgsProviderRegistry::provider( QString const & providerKey, QSt
   return dataProvider;
 } // QgsProviderRegistry::setDataProvider
 
+int QgsProviderRegistry::providerCapabilities( const QString &providerKey ) const
+{
+  QLibrary *library = providerLibrary( providerKey );
+  if ( !library )
+  {
+    return QgsDataProvider::NoDataCapabilities;
+  }
+
+  dataCapabilities_t * dataCapabilities = ( dataCapabilities_t * ) cast_to_fptr( library->resolve( "dataCapabilities" ) );
+  if ( !dataCapabilities )
+  {
+    return QgsDataProvider::NoDataCapabilities;
+  }
+
+  return dataCapabilities();
+}
+
 // This should be QWidget, not QDialog
 typedef QWidget * selectFactoryFunction_t( QWidget * parent, Qt::WindowFlags fl );
 
@@ -386,6 +403,25 @@ QWidget* QgsProviderRegistry::selectWidget( const QString & providerKey,
   return selectFactory( parent, fl );
 }
 
+#if QT_VERSION >= 0x050000
+QFunctionPointer QgsProviderRegistry::function( QString const & providerKey,
+    QString const & functionName )
+{
+  QLibrary myLib( library( providerKey ) );
+
+  QgsDebugMsg( "Library name is " + myLib.fileName() );
+
+  if ( myLib.load() )
+  {
+    return myLib.resolve( functionName.toAscii().data() );
+  }
+  else
+  {
+    QgsDebugMsg( "Cannot load library: " + myLib.errorString() );
+    return 0;
+  }
+}
+#else
 void *QgsProviderRegistry::function( QString const & providerKey,
                                      QString const & functionName )
 {
@@ -403,6 +439,7 @@ void *QgsProviderRegistry::function( QString const & providerKey,
     return 0;
   }
 }
+#endif
 
 QLibrary *QgsProviderRegistry::providerLibrary( QString const & providerKey ) const
 {
@@ -474,12 +511,3 @@ const QgsProviderMetadata* QgsProviderRegistry::providerMetadata( const QString&
 {
   return findMetadata_( mProviders, providerKey );
 }
-
-
-#if 0
-QgsDataProvider *
-QgsProviderRegistry::openVector( QString const & dataSource, QString const & providerKey )
-{
-  return getProvider( providerKey, dataSource );
-} // QgsProviderRegistry::openVector
-#endif

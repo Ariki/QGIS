@@ -25,17 +25,6 @@
 
 class QgsComposerLegend;
 
-class QgsComposerLegendWidgetStyleDelegate : public QItemDelegate
-{
-    Q_OBJECT
-
-  public:
-    QgsComposerLegendWidgetStyleDelegate( QObject *parent = 0 );
-    QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
-    void setEditorData( QWidget *editor, const QModelIndex &index ) const;
-    void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const;
-    void updateEditorGeometry( QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
-};
 
 /** \ingroup MapComposer
  * A widget for setting properties relating to a composer legend.
@@ -50,6 +39,8 @@ class QgsComposerLegendWidget: public QgsComposerItemBaseWidget, private Ui::Qgs
 
     /**Updates the legend layers and groups*/
     void updateLegend();
+
+    QgsComposerLegend* legend() { return mLegend; }
 
   public slots:
 
@@ -85,14 +76,17 @@ class QgsComposerLegendWidget: public QgsComposerItemBaseWidget, private Ui::Qgs
     void on_mAddToolButton_clicked();
     void on_mEditPushButton_clicked();
     void on_mCountToolButton_clicked( bool checked );
-    void on_mUpdatePushButton_clicked();
+    void on_mFilterByMapToolButton_clicked( bool checked );
+    void resetLayerNodeToDefaults();
     void on_mUpdateAllPushButton_clicked();
     void on_mAddGroupToolButton_clicked();
 
     void selectedChanged( const QModelIndex & current, const QModelIndex & previous );
 
+    void setCurrentNodeStyleFromAction();
+
   protected:
-    void showEvent( QShowEvent * event );
+    void showEvent( QShowEvent * event ) override;
 
   private slots:
     /**Sets GUI according to state of mLegend*/

@@ -126,7 +126,7 @@ const Block* BlockArray::at( size_t i )
 //         return 0;
 //     }
 
-  size_t j = i; // (current - (index - i) + (index/size+1)*size) % size ;
+  size_t j = i; // (current - (index - i) + (index/size+1)*size) % size;
 
   assert( j < size );
   unmap();
@@ -178,7 +178,7 @@ bool BlockArray::setHistorySize( size_t newsize )
 
   if ( !size )
   {
-    FILE* tmp = tmpfile();
+    FILE *tmp = tmpfile();
     if ( !tmp )
     {
       perror( "konsole: cannot open temp file.\n" );
@@ -189,9 +189,10 @@ bool BlockArray::setHistorySize( size_t newsize )
       if ( ion < 0 )
       {
         perror( "konsole: cannot dup temp file.\n" );
-        fclose( tmp );
       }
+      fclose( tmp );
     }
+
     if ( ion < 0 )
       return false;
 

@@ -68,14 +68,12 @@ class GUI_EXPORT QgsMapTool : public QObject
     virtual void canvasReleaseEvent( QMouseEvent * e );
 
     //! Mouse wheel event for overriding. Default implementation does nothing.
-    //! Added in version 2.0
     virtual void wheelEvent( QWheelEvent* e );
 
     //! Key event for overriding. Default implementation does nothing.
     virtual void keyPressEvent( QKeyEvent* e );
 
     //! Key event for overriding. Default implementation does nothing.
-    //! Added in version 1.1
     virtual void keyReleaseEvent( QKeyEvent* e );
 
 #ifdef HAVE_TOUCH
@@ -152,6 +150,12 @@ class GUI_EXPORT QgsMapTool : public QObject
 
     //! emit signal to clear previous message
     void messageDiscarded();
+
+    //! signal emitted once the map tool is activated
+    void activated();
+
+    //! signal emitted once the map tool is deactivated
+    void deactivated();
 
   private slots:
     //! clear pointer when action is destroyed

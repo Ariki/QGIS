@@ -1,12 +1,5 @@
 SET(PYTHON_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/python)
 
-IF (WITH_INTERNAL_SPATIALITE)
-  INCLUDE_DIRECTORIES(
-    ../src/core/spatialite/headers
-    ../src/core/spatialite/headers/spatialite
-  )
-ENDIF (WITH_INTERNAL_SPATIALITE)
-
 SET (QGIS_PYTHON_OUTPUT_DIRECTORY ${PYTHON_OUTPUT_DIRECTORY}/qgis)
 FILE (MAKE_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
@@ -22,7 +15,7 @@ SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 #
 # NOTE: regular project 'make install' is unaffected
 
-# Other target dependenciess will be added, per staged resource
+# Other target dependencies will be added, per staged resource
 ADD_CUSTOM_TARGET(staged-plugins)
 
 # Plugins can also be staged with CMake option at build time
@@ -42,6 +35,12 @@ ADD_CUSTOM_TARGET(clean-staged-plugins
   COMMAND ${CMAKE_COMMAND} -E remove_directory "${PYTHON_OUTPUT_DIRECTORY}/plugins"
 )
 
+IF(POLICY CMP0040) # in CMake 3.0.0+
+  # Skip 'TARGET signature of add_custom_command() must exist' warning, triggered by macro expansion
+  CMAKE_POLICY (PUSH) # see POP below (NOTE: must wrap related macros, which record policies)
+  CMAKE_POLICY (SET CMP0040 OLD) # temporary policy for staging/py_compile macros
+ENDIF(POLICY CMP0040)
+
 # Macro to byte-compile a target's staged Python resource(s)
 MACRO(PY_COMPILE TARGET_NAME RESOURCE_PATHS)
   IF(WITH_PY_COMPILE)
@@ -60,6 +59,10 @@ ADD_SUBDIRECTORY(console)
 ADD_SUBDIRECTORY(pyplugin_installer)
 ADD_SUBDIRECTORY(ext-libs)
 
+IF(POLICY CMP0040)
+  CMAKE_POLICY (POP) # see PUSH above
+ENDIF(POLICY CMP0040)
+
 INCLUDE_DIRECTORIES(
   ${PYTHON_INCLUDE_PATH}
   ${SIP_INCLUDE_DIR}
@@ -72,11 +75,13 @@ INCLUDE_DIRECTORIES(
   ${GEOS_INCLUDE_DIR}
   ${QWT_INCLUDE_DIR}
   ${QEXTSERIALPORT_INCLUDE_DIR}
+  ${QSCINTILLA_INCLUDE_DIR}
 
   ../src/core
   ../src/core/pal
   ../src/core/composer
   ../src/core/diagram
+  ../src/core/effects
   ../src/core/dxf
   ../src/core/gps
   ../src/core/layertree
@@ -125,6 +130,10 @@ IF(PYQT4_VERSION_NUM LESS 264196)       # 0x040804
   SET(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} QLISTCONSTPTR_CONVERSION)
 ENDIF(PYQT4_VERSION_NUM LESS 264196)
 
+IF(NOT PYQT4_VERSION_NUM LESS 264453)	# 0x040905
+  SET(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} QVECTORINT_CONVERSION)
+ENDIF(NOT PYQT4_VERSION_NUM LESS 264453)
+
 # core module
 FILE(GLOB_RECURSE sip_files_core core/*.sip)
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core})
@@ -144,6 +153,12 @@ INCLUDE_DIRECTORIES(
 FILE(GLOB_RECURSE sip_files_gui gui/*.sip)
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_gui})
 SET(SIP_EXTRA_OPTIONS ${PYQT4_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.gui.api)
+IF(QSCI_SIP_DIR)
+  SET(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -I ${QSCI_SIP_DIR})
+ELSE(QSCI_SIP_DIR)
+  MESSAGE(STATUS "Qsci sip file not found - disabling bindings for derived classes")
+  SET(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_QSCI_SIP)
+ENDIF(QSCI_SIP_DIR)
 
 IF(UNIX AND NOT SIP_VERSION_NUM LESS 265984)
   SET(SIP_EXTRA_OPTIONS -P ${SIP_EXTRA_OPTIONS})
@@ -151,6 +166,25 @@ IF(UNIX AND NOT SIP_VERSION_NUM LESS 265984)
 ENDIF(UNIX AND NOT SIP_VERSION_NUM LESS 265984)
 
 ADD_SIP_PYTHON_MODULE(qgis._gui gui/gui.sip qgis_core qgis_gui)
+
+SET(PY_MODULES core gui analysis networkanalysis)
+
+# server module
+IF (WITH_SERVER AND WITH_SERVER_PLUGINS)
+  INCLUDE_DIRECTORIES(
+    ../src/server
+   ${CMAKE_BINARY_DIR}/src/server
+  )
+
+  SET(PY_MODULES ${PY_MODULES} server)
+
+  FILE(GLOB sip_files_server
+    server/*.sip
+  )
+  SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_server})
+  SET(SIP_EXTRA_OPTIONS ${PYQT4_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.server.api)
+  ADD_SIP_PYTHON_MODULE(qgis._server server/server.sip qgis_core qgis_server)
+ENDIF (WITH_SERVER AND WITH_SERVER_PLUGINS)
 
 # additional analysis includes
 INCLUDE_DIRECTORIES(
@@ -224,6 +258,7 @@ ENDIF(WITH_CUSTOM_WIDGETS)
 SET(PY_FILES
   __init__.py
   utils.py
+  user.py
 )
 
 ADD_CUSTOM_TARGET(pyutils ALL)
@@ -240,7 +275,7 @@ FOREACH(pyfile ${PY_FILES})
   PY_COMPILE(pyutils "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${pyfile}")
 ENDFOREACH(pyfile)
 
-FOREACH(module core gui analysis networkanalysis)
+FOREACH(module ${PY_MODULES})
   ADD_CUSTOM_TARGET(py${module} ALL)
   ADD_DEPENDENCIES(py${module} python_module_qgis__${module})
   FILE(GLOB_RECURSE PY_FILES "${module}/*.py")

@@ -26,8 +26,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from processing.parameters.ParameterFile import ParameterFile
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -40,8 +40,10 @@ class MergeData(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Merge LAS Files'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input LAS files'))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output merged LAS file'))
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input LAS files')))
+        self.addOutput(OutputFile(
+            self.OUTPUT, self.tr('Output merged LAS file')))
 
     def processAlgorithm(self, progress):
         commands = [os.path.join(FusionUtils.FusionPath(), 'MergeData.exe')]

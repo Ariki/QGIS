@@ -43,11 +43,11 @@ class TreeFilterProxyModel : public QSortFilterProxyModel
     { setSourceModel( mModel ); }
 
   protected:
-    bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const
+    bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const override
     {
       QgsCptCityDataItem* item = mModel->dataItem( mModel->index( sourceRow, 0, sourceParent ) );
       return ( item && !( item->type() == QgsCptCityDataItem::ColorRamp ) );
-    }
+  }
     // bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
 
   private:
@@ -284,14 +284,14 @@ void QgsCptCityColorRampV2Dialog::updateTreeView( QgsCptCityDataItem *item, bool
   else if ( item->type() == QgsCptCityDataItem::Selection )
   {
     lblSchemePath->setText( "" );
-    clearCopyingInfo( );
+    clearCopyingInfo();
     updateListWidget( item );
     lblCollectionInfo->setText( QString( "%1 (%2)" ).arg( item->info() ).arg( item->leafCount() ) );
   }
   else if ( item->type() == QgsCptCityDataItem::AllRamps )
   {
     lblSchemePath->setText( "" );
-    clearCopyingInfo( );
+    clearCopyingInfo();
     updateListWidget( item );
     lblCollectionInfo->setText( tr( "All Ramps (%1)" ).arg( item->leafCount() ) );
   }
@@ -314,7 +314,7 @@ void QgsCptCityColorRampV2Dialog::on_mListWidget_itemClicked( QListWidgetItem * 
   }
   else
   {
-    QgsDebugMsg( QString( "item %1 has invalid type %2" ).arg( rampItem->path() ).arg(( int )rampItem->type() ) );
+    QgsDebugMsg( "invalid item" );
   }
 }
 
@@ -588,7 +588,7 @@ bool QgsCptCityColorRampV2Dialog::updateRamp()
   mListWidget->clear();
   mListRamps.clear();
   cboVariantName->clear();
-  clearCopyingInfo( );
+  clearCopyingInfo();
   lblCollectionInfo->clear();
 
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( false );

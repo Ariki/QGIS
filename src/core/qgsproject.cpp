@@ -307,7 +307,7 @@ struct QgsProject::Imp
   bool dirty;
 
   Imp()
-      : title( )
+      : title()
       , dirty( false )
   {                             // top property node is the root
     // "properties" that contains all plug-in
@@ -354,7 +354,7 @@ QgsProject::~QgsProject()
   delete mRelationManager;
   delete mRootGroup;
 
-  // note that std::auto_ptr automatically deletes imp_ when it's destroyed
+  // note that QScopedPointer automatically deletes imp_ when it's destroyed
 } // QgsProject dtor
 
 
@@ -457,7 +457,7 @@ properties tags for all optional properties.  Within that there will be scope
 tags.  In the following example there exist one property in the "fsplugin"
 scope.  "layers" is a list containing three string values.
 
-\verbatim
+\code{.xml}
 <properties>
   <fsplugin>
     <foo type="int" >42</foo>
@@ -473,7 +473,7 @@ scope.  "layers" is a list containing three string values.
     </feature_types>
   </fsplugin>
 </properties>
-\endverbatim
+\endcode
 
 @param doc xml document
 @param project_properties should be the top QgsPropertyKey node.
@@ -559,10 +559,10 @@ _getProperties( QDomDocument const &doc, QgsPropertyKey & project_properties )
    Get the project title
 
    XML in file has this form:
-\verbatim
+\code{.xml}
    <qgis projectname="default project">
    <title>a project title</title>
-\endverbatim
+\endcode
 
    @todo XXX we should go with the attribute xor title, not both.
 */
@@ -634,7 +634,7 @@ static QgsProjectVersion _getVersion( QDomDocument const &doc )
 
    @note XML of form:
 
-\verbatim
+\code{.xml}
    <maplayer type="vector">
       <layername>Hydrop</layername>
       <datasource>/data/usgs/city_shp/hydrop.shp</datasource>
@@ -669,7 +669,7 @@ static QgsProjectVersion _getVersion( QDomDocument const &doc )
          <alignment value="center" field="" />
       </labelattributes>
    </maplayer>
-\endverbatim
+\endcode
 */
 QPair< bool, QList<QDomNode> > QgsProject::_getMapLayers( QDomDocument const &doc )
 {
@@ -818,8 +818,7 @@ bool QgsProject::read()
 {
   clearError();
 
-  std::auto_ptr< QDomDocument > doc =
-    std::auto_ptr < QDomDocument > ( new QDomDocument( "qgis" ) );
+  QScopedPointer<QDomDocument> doc( new QDomDocument( "qgis" ) );
 
   if ( !imp_->file.open( QIODevice::ReadOnly | QIODevice::Text ) )
   {
@@ -877,11 +876,13 @@ bool QgsProject::read()
     emit oldProjectVersionWarning( fileVersion.text() );
     QgsDebugMsg( "Emitting oldProjectVersionWarning(oldVersion)." );
 
-    projectFile.dump();
+    // Commented out by Tim  - overly verbose on console
+    // projectFile.dump();
 
     projectFile.updateRevision( thisVersion );
 
-    projectFile.dump();
+    // Commented out by Tim  - overly verbose on console
+    // projectFile.dump();
 
   }
 
@@ -974,7 +975,7 @@ void QgsProject::loadEmbeddedNodes( QgsLayerTreeGroup* group )
         QString projectPath = readPath( childGroup->customProperty( "embedded_project" ).toString() );
         childGroup->setCustomProperty( "embedded_project", projectPath );
 
-        QgsLayerTreeGroup* newGroup = createEmbeddedGroup( childGroup->name(), projectPath );
+        QgsLayerTreeGroup* newGroup = createEmbeddedGroup( childGroup->name(), projectPath, childGroup->customProperty( "embedded-invisible-layers" ).toStringList() );
         if ( newGroup )
         {
           QList<QgsLayerTreeNode*> clonedChildren;
@@ -1000,24 +1001,6 @@ void QgsProject::loadEmbeddedNodes( QgsLayerTreeGroup* group )
       }
     }
 
-  }
-}
-
-void QgsProject::updateEmbeddedGroupsProjectPath( QgsLayerTreeGroup* group )
-{
-  foreach ( QgsLayerTreeNode* node, group->children() )
-  {
-    if ( QgsLayerTree::isGroup( node ) )
-    {
-      if ( !node->customProperty( "embedded_project" ).toString().isEmpty() )
-      {
-        // may change from absolute path to relative path
-        QString newPath = writePath( node->customProperty( "embedded_project" ).toString() );
-        node->setCustomProperty( "embedded_project", newPath );
-      }
-      else
-        updateEmbeddedGroupsProjectPath( QgsLayerTree::toGroup( node ) );
-    }
   }
 }
 
@@ -1082,9 +1065,7 @@ bool QgsProject::write()
   QDomDocumentType documentType =
     DomImplementation.createDocumentType( "qgis", "http://mrcc.com/qgis.dtd",
                                           "SYSTEM" );
-  std::auto_ptr < QDomDocument > doc =
-    std::auto_ptr < QDomDocument > ( new QDomDocument( documentType ) );
-
+  QScopedPointer<QDomDocument> doc( new QDomDocument( documentType ) );
 
   QDomElement qgisNode = doc->createElement( "qgis" );
   qgisNode.setAttribute( "projectname", title() );
@@ -1101,8 +1082,8 @@ bool QgsProject::write()
 
   // write layer tree - make sure it is without embedded subgroups
   QgsLayerTreeNode* clonedRoot = mRootGroup->clone();
-  QgsLayerTreeUtils::removeChildrenOfEmbeddedGroups( QgsLayerTree::toGroup( clonedRoot ) );
-  updateEmbeddedGroupsProjectPath( QgsLayerTree::toGroup( clonedRoot ) ); // convert absolute paths to relative paths if required
+  QgsLayerTreeUtils::replaceChildrenOfEmbeddedGroups( QgsLayerTree::toGroup( clonedRoot ) );
+  QgsLayerTreeUtils::updateEmbeddedGroupsProjectPath( QgsLayerTree::toGroup( clonedRoot ) ); // convert absolute paths to relative paths if required
   clonedRoot->writeXML( qgisNode );
   delete clonedRoot;
 
@@ -1180,7 +1161,7 @@ bool QgsProject::write()
   QTextStream projectFileStream( &imp_->file );
 
   //projectFileStream << xml << endl;
-  doc->save( projectFileStream, 4 );  // save as utf-8
+  doc->save( projectFileStream, 2 );  // save as utf-8
   imp_->file.close();
 
   // check if the text stream had no error - if it does
@@ -1579,7 +1560,7 @@ QString QgsProject::readPath( QString src ) const
 }
 
 // return the absolute or relative path to write it to the project file
-QString QgsProject::writePath( QString src ) const
+QString QgsProject::writePath( QString src, QString relativeBasePath ) const
 {
   if ( readBoolEntry( "Paths", "/Absolute", false ) || src.isEmpty() )
   {
@@ -1590,6 +1571,11 @@ QString QgsProject::writePath( QString src ) const
   QFileInfo projFileInfo( fileName() );
   QString srcPath = srcFileInfo.canonicalFilePath();
   QString projPath = projFileInfo.canonicalFilePath();
+
+  if ( !relativeBasePath.isNull() )
+  {
+    projPath = relativeBasePath;
+  }
 
   if ( projPath.isEmpty() )
   {
@@ -1702,20 +1688,32 @@ QString QgsProject::layerIsEmbedded( const QString& id ) const
 bool QgsProject::createEmbeddedLayer( const QString& layerId, const QString& projectFilePath, QList<QDomNode>& brokenNodes,
                                       QList< QPair< QgsVectorLayer*, QDomElement > >& vectorLayerList, bool saveFlag )
 {
-  QFile projectFile( projectFilePath );
-  if ( !projectFile.open( QIODevice::ReadOnly ) )
-  {
-    return false;
-  }
+  QgsDebugCall;
 
-  QDomDocument projectDocument;
-  if ( !projectDocument.setContent( &projectFile ) )
+  static QString prevProjectFilePath;
+  static QDomDocument projectDocument;
+
+  if ( projectFilePath != prevProjectFilePath )
   {
-    return false;
+    prevProjectFilePath.clear();
+
+    QFile projectFile( projectFilePath );
+    if ( !projectFile.open( QIODevice::ReadOnly ) )
+    {
+      return false;
+    }
+
+    if ( !projectDocument.setContent( &projectFile ) )
+    {
+      return false;
+    }
+
+    prevProjectFilePath = projectFilePath;
   }
 
   //does project store pathes absolute or relative?
   bool useAbsolutePathes = true;
+
   QDomElement propertiesElem = projectDocument.documentElement().firstChildElement( "properties" );
   if ( !propertiesElem.isNull() )
   {
@@ -1795,7 +1793,7 @@ bool QgsProject::createEmbeddedLayer( const QString& layerId, const QString& pro
 }
 
 
-QgsLayerTreeGroup* QgsProject::createEmbeddedGroup( const QString& groupName, const QString& projectFilePath )
+QgsLayerTreeGroup* QgsProject::createEmbeddedGroup( const QString& groupName, const QString& projectFilePath, const QStringList &invisibleLayers )
 {
   //open project file, get layer ids in group, add the layers
   QFile projectFile( projectFilePath );
@@ -1864,6 +1862,12 @@ QgsLayerTreeGroup* QgsProject::createEmbeddedGroup( const QString& groupName, co
       thisProjectIdentifyDisabledLayers.append( layerId );
       QgsProject::instance()->writeEntry( "Identify", "/disabledLayers", thisProjectIdentifyDisabledLayers );
     }
+
+    QgsLayerTreeLayer *layer = newGroup->findLayer( layerId );
+    if ( layer )
+    {
+      layer->setVisible( invisibleLayers.contains( layerId ) ? Qt::Unchecked : Qt::Checked );
+    }
   }
 
   return newGroup;
@@ -1927,7 +1931,7 @@ void QgsProject::setSnapSettingsForLayer( const QString& layerId, bool enabled, 
   snapTypeList.append( typeString );
 
   //units
-  toleranceUnitList.append( unit == QgsTolerance::Pixels ? "1" : "0" );
+  toleranceUnitList.append( QString::number( unit ) );
 
   //tolerance
   toleranceList.append( QString::number( tolerance ) );
@@ -1989,9 +1993,13 @@ bool QgsProject::snapSettingsForLayer( const QString& layerId, bool& enabled, Qg
   {
     units = QgsTolerance::Pixels;
   }
+  else if ( toleranceUnitList.at( idx ) == "2" )
+  {
+    units = QgsTolerance::ProjectUnits;
+  }
   else
   {
-    units = QgsTolerance::MapUnits;
+    units = QgsTolerance::LayerUnits;
   }
 
   //tolerance

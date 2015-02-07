@@ -87,13 +87,14 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         //! Constructor takes ownership of the symbol
         Rule( QgsSymbolV2* symbol, int scaleMinDenom = 0, int scaleMaxDenom = 0, QString filterExp = QString(),
               QString label = QString(), QString description = QString(), bool elseRule = false );
-        //Rule( const Rule& other );
         ~Rule();
         QString dump( int offset = 0 ) const;
         QSet<QString> usedAttributes();
         QgsSymbolV2List symbols();
         //! @note not available in python bindings
         QgsLegendSymbolList legendSymbolItems( double scaleDenominator = -1, QString rule = "" );
+        //! @note added in 2.6
+        QgsLegendSymbolListV2 legendSymbolItemsV2( int currentLevel = -1 ) const;
         bool isFilterOK( QgsFeature& f ) const;
         bool isScaleOK( double scale ) const;
 
@@ -105,6 +106,15 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         QgsExpression* filter() const { return mFilter; }
         QString filterExpression() const { return mFilterExp; }
         QString description() const { return mDescription; }
+        //! @note added in 2.6
+        bool checkState() const { return mCheckState; }
+
+        //! Unique rule identifier (for identification of rule within renderer)
+        //! @note added in 2.6
+        QString ruleKey() const { return mRuleKey; }
+        //! Override the assigned rule key (should be used just internally by rule-based renderer)
+        //! @note added in 2.6
+        void setRuleKey( const QString& key ) { mRuleKey = key; }
 
         //! set a new symbol (or NULL). Deletes old symbol.
         void setSymbol( QgsSymbolV2* sym );
@@ -113,6 +123,8 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         void setScaleMaxDenom( int scaleMaxDenom ) { mScaleMaxDenom = scaleMaxDenom; }
         void setFilterExpression( QString filterExp ) { mFilterExp = filterExp; initFilter(); }
         void setDescription( QString description ) { mDescription = description; }
+        //! @note added in 2.6
+        void setCheckState( bool state ) { mCheckState = state; }
 
         //! clone this rule, return new instance
         Rule* clone() const;
@@ -133,11 +145,9 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         bool renderFeature( FeatureToRender& featToRender, QgsRenderContext& context, RenderQueue& renderQueue );
 
         //! only tell whether a feature will be rendered without actually rendering it
-        //! @note added in 1.9
         bool willRenderFeature( QgsFeature& feat );
 
         //! tell which symbols will be used to render the feature
-        //! @note added in 1.9
         QgsSymbolV2List symbolsForFeature( QgsFeature& feat );
 
         //! tell which rules will be used to render the feature
@@ -164,6 +174,10 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         //! take child rule out, set parent as null
         Rule* takeChildAt( int i );
 
+        //! Try to find a rule given its unique key
+        //! @note added in 2.6
+        Rule* findRuleByKey( QString key );
+
         void updateElseRules();
 
         void setIsElse( bool iselse ) { mElseRule = iselse; }
@@ -179,6 +193,9 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
         bool mElseRule;
         RuleList mChildren;
         RuleList mElseRules;
+        bool mCheckState; // whether it is enabled or not
+
+        QString mRuleKey; // string used for unique identification of rule within renderer
 
         // temporary
         QgsExpression* mFilter;
@@ -199,52 +216,67 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
     ~QgsRuleBasedRendererV2();
 
     //! return symbol for current feature. Should not be used individually: there could be more symbols for a feature
-    virtual QgsSymbolV2* symbolForFeature( QgsFeature& feature );
+    virtual QgsSymbolV2* symbolForFeature( QgsFeature& feature ) override;
 
-    virtual bool renderFeature( QgsFeature& feature, QgsRenderContext& context, int layer = -1, bool selected = false, bool drawVertexMarker = false );
+    virtual bool renderFeature( QgsFeature& feature, QgsRenderContext& context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) override;
 
-    virtual void startRender( QgsRenderContext& context, const QgsFields& fields );
+    virtual void startRender( QgsRenderContext& context, const QgsFields& fields ) override;
 
-    virtual void stopRender( QgsRenderContext& context );
+    virtual void stopRender( QgsRenderContext& context ) override;
 
-    virtual QList<QString> usedAttributes();
+    virtual QList<QString> usedAttributes() override;
 
-    virtual QgsFeatureRendererV2* clone();
+    virtual QgsFeatureRendererV2* clone() const override;
 
-    virtual void toSld( QDomDocument& doc, QDomElement &element ) const;
+    virtual void toSld( QDomDocument& doc, QDomElement &element ) const override;
 
     static QgsFeatureRendererV2* createFromSld( QDomElement& element, QGis::GeometryType geomType );
 
-    virtual QgsSymbolV2List symbols();
+    virtual QgsSymbolV2List symbols() override;
 
     //! store renderer info to XML element
-    virtual QDomElement save( QDomDocument& doc );
+    virtual QDomElement save( QDomDocument& doc ) override;
 
     //! return a list of symbology items for the legend
-    virtual QgsLegendSymbologyList legendSymbologyItems( QSize iconSize );
+    virtual QgsLegendSymbologyList legendSymbologyItems( QSize iconSize ) override;
+
+    //! items of symbology items in legend should be checkable
+    //! @note added in 2.5
+    virtual bool legendSymbolItemsCheckable() const override;
+
+    //! items of symbology items in legend is checked
+    //! @note added in 2.5
+    virtual bool legendSymbolItemChecked( QString key ) override;
+
+    //! item in symbology was checked
+    //! @note added in 2.5
+    virtual void checkLegendSymbolItem( QString key, bool state = true ) override;
 
     //! return a list of item text / symbol
-    //! @note: this method was added in version 1.5
     //! @note not available in python bindings
-    virtual QgsLegendSymbolList legendSymbolItems( double scaleDenominator = -1, QString rule = "" );
+    virtual QgsLegendSymbolList legendSymbolItems( double scaleDenominator = -1, QString rule = "" ) override;
+
+    //! Return a list of symbology items for the legend. Better choice than legendSymbolItems().
+    //! Default fallback implementation just uses legendSymbolItems() implementation
+    //! @note added in 2.6
+    virtual QgsLegendSymbolListV2 legendSymbolItemsV2() const override;
 
     //! for debugging
-    virtual QString dump() const;
+    virtual QString dump() const override;
 
     //! return whether the renderer will render a feature or not.
     //! Must be called between startRender() and stopRender() calls.
-    //! @note added in 1.9
-    virtual bool willRenderFeature( QgsFeature& feat );
+    virtual bool willRenderFeature( QgsFeature& feat ) override;
 
     //! return list of symbols used for rendering the feature.
     //! For renderers that do not support MoreSymbolsPerFeature it is more efficient
     //! to use symbolForFeature()
-    //! @note added in 1.9
-    virtual QgsSymbolV2List symbolsForFeature( QgsFeature& feat );
+    virtual QgsSymbolV2List symbolsForFeature( QgsFeature& feat ) override;
+
+    virtual QgsSymbolV2List originalSymbolsForFeature( QgsFeature& feat ) override;
 
     //! returns bitwise OR-ed capabilities of the renderer
-    //! \note added in 2.0
-    virtual int capabilities() { return MoreSymbolsPerFeature | Filter | ScaleDependent; }
+    virtual int capabilities() override { return MoreSymbolsPerFeature | Filter | ScaleDependent; }
 
     /////
 
@@ -258,6 +290,14 @@ class CORE_EXPORT QgsRuleBasedRendererV2 : public QgsFeatureRendererV2
     static void refineRuleRanges( Rule* initialRule, QgsGraduatedSymbolRendererV2* r );
     //! take a rule and create a list of new rules with intervals of scales given by the passed scale denominators
     static void refineRuleScales( Rule* initialRule, QList<int> scales );
+
+    //! creates a QgsRuleBasedRendererV2 from an existing renderer.
+    //! @note added in 2.5
+    //! @returns a new renderer if the conversion was possible, otherwise 0.
+    static QgsRuleBasedRendererV2* convertFromRenderer( const QgsFeatureRendererV2 *renderer );
+
+    //! helper function to convert the size scale and rotation fields present in some other renderers to data defined symbology
+    static void convertToDataDefinedSymbology( QgsSymbolV2* symbol, QString sizeScaleField, QString rotationField );
 
   protected:
     //! the root node with hierarchical list of rules

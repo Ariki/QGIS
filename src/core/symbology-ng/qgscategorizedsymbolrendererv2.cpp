@@ -19,6 +19,8 @@
 #include "qgssymbolv2.h"
 #include "qgssymbollayerv2utils.h"
 #include "qgsvectorcolorrampv2.h"
+#include "qgspointdisplacementrenderer.h"
+#include "qgsinvertedpolygonrenderer.h"
 
 #include "qgsfeature.h"
 #include "qgsvectorlayer.h"
@@ -166,7 +168,7 @@ void QgsCategorizedSymbolRendererV2::rebuildHash()
 {
   mSymbolHash.clear();
 
-  for ( int i = 0; i < mCategories.count(); ++i )
+  for ( int i = 0; i < mCategories.size(); ++i )
   {
     QgsRendererCategoryV2& cat = mCategories[i];
     mSymbolHash.insert( cat.value().toString(), ( cat.renderState() || mCounting ) ? cat.symbol() : &sSkipRender );
@@ -176,10 +178,10 @@ void QgsCategorizedSymbolRendererV2::rebuildHash()
 QgsSymbolV2* QgsCategorizedSymbolRendererV2::symbolForValue( QVariant value )
 {
   // TODO: special case for int, double
-  QHash<QString, QgsSymbolV2*>::iterator it = mSymbolHash.find( value.toString() );
+  QHash<QString, QgsSymbolV2*>::iterator it = mSymbolHash.find( value.isNull() ? "" : value.toString() );
   if ( it == mSymbolHash.end() )
   {
-    if ( mSymbolHash.count() == 0 )
+    if ( mSymbolHash.size() == 0 )
     {
       QgsDebugMsg( "there are no hashed symbols!!!" );
     }
@@ -194,6 +196,40 @@ QgsSymbolV2* QgsCategorizedSymbolRendererV2::symbolForValue( QVariant value )
 }
 
 QgsSymbolV2* QgsCategorizedSymbolRendererV2::symbolForFeature( QgsFeature& feature )
+{
+  QgsSymbolV2* symbol = originalSymbolForFeature( feature );
+  if ( !symbol )
+    return 0;
+
+  if ( !mRotation.data() && !mSizeScale.data() )
+    return symbol; // no data-defined rotation/scaling - just return the symbol
+
+  // find out rotation, size scale
+  const double rotation = mRotation.data() ? mRotation->evaluate( feature ).toDouble() : 0;
+  const double sizeScale = mSizeScale.data() ? mSizeScale->evaluate( feature ).toDouble() : 1.;
+
+  // take a temporary symbol (or create it if doesn't exist)
+  QgsSymbolV2* tempSymbol = mTempSymbols[symbol];
+
+  // modify the temporary symbol and return it
+  if ( tempSymbol->type() == QgsSymbolV2::Marker )
+  {
+    QgsMarkerSymbolV2* markerSymbol = static_cast<QgsMarkerSymbolV2*>( tempSymbol );
+    if ( mRotation.data() ) markerSymbol->setAngle( rotation );
+    markerSymbol->setSize( sizeScale * static_cast<QgsMarkerSymbolV2*>( symbol )->size() );
+    markerSymbol->setScaleMethod( mScaleMethod );
+  }
+  else if ( tempSymbol->type() == QgsSymbolV2::Line )
+  {
+    QgsLineSymbolV2* lineSymbol = static_cast<QgsLineSymbolV2*>( tempSymbol );
+    lineSymbol->setWidth( sizeScale * static_cast<QgsLineSymbolV2*>( symbol )->width() );
+  }
+
+  return tempSymbol;
+}
+
+
+QgsSymbolV2* QgsCategorizedSymbolRendererV2::originalSymbolForFeature( QgsFeature& feature )
 {
   const QgsAttributes& attrs = feature.attributes();
   QVariant value;
@@ -218,32 +254,9 @@ QgsSymbolV2* QgsCategorizedSymbolRendererV2::symbolForFeature( QgsFeature& featu
     return symbolForValue( QVariant( "" ) );
   }
 
-  if ( !mRotation.data() && !mSizeScale.data() )
-    return symbol; // no data-defined rotation/scaling - just return the symbol
-
-  // find out rotation, size scale
-  const double rotation = mRotation.data() ? mRotation->evaluate( feature ).toDouble() : 0;
-  const double sizeScale = mSizeScale.data() ? mSizeScale->evaluate( feature ).toDouble() : 1.;
-
-  // take a temporary symbol (or create it if doesn't exist)
-  QgsSymbolV2* tempSymbol = mTempSymbols[value.toString()];
-
-  // modify the temporary symbol and return it
-  if ( tempSymbol->type() == QgsSymbolV2::Marker )
-  {
-    QgsMarkerSymbolV2* markerSymbol = static_cast<QgsMarkerSymbolV2*>( tempSymbol );
-    if ( mRotation.data() ) markerSymbol->setAngle( rotation );
-    markerSymbol->setSize( sizeScale * static_cast<QgsMarkerSymbolV2*>( symbol )->size() );
-    markerSymbol->setScaleMethod( mScaleMethod );
-  }
-  else if ( tempSymbol->type() == QgsSymbolV2::Line )
-  {
-    QgsLineSymbolV2* lineSymbol = static_cast<QgsLineSymbolV2*>( tempSymbol );
-    lineSymbol->setWidth( sizeScale * static_cast<QgsLineSymbolV2*>( symbol )->width() );
-  }
-
-  return tempSymbol;
+  return symbol;
 }
+
 
 int QgsCategorizedSymbolRendererV2::categoryIndexForValue( QVariant val )
 {
@@ -403,7 +416,7 @@ void QgsCategorizedSymbolRendererV2::startRender( QgsRenderContext& context, con
       tempSymbol->setRenderHints(( mRotation.data() ? QgsSymbolV2::DataDefinedRotation : 0 ) |
                                  ( mSizeScale.data() ? QgsSymbolV2::DataDefinedSizeScale : 0 ) );
       tempSymbol->startRender( context, &fields );
-      mTempSymbols[ it->value().toString()] = tempSymbol;
+      mTempSymbols[ it->symbol()] = tempSymbol;
     }
   }
 }
@@ -415,7 +428,7 @@ void QgsCategorizedSymbolRendererV2::stopRender( QgsRenderContext& context )
     it->symbol()->stopRender( context );
 
   // cleanup mTempSymbols
-  QHash<QString, QgsSymbolV2*>::iterator it2 = mTempSymbols.begin();
+  QHash<QgsSymbolV2*, QgsSymbolV2*>::iterator it2 = mTempSymbols.begin();
   for ( ; it2 != mTempSymbols.end(); ++it2 )
   {
     it2.value()->stopRender( context );
@@ -462,7 +475,7 @@ QString QgsCategorizedSymbolRendererV2::dump() const
   return s;
 }
 
-QgsFeatureRendererV2* QgsCategorizedSymbolRendererV2::clone()
+QgsFeatureRendererV2* QgsCategorizedSymbolRendererV2::clone() const
 {
   QgsCategorizedSymbolRendererV2* r = new QgsCategorizedSymbolRendererV2( mAttrName, mCategories );
   if ( mSourceSymbol.data() )
@@ -647,15 +660,7 @@ QDomElement QgsCategorizedSymbolRendererV2::save( QDomDocument& doc )
 
 QgsLegendSymbologyList QgsCategorizedSymbolRendererV2::legendSymbologyItems( QSize iconSize )
 {
-  QSettings settings;
-  bool showClassifiers = settings.value( "/qgis/showLegendClassifiers", false ).toBool();
-
   QgsLegendSymbologyList lst;
-  if ( showClassifiers )
-  {
-    lst << qMakePair( classAttribute(), QPixmap() );
-  }
-
   int count = categories().count();
   for ( int i = 0; i < count; i++ )
   {
@@ -669,14 +674,7 @@ QgsLegendSymbologyList QgsCategorizedSymbolRendererV2::legendSymbologyItems( QSi
 QgsLegendSymbolList QgsCategorizedSymbolRendererV2::legendSymbolItems( double scaleDenominator, QString rule )
 {
   Q_UNUSED( scaleDenominator );
-  QSettings settings;
-  bool showClassifiers = settings.value( "/qgis/showLegendClassifiers", false ).toBool();
-
   QgsLegendSymbolList lst;
-  if ( showClassifiers )
-  {
-    lst << qMakePair( classAttribute(), ( QgsSymbolV2* )0 );
-  }
 
   foreach ( const QgsRendererCategoryV2& cat, mCategories )
   {
@@ -702,9 +700,34 @@ QgsVectorColorRampV2* QgsCategorizedSymbolRendererV2::sourceColorRamp()
 {
   return mSourceColorRamp.data();
 }
+
 void QgsCategorizedSymbolRendererV2::setSourceColorRamp( QgsVectorColorRampV2* ramp )
 {
   mSourceColorRamp.reset( ramp );
+}
+
+void QgsCategorizedSymbolRendererV2::updateColorRamp( QgsVectorColorRampV2* ramp, bool inverted )
+{
+  setSourceColorRamp( ramp );
+  setInvertedColorRamp( inverted );
+  double num = mCategories.count() - 1;
+  double count = 0;
+
+  QgsRandomColorsV2* randomRamp = dynamic_cast<QgsRandomColorsV2*>( ramp );
+  if ( randomRamp )
+  {
+    //ramp is a random colors ramp, so inform it of the total number of required colors
+    //this allows the ramp to pregenerate a set of visually distinctive colors
+    randomRamp->setTotalColorCount( mCategories.count() );
+  }
+
+  foreach ( const QgsRendererCategoryV2 &cat, mCategories )
+  {
+    double value = count / num;
+    if ( mInvertedColorRamp ) value = 1.0 - value;
+    cat.symbol()->setColor( mSourceColorRamp->color( value ) );
+    count += 1;
+  }
 }
 
 void QgsCategorizedSymbolRendererV2::setRotationField( QString fieldOrExpression )
@@ -754,17 +777,54 @@ bool QgsCategorizedSymbolRendererV2::legendSymbolItemsCheckable() const
   return true;
 }
 
-bool QgsCategorizedSymbolRendererV2::legendSymbolItemChecked( int index )
+bool QgsCategorizedSymbolRendererV2::legendSymbolItemChecked( QString key )
 {
-  if ( index >= 0 && index < mCategories.size() )
+  bool ok;
+  int index = key.toInt( &ok );
+  if ( ok && index >= 0 && index < mCategories.size() )
     return mCategories[ index ].renderState();
   else
     return true;
 }
 
-void QgsCategorizedSymbolRendererV2::checkLegendSymbolItem( int index, bool state )
+void QgsCategorizedSymbolRendererV2::checkLegendSymbolItem( QString key, bool state )
 {
-  updateCategoryRenderState( index, state );
+  bool ok;
+  int index = key.toInt( &ok );
+  if ( ok )
+    updateCategoryRenderState( index, state );
 }
 
 QgsMarkerSymbolV2 QgsCategorizedSymbolRendererV2::sSkipRender;
+
+QgsCategorizedSymbolRendererV2* QgsCategorizedSymbolRendererV2::convertFromRenderer( const QgsFeatureRendererV2 *renderer )
+{
+  if ( renderer->type() == "categorizedSymbol" )
+  {
+    return dynamic_cast<QgsCategorizedSymbolRendererV2*>( renderer->clone() );
+  }
+  if ( renderer->type() == "pointDisplacement" )
+  {
+    const QgsPointDisplacementRenderer* pointDisplacementRenderer = dynamic_cast<const QgsPointDisplacementRenderer*>( renderer );
+    if ( pointDisplacementRenderer )
+      return convertFromRenderer( pointDisplacementRenderer->embeddedRenderer() );
+  }
+  if ( renderer->type() == "invertedPolygonRenderer" )
+  {
+    const QgsInvertedPolygonRenderer* invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer*>( renderer );
+    if ( invertedPolygonRenderer )
+      return convertFromRenderer( invertedPolygonRenderer->embeddedRenderer() );
+  }
+
+  // If not one of the specifically handled renderers, then just grab the symbol from the renderer
+  // Could have applied this to specific renderer types (singleSymbol, graduatedSymbo)
+
+  QgsCategorizedSymbolRendererV2* r = new QgsCategorizedSymbolRendererV2( "", QgsCategoryList() );
+  QgsSymbolV2List symbols = const_cast<QgsFeatureRendererV2 *>( renderer )->symbols();
+  if ( symbols.size() > 0 )
+  {
+    r->setSourceSymbol( symbols.at( 0 )->clone() );
+  }
+
+  return r;
+}

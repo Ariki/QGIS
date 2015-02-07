@@ -21,6 +21,8 @@ class APP_EXPORT QgsSaveStyleToDbDialog : public QDialog, private Ui::QgsSaveToD
   public:
     explicit QgsSaveStyleToDbDialog( QWidget *parent = 0 );
 
+    ~QgsSaveStyleToDbDialog();
+
   signals:
 
   public slots:
@@ -29,7 +31,7 @@ class APP_EXPORT QgsSaveStyleToDbDialog : public QDialog, private Ui::QgsSaveToD
     QString getDescription();
     bool isDefault();
     void on_mFilePickButton_clicked();
-    void accept();
+    void accept() override;
 };
 
 #endif // QGSSAVESTYLETODBDIALOG_H

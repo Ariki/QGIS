@@ -24,21 +24,19 @@ __copyright__ = '(C) 2014, Agresta S. Coop'
 __revision__ = '$Format:%H$'
 
 import os
-import subprocess
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterSelection import ParameterSelection
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterNumber
+from processing.core.parameters import ParameterSelection
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
-from processing.parameters.ParameterString import ParameterString
+from processing.core.parameters import ParameterString
 
 
 class TinSurfaceCreate(FusionAlgorithm):
 
     INPUT = 'INPUT'
-    OUTPUT_DTM = 'OUTPUT_DTM';
+    OUTPUT_DTM = 'OUTPUT_DTM'
     CELLSIZE = 'CELLSIZE'
     XYUNITS = 'XYUNITS'
     ZUNITS = 'ZUNITS'
@@ -48,12 +46,18 @@ class TinSurfaceCreate(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Tin Surface Create'
         self.group = 'Surface'
-        self.addParameter(ParameterFile(self.INPUT, 'Input las layer'))
-        self.addParameter(ParameterNumber(self.CELLSIZE, 'Cellsize', 0, None, 10.0))
-        self.addParameter(ParameterSelection(self.XYUNITS, 'XY Units', self.UNITS))
-        self.addParameter(ParameterSelection(self.ZUNITS, 'Z Units', self.UNITS))
-        self.addOutput(OutputFile(self.OUTPUT_DTM, 'DTM Output Surface', 'dtm'))
-        class_var = ParameterString(self.CLASS, 'Class', 2, False, True)
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input las layer')))
+        self.addParameter(ParameterNumber(self.CELLSIZE,
+            self.tr('Cellsize'), 0, None, 10.0))
+        self.addParameter(ParameterSelection(self.XYUNITS,
+            self.tr('XY Units'), self.UNITS))
+        self.addParameter(ParameterSelection(self.ZUNITS,
+            self.tr('Z Units'), self.UNITS))
+        self.addOutput(OutputFile(self.OUTPUT_DTM,
+            self.tr('DTM Output Surface'), 'dtm'))
+        class_var = ParameterString(self.CLASS,
+            self.tr('Class'), 2, False, True)
         class_var.isAdvanced = True
         self.addParameter(class_var)
 

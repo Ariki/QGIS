@@ -12,7 +12,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <QtTest>
+#include <QtTest/QtTest>
 #include <QDomDocument>
 #include <QFile>
 //header for class being tested
@@ -41,6 +41,11 @@ class TestQgsRuleBasedRenderer: public QObject
       QgsApplication::initQgis();
     }
 
+    void cleanupTestCase()
+    {
+      QgsApplication::exitQgis();
+    }
+
     void test_load_xml()
     {
       QDomDocument doc;
@@ -59,7 +64,7 @@ class TestQgsRuleBasedRenderer: public QObject
       xml2domElement( "rulebasedrenderer_invalid.xml", doc );
       QDomElement elem = doc.documentElement();
 
-      QgsRuleBasedRendererV2* r = static_cast<QgsRuleBasedRendererV2*>( QgsRuleBasedRendererV2::create( elem ) );
+      QSharedPointer<QgsRuleBasedRendererV2> r( static_cast<QgsRuleBasedRendererV2*>( QgsRuleBasedRendererV2::create( elem ) ) );
       QVERIFY( r == NULL );
     }
 
@@ -145,5 +150,5 @@ class TestQgsRuleBasedRenderer: public QObject
 
 QTEST_MAIN( TestQgsRuleBasedRenderer )
 
-#include "moc_testqgsrulebasedrenderer.cxx"
+#include "testqgsrulebasedrenderer.moc"
 

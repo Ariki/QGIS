@@ -21,11 +21,11 @@
 
 typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
 
+class QgsExpressionFieldBuffer;
 class QgsVectorLayer;
 class QgsVectorLayerEditBuffer;
-struct QgsVectorJoinInfo;
 class QgsVectorLayerJoinBuffer;
-
+struct QgsVectorJoinInfo;
 
 class QgsVectorLayerFeatureIterator;
 
@@ -36,7 +36,7 @@ class QgsVectorLayerFeatureSource : public QgsAbstractFeatureSource
     QgsVectorLayerFeatureSource( QgsVectorLayer* layer );
     ~QgsVectorLayerFeatureSource();
 
-    virtual QgsFeatureIterator getFeatures( const QgsFeatureRequest& request );
+    virtual QgsFeatureIterator getFeatures( const QgsFeatureRequest& request ) override;
 
     friend class QgsVectorLayerFeatureIterator;
 
@@ -45,6 +45,8 @@ class QgsVectorLayerFeatureSource : public QgsAbstractFeatureSource
     QgsAbstractFeatureSource* mProviderFeatureSource;
 
     QgsVectorLayerJoinBuffer* mJoinBuffer;
+
+    QgsExpressionFieldBuffer* mExpressionFieldBuffer;
 
     QgsFields mFields;
 
@@ -72,21 +74,21 @@ class CORE_EXPORT QgsVectorLayerFeatureIterator : public QgsAbstractFeatureItera
     ~QgsVectorLayerFeatureIterator();
 
     //! reset the iterator to the starting position
-    virtual bool rewind();
+    virtual bool rewind() override;
 
     //! end of iterating: free the resources / lock
-    virtual bool close();
+    virtual bool close() override;
 
   protected:
     //! fetch next feature, return true on success
-    virtual bool fetchFeature( QgsFeature& feature );
+    virtual bool fetchFeature( QgsFeature& feature ) override;
 
     //! Overrides default method as we only need to filter features in the edit buffer
     //! while for others filtering is left to the provider implementation.
-    inline virtual bool nextFeatureFilterExpression( QgsFeature &f ) { return fetchFeature( f ); }
+    inline virtual bool nextFeatureFilterExpression( QgsFeature &f ) override { return fetchFeature( f ); }
 
     //! Setup the simplification of geometries to fetch using the specified simplify method
-    virtual bool prepareSimplification( const QgsSimplifyMethod& simplifyMethod );
+    virtual bool prepareSimplification( const QgsSimplifyMethod& simplifyMethod ) override;
 
 
     QgsFeatureRequest mProviderRequest;
@@ -104,6 +106,7 @@ class CORE_EXPORT QgsVectorLayerFeatureIterator : public QgsAbstractFeatureItera
 
     void rewindEditBuffer();
     void prepareJoins();
+    void prepareExpressions();
     bool fetchNextAddedFeature( QgsFeature& f );
     bool fetchNextChangedGeomFeature( QgsFeature& f );
     bool fetchNextChangedAttributeFeature( QgsFeature& f );
@@ -111,6 +114,15 @@ class CORE_EXPORT QgsVectorLayerFeatureIterator : public QgsAbstractFeatureItera
     void useChangedAttributeFeature( QgsFeatureId fid, const QgsGeometry& geom, QgsFeature& f );
     bool nextFeatureFid( QgsFeature& f );
     void addJoinedAttributes( QgsFeature &f );
+    /**
+     * Adds attributes that don't source from the provider but are added inside QGIS
+     * Includes
+     *  - Joined fields
+     *  - Expression fields
+     *
+     * @param f The feature will be modified
+     */
+    void addVirtualAttributes( QgsFeature &f );
 
     /** Update feature with uncommited attribute updates */
     void updateChangedAttributes( QgsFeature& f );
@@ -138,12 +150,16 @@ class CORE_EXPORT QgsVectorLayerFeatureIterator : public QgsAbstractFeatureItera
       Allows faster mapping of attribute ids compared to mVectorJoins */
     QMap<QgsVectorLayer*, FetchJoinInfo> mFetchJoinInfo;
 
+    QMap<int, QgsExpression*> mExpressionFieldInfo;
+
+    bool mHasVirtualAttributes;
+
   private:
     //! optional object to locally simplify edited (changed or added) geometries fetched by this feature iterator
     QgsAbstractGeometrySimplifier* mEditGeometrySimplifier;
 
     //! returns whether the iterator supports simplify geometries on provider side
-    virtual bool providerCanSimplify( QgsSimplifyMethod::MethodType methodType ) const;
+    virtual bool providerCanSimplify( QgsSimplifyMethod::MethodType methodType ) const override;
 };
 
 #endif // QGSVECTORLAYERFEATUREITERATOR_H

@@ -20,6 +20,7 @@ email                : tim at linfiniti.com
 #include "qgscoordinatetransform.h"
 #include "qgsdatasourceuri.h"
 #include "qgslogger.h"
+#include "qgsmaplayerlegend.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsmaptopixel.h"
 #include "qgsmessagelog.h"
@@ -317,7 +318,7 @@ QgsLegendColorList QgsRasterLayer::legendSymbologyItems() const
 
 QString QgsRasterLayer::metadata()
 {
-  QString myMetadata ;
+  QString myMetadata;
   myMetadata += "<p class=\"glossy\">" + tr( "Driver" ) + "</p>\n";
   myMetadata += "<p>";
   myMetadata += mDataProvider->description();
@@ -620,6 +621,8 @@ double QgsRasterLayer::rasterUnitsPerPixelY()
 void QgsRasterLayer::init()
 {
   mRasterType = QgsRasterLayer::GrayOrUndefined;
+
+  setLegend( QgsMapLayerLegend::defaultRasterLegend( this ) );
 
   setRendererForDrawingStyle( QgsRaster::UndefinedDrawingStyle );
 
@@ -1097,7 +1100,7 @@ QPixmap QgsRasterLayer::previewAsPixmap( QSize size, QColor bgColor )
   double myX = 0.0;
   double myY = 0.0;
   QgsRectangle myExtent = mDataProvider->extent();
-  if ( myExtent.width() / myExtent.height() >=  myQPixmap.width() / myQPixmap.height() )
+  if ( myExtent.width() / myExtent.height() >= ( double )myQPixmap.width() / myQPixmap.height() )
   {
     myMapUnitsPerPixel = myExtent.width() / myQPixmap.width();
     myY = ( myQPixmap.height() - myExtent.height() / myMapUnitsPerPixel ) / 2;
@@ -1149,7 +1152,7 @@ QImage QgsRasterLayer::previewAsImage( QSize size, QColor bgColor, QImage::Forma
   double myX = 0.0;
   double myY = 0.0;
   QgsRectangle myExtent = mDataProvider->extent();
-  if ( myExtent.width() / myExtent.height() >=  myQImage.width() / myQImage.height() )
+  if ( myExtent.width() / myExtent.height() >= ( double )myQImage.width() / myQImage.height() )
   {
     myMapUnitsPerPixel = myExtent.width() / myQImage.width();
     myY = ( myQImage.height() - myExtent.height() / myMapUnitsPerPixel ) / 2;
@@ -1184,11 +1187,6 @@ QImage QgsRasterLayer::previewAsImage( QSize size, QColor bgColor, QImage::Forma
   delete myQPainter;
 
   return myQImage;
-}
-
-void QgsRasterLayer::triggerRepaint()
-{
-  emit repaintRequested();
 }
 
 void QgsRasterLayer::updateProgress( int theProgress, int theMax )
@@ -1437,6 +1435,8 @@ bool QgsRasterLayer::readXml( const QDomNode& layer_node )
     }
   }
 
+  readStyleManager( layer_node );
+
   return res;
 } // QgsRasterLayer::readXml( QDomNode & layer_node )
 
@@ -1524,6 +1524,8 @@ bool QgsRasterLayer::writeXml( QDomNode & layer_node,
   {
     layer_node.appendChild( noData );
   }
+
+  writeStyleManager( layer_node, document );
 
   //write out the symbology
   QString errorMsg;

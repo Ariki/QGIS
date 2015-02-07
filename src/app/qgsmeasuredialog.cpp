@@ -43,7 +43,20 @@ QgsMeasureDialog::QgsMeasureDialog( QgsMeasureTool* tool, Qt::WindowFlags f )
   mMeasureArea = tool->measureArea();
   mTotal = 0.;
 
+  mUnitsCombo->addItem( tr( "Meters" ) );
+  mUnitsCombo->addItem( tr( "Feet" ) );
+  mUnitsCombo->addItem( tr( "Degrees" ) );
+  mUnitsCombo->addItem( tr( "Nautical Miles" ) );
+
+  QSettings settings;
+  QString units = settings.value( "/qgis/measure/displayunits", "meters" ).toString();
+  mUnitsCombo->setCurrentIndex( mUnitsCombo->findText( units, Qt::MatchFixedString ) );
+
   updateSettings();
+
+  connect( mUnitsCombo, SIGNAL( currentIndexChanged( const QString & ) ), this, SLOT( unitsChanged( const QString & ) ) );
+
+  groupBox->setCollapsed( true );
 }
 
 void QgsMeasureDialog::updateSettings()
@@ -52,8 +65,8 @@ void QgsMeasureDialog::updateSettings()
 
   mDecimalPlaces = settings.value( "/qgis/measure/decimalplaces", "3" ).toInt();
   mCanvasUnits = mTool->canvas()->mapUnits();
-  mDisplayUnits = QGis::fromLiteral( settings.value( "/qgis/measure/displayunits", QGis::toLiteral( QGis::Meters ) ).toString() );
   // Configure QgsDistanceArea
+  mDisplayUnits = QGis::fromLiteral( mUnitsCombo->currentText().toLower() );
   mDa.setSourceCrs( mTool->canvas()->mapSettings().destinationCrs().srsid() );
   mDa.setEllipsoid( QgsProject::instance()->readEntry( "Measure", "/Ellipsoid", GEO_NONE ) );
   // Only use ellipsoidal calculation when project wide transformation is enabled.
@@ -77,6 +90,14 @@ void QgsMeasureDialog::updateSettings()
   updateUi();
 }
 
+void QgsMeasureDialog::unitsChanged( const QString &units )
+{
+  mDisplayUnits = QGis::fromLiteral( units.toLower() );
+  mTable->clear();
+  mTotal = 0.;
+  updateUi();
+}
+
 void QgsMeasureDialog::restart()
 {
   mTool->restart();
@@ -89,6 +110,7 @@ void QgsMeasureDialog::restart()
 
 void QgsMeasureDialog::mouseMove( QgsPoint &point )
 {
+  mLastMousePoint = point;
   // show current distance/area while moving the point
   // by creating a temporary copy of point array
   // and adding moving point at the end
@@ -143,6 +165,43 @@ void QgsMeasureDialog::addPoint( QgsPoint &p )
     }
   }
   QgsDebugMsg( "Exiting" );
+}
+
+void QgsMeasureDialog::removeLastPoint()
+{
+  int numPoints = mTool->points().size();
+  if ( mMeasureArea )
+  {
+    if ( numPoints > 1 )
+    {
+      QList<QgsPoint> tmpPoints = mTool->points();
+      tmpPoints.append( mLastMousePoint );
+      double area = mDa.measurePolygon( tmpPoints );
+      editTotal->setText( formatArea( area ) );
+    }
+    else
+    {
+      editTotal->setText( formatArea( 0 ) );
+    }
+  }
+  else if ( !mMeasureArea && numPoints >= 1 )
+  {
+    //remove final row
+    delete mTable->takeTopLevelItem( mTable->topLevelItemCount() - 1 );
+
+    QgsPoint p1( mTool->points().last() );
+    double d = mDa.measureLine( p1, mLastMousePoint );
+
+    mTotal = mDa.measureLine( mTool->points() );
+    editTotal->setText( formatDistance( mTotal + d ) );
+
+    QGis::UnitType displayUnits;
+    // Meters or feet?
+    convertMeasurement( d, displayUnits, false );
+
+    QTreeWidgetItem *item = mTable->topLevelItem( mTable->topLevelItemCount() - 1 );
+    item->setText( 0, QLocale::system().toString( d, 'f', mDecimalPlaces ) );
+  }
 }
 
 void QgsMeasureDialog::on_buttonBox_rejected( void )
@@ -231,6 +290,7 @@ void QgsMeasureDialog::updateUi()
 
   editTotal->setToolTip( toolTip );
   mTable->setToolTip( toolTip );
+  mNotesLabel->setText( toolTip );
 
   QGis::UnitType newDisplayUnits;
   double dummy = 1.0;
@@ -263,7 +323,7 @@ void QgsMeasureDialog::updateUi()
         QGis::UnitType dummyUnits;
         convertMeasurement( d, dummyUnits, false );
 
-        QTreeWidgetItem *item = new QTreeWidgetItem( QStringList( QLocale::system().toString( d , 'f', mDecimalPlaces ) ) );
+        QTreeWidgetItem *item = new QTreeWidgetItem( QStringList( QLocale::system().toString( d, 'f', mDecimalPlaces ) ) );
         item->setTextAlignment( 0, Qt::AlignRight );
         mTable->addTopLevelItem( item );
         mTable->scrollToItem( item );

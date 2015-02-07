@@ -27,6 +27,7 @@
 #include "qgsmaplayer.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsmaplayerrenderer.h"
+#include "qgsmaplayerstylemanager.h"
 #include "qgsmaprenderercache.h"
 #include "qgspallabeling.h"
 #include "qgsvectorlayerrenderer.h"
@@ -54,6 +55,11 @@ QgsMapRendererJob::Errors QgsMapRendererJob::errors() const
 void QgsMapRendererJob::setCache( QgsMapRendererCache* cache )
 {
   mCache = cache;
+}
+
+const QgsMapSettings& QgsMapRendererJob::mapSettings() const
+{
+  return mSettings;
 }
 
 
@@ -156,7 +162,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter* painter, QgsPalLabelin
 
     if ( !ml )
     {
-      mErrors.append( Error( layerId, "Layer not found in registry." ) );
+      mErrors.append( Error( layerId, tr( "Layer not found in registry." ) ) );
       continue;
     }
 
@@ -180,7 +186,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter* painter, QgsPalLabelin
 
     if ( mSettings.hasCrsTransformEnabled() )
     {
-      ct = mSettings.layerTransfrom( ml );
+      ct = mSettings.layerTransform( ml );
       if ( ct )
       {
         reprojectToLayerExtent( ct, ml->crs().geographicFlag(), r1, r2 );
@@ -188,7 +194,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter* painter, QgsPalLabelin
       QgsDebugMsg( "extent: " + r1.toString() );
       if ( !r1.isFinite() || !r2.isFinite() )
       {
-        mErrors.append( Error( layerId, "There was a problem transforming layer's' extent. Layer skipped." ) );
+        mErrors.append( Error( layerId, tr( "There was a problem transforming the layer's extent. Layer skipped." ) ) );
         continue;
       }
     }
@@ -237,7 +243,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter* painter, QgsPalLabelin
                                       mSettings.outputImageFormat() );
       if ( mypFlattenedImage->isNull() )
       {
-        mErrors.append( Error( layerId, "Insufficient memory for image " + QString::number( mSettings.outputSize().width() ) + "x" + QString::number( mSettings.outputSize().height() ) ) );
+        mErrors.append( Error( layerId, tr( "Insufficient memory for image %1x%2" ).arg( mSettings.outputSize().width() ).arg( mSettings.outputSize().height() ) ) );
         delete mypFlattenedImage;
         layerJobs.removeLast();
         continue;
@@ -250,7 +256,14 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter* painter, QgsPalLabelin
       job.context.setPainter( mypPainter );
     }
 
+    bool hasStyleOverride = mSettings.layerStyleOverrides().contains( ml->id() );
+    if ( hasStyleOverride )
+      ml->styleManager()->setOverrideStyle( mSettings.layerStyleOverrides().value( ml->id() ) );
+
     job.renderer = ml->createMapRenderer( job.context );
+
+    if ( hasStyleOverride )
+      ml->styleManager()->restoreOverrideStyle();
 
     if ( mRequestedGeomCacheForLayers.contains( ml->id() ) )
     {

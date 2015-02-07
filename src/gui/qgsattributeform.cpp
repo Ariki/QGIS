@@ -37,10 +37,11 @@
 
 int QgsAttributeForm::sFormCounter = 0;
 
-QgsAttributeForm::QgsAttributeForm( QgsVectorLayer* vl, const QgsFeature feature, QgsAttributeEditorContext context, QWidget* parent )
+QgsAttributeForm::QgsAttributeForm( QgsVectorLayer* vl, const QgsFeature &feature, QgsAttributeEditorContext context, QWidget* parent )
     : QWidget( parent )
     , mLayer( vl )
     , mContext( context )
+    , mButtonBox( 0 )
     , mFormNr( sFormCounter++ )
     , mIsSaving( false )
     , mIsAddDialog( false )
@@ -65,7 +66,8 @@ void QgsAttributeForm::hideButtonBox()
   mButtonBox->hide();
 
   // Make sure that changes are taken into account if somebody tries to figure out if there have been some
-  connect( mLayer, SIGNAL( beforeModifiedCheck() ), this, SLOT( save() ) );
+  if ( !mIsAddDialog )
+    connect( mLayer, SIGNAL( beforeModifiedCheck() ), this, SLOT( save() ) );
 }
 
 void QgsAttributeForm::showButtonBox()
@@ -75,6 +77,12 @@ void QgsAttributeForm::showButtonBox()
   disconnect( mLayer, SIGNAL( beforeModifiedCheck() ), this, SLOT( save() ) );
 }
 
+void QgsAttributeForm::disconnectButtonBox()
+{
+  disconnect( mButtonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
+  disconnect( mButtonBox, SIGNAL( rejected() ), this, SLOT( resetValues() ) );
+}
+
 void QgsAttributeForm::addInterface( QgsAttributeFormInterface* iface )
 {
   mInterfaces.append( iface );
@@ -82,7 +90,7 @@ void QgsAttributeForm::addInterface( QgsAttributeFormInterface* iface )
 
 bool QgsAttributeForm::editable()
 {
-  return mFeature.isValid() && mLayer->isEditable() ;
+  return mFeature.isValid() && mLayer->isEditable();
 }
 
 void QgsAttributeForm::setIsAddDialog( bool isAddDialog )
@@ -94,7 +102,7 @@ void QgsAttributeForm::setIsAddDialog( bool isAddDialog )
 
 void QgsAttributeForm::changeAttribute( const QString& field, const QVariant& value )
 {
-  Q_FOREACH( QgsWidgetWrapper* ww, mWidgets )
+  Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
   {
     QgsEditorWidgetWrapper* eww = qobject_cast<QgsEditorWidgetWrapper*>( ww );
     if ( eww && eww->field().name() == field )
@@ -112,7 +120,7 @@ void QgsAttributeForm::setFeature( const QgsFeature& feature )
 
   synchronizeEnabledState();
 
-  Q_FOREACH( QgsAttributeFormInterface* iface, mInterfaces )
+  Q_FOREACH ( QgsAttributeFormInterface* iface, mInterfaces )
   {
     iface->featureChanged();
   }
@@ -124,6 +132,8 @@ bool QgsAttributeForm::save()
     return true;
 
   mIsSaving = true;
+
+  bool changedLayer = false;
 
   bool success = true;
 
@@ -147,14 +157,16 @@ bool QgsAttributeForm::save()
     QgsAttributes src = mFeature.attributes();
     QgsAttributes dst = mFeature.attributes();
 
-    Q_FOREACH( QgsWidgetWrapper* ww, mWidgets )
+    Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
     {
       QgsEditorWidgetWrapper* eww = qobject_cast<QgsEditorWidgetWrapper*>( ww );
       if ( eww )
       {
         QVariant dstVar = dst[eww->fieldIdx()];
         QVariant srcVar = eww->value();
-        if ( dstVar != srcVar && srcVar.isValid() )
+        // need to check dstVar.isNull() != srcVar.isNull()
+        // otherwise if dstVar=NULL and scrVar=0, then dstVar = srcVar
+        if (( dstVar != srcVar || dstVar.isNull() != srcVar.isNull() ) && srcVar.isValid() && mLayer->fieldEditable( eww->fieldIdx() ) )
         {
           dst[eww->fieldIdx()] = srcVar;
 
@@ -165,7 +177,7 @@ bool QgsAttributeForm::save()
 
     updatedFeature.setAttributes( dst );
 
-    Q_FOREACH( QgsAttributeFormInterface* iface, mInterfaces )
+    Q_FOREACH ( QgsAttributeFormInterface* iface, mInterfaces )
     {
       if ( !iface->acceptChanges( updatedFeature ) )
       {
@@ -181,7 +193,11 @@ bool QgsAttributeForm::save()
         mLayer->beginEditCommand( mEditCommandMessage );
         bool res = mLayer->addFeature( updatedFeature );
         if ( res )
+        {
+          mFeature.setAttributes( updatedFeature.attributes() );
           mLayer->endEditCommand();
+          changedLayer = true;
+        }
         else
           mLayer->destroyEditCommand();
       }
@@ -192,15 +208,18 @@ bool QgsAttributeForm::save()
         int n = 0;
         for ( int i = 0; i < dst.count(); ++i )
         {
-          if ( dst[i] == src[i] || !dst[i].isValid() )
+          if (( dst[i] == src[i] && dst[i].isNull() == src[i].isNull() )  // If field is not changed...
+              || !dst[i].isValid()                                       // or the widget returns invalid (== do not change)
+              || !mLayer->fieldEditable( i ) )                           // or the field cannot be edited ...
           {
-            QgsDebugMsg( "equal or invalid destination" );
-            QgsDebugMsg( QString( "dst:'%1' (type:%2,isNull:%3,isValid:%4)" )
-                         .arg( dst[i].toString() ).arg( dst[i].typeName() ).arg( dst[i].isNull() ).arg( dst[i].isValid() ) );
-            QgsDebugMsg( QString( "src:'%1' (type:%2,isNull:%3,isValid:%4)" )
-                         .arg( src[i].toString() ).arg( src[i].typeName() ).arg( src[i].isNull() ).arg( src[i].isValid() ) );
             continue;
           }
+
+          QgsDebugMsg( QString( "Updating field %1" ).arg( i ) );
+          QgsDebugMsg( QString( "dst:'%1' (type:%2, isNull:%3, isValid:%4)" )
+                       .arg( dst[i].toString() ).arg( dst[i].typeName() ).arg( dst[i].isNull() ).arg( dst[i].isValid() ) );
+          QgsDebugMsg( QString( "src:'%1' (type:%2, isNull:%3, isValid:%4)" )
+                       .arg( src[i].toString() ).arg( src[i].typeName() ).arg( src[i].isNull() ).arg( src[i].isValid() ) );
 
           success &= mLayer->changeAttributeValue( mFeature.id(), i, dst[i], src[i] );
           n++;
@@ -210,6 +229,7 @@ bool QgsAttributeForm::save()
         {
           mLayer->endEditCommand();
           mFeature.setAttributes( dst );
+          changedLayer = true;
         }
         else
         {
@@ -221,6 +241,14 @@ bool QgsAttributeForm::save()
 
   emit featureSaved( updatedFeature );
 
+  // [MD] Refresh canvas only when absolutely necessary - it interferes with other stuff (#11361).
+  // This code should be revisited - and the signals should be fired (+ layer repainted)
+  // only when actually doing any changes. I am unsure if it is actually a good idea
+  // to call save() whenever some code asks for vector layer's modified status
+  // (which is the case when attribute table is open)
+  if ( changedLayer )
+    mLayer->triggerRepaint();
+
   mIsSaving = false;
 
   return success;
@@ -228,7 +256,7 @@ bool QgsAttributeForm::save()
 
 void QgsAttributeForm::resetValues()
 {
-  Q_FOREACH( QgsWidgetWrapper* ww, mWidgets )
+  Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
   {
     ww->setFeature( mFeature );
   }
@@ -245,6 +273,7 @@ void QgsAttributeForm::onAttributeChanged( const QVariant& value )
 
 void QgsAttributeForm::onAttributeAdded( int idx )
 {
+  Q_UNUSED( idx ) // only used for Q_ASSERT
   if ( mFeature.isValid() )
   {
     QgsAttributes attrs = mFeature.attributes();
@@ -274,7 +303,7 @@ void QgsAttributeForm::synchronizeEnabledState()
 {
   bool isEditable = ( mFeature.isValid() || mIsAddDialog ) && mLayer->isEditable();
 
-  Q_FOREACH( QgsWidgetWrapper* ww, mWidgets )
+  Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
   {
     bool fieldEditable = true;
     QgsEditorWidgetWrapper* eww = qobject_cast<QgsEditorWidgetWrapper*>( ww );
@@ -292,7 +321,19 @@ void QgsAttributeForm::synchronizeEnabledState()
 
 void QgsAttributeForm::init()
 {
+  QApplication::setOverrideCursor( QCursor( Qt::WaitCursor ) );
+
+  // Cleanup of any previously shown widget, we start from scratch
   QWidget* formWidget = 0;
+
+  bool buttonBoxVisible = true;
+  // Cleanup button box but preserve visibility
+  if ( mButtonBox )
+  {
+    buttonBoxVisible = mButtonBox->isVisible();
+    delete mButtonBox;
+    mButtonBox = 0;
+  }
 
   qDeleteAll( mWidgets );
   mWidgets.clear();
@@ -301,7 +342,7 @@ void QgsAttributeForm::init()
   {
     delete w;
   }
-  delete this->layout();
+  delete layout();
 
   // Get a layout
   setLayout( new QGridLayout( this ) );
@@ -322,6 +363,7 @@ void QgsAttributeForm::init()
       layout()->addWidget( formWidget );
       formWidget->show();
       file.close();
+      mButtonBox = findChild<QDialogButtonBox*>();
       createWrappers();
 
       formWidget->installEventFilter( this );
@@ -334,7 +376,7 @@ void QgsAttributeForm::init()
     QTabWidget* tabWidget = new QTabWidget( this );
     layout()->addWidget( tabWidget );
 
-    Q_FOREACH( QgsAttributeEditorElement *widgDef, mLayer->attributeEditorElements() )
+    Q_FOREACH ( QgsAttributeEditorElement *widgDef, mLayer->attributeEditorElements() )
     {
       QWidget* tabPage = new QWidget( tabWidget );
 
@@ -366,15 +408,17 @@ void QgsAttributeForm::init()
     formWidget->setLayout( gridLayout );
 
     // put the form into a scroll area to nicely handle cases with lots of attributes
+
     QScrollArea* scrollArea = new QScrollArea( this );
     scrollArea->setWidget( formWidget );
     scrollArea->setWidgetResizable( true );
     scrollArea->setFrameShape( QFrame::NoFrame );
     scrollArea->setFrameShadow( QFrame::Plain );
+    scrollArea->setFocusProxy( this );
     layout()->addWidget( scrollArea );
 
     int row = 0;
-    Q_FOREACH( const QgsField& field, mLayer->pendingFields().toList() )
+    Q_FOREACH ( const QgsField& field, mLayer->pendingFields().toList() )
     {
       int idx = mLayer->fieldNameIndex( field.name() );
       //show attribute alias if available
@@ -382,33 +426,36 @@ void QgsAttributeForm::init()
 
       const QString widgetType = mLayer->editorWidgetV2( idx );
 
-      if ( widgetType != "Hidden" )
+      if ( widgetType == "Hidden" )
+        continue;
+
+      const QgsEditorWidgetConfig widgetConfig = mLayer->editorWidgetV2Config( idx );
+      bool labelOnTop = mLayer->labelOnTop( idx );
+
+      // This will also create the widget
+      QWidget *l = new QLabel( fieldName );
+      QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, idx, widgetConfig, 0, this, mContext );
+      QWidget *w = eww ? eww->widget() : new QLabel( QString( "<p style=\"color: red; font-style: italic;\">Failed to create widget with type '%1'</p>" ).arg( widgetType ) );
+
+      if ( w )
+        w->setObjectName( field.name() );
+
+      if ( eww )
+        addWidgetWrapper( eww );
+
+      if ( labelOnTop )
       {
-        const QgsEditorWidgetConfig widgetConfig = mLayer->editorWidgetV2Config( idx );
-        bool labelOnTop = mLayer->labelOnTop( idx );
-
-        // This will also create the widget
-        QWidget *l = new QLabel( fieldName );
-        QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, idx, widgetConfig, 0, this, mContext );
-        QWidget *w = eww ? eww->widget() : new QLabel( QString( "<p style=\"color: red; font-style: italic;\">Failed to create widget with type '%1'</p>" ).arg( widgetType ) );
-
-        if ( eww )
-          mWidgets.append( eww );
-
-        if ( labelOnTop )
-        {
-          gridLayout->addWidget( l, row++, 0, 1, 2 );
-          gridLayout->addWidget( w, row++, 0, 1, 2 );
-        }
-        else
-        {
-          gridLayout->addWidget( l, row, 0 );
-          gridLayout->addWidget( w, row++, 1 );
-        }
+        gridLayout->addWidget( l, row++, 0, 1, 2 );
+        gridLayout->addWidget( w, row++, 0, 1, 2 );
+      }
+      else
+      {
+        gridLayout->addWidget( l, row, 0 );
+        gridLayout->addWidget( w, row++, 1 );
       }
     }
 
-    Q_FOREACH( const QgsRelation& rel, QgsProject::instance()->relationManager()->referencedRelations( mLayer ) )
+    Q_FOREACH ( const QgsRelation& rel, QgsProject::instance()->relationManager()->referencedRelations( mLayer ) )
     {
       QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, rel, 0, this );
       rww->setContext( mContext );
@@ -417,14 +464,14 @@ void QgsAttributeForm::init()
     }
   }
 
-  mButtonBox = findChild<QDialogButtonBox*>();
-
   if ( !mButtonBox )
   {
     mButtonBox = new QDialogButtonBox( QDialogButtonBox::Ok | QDialogButtonBox::Cancel );
     mButtonBox->setObjectName( "buttonBox" );
     layout()->addWidget( mButtonBox );
   }
+
+  mButtonBox->setVisible( buttonBoxVisible );
 
   connectWrappers();
 
@@ -434,10 +481,11 @@ void QgsAttributeForm::init()
   connect( mLayer, SIGNAL( editingStarted() ), this, SLOT( synchronizeEnabledState() ) );
   connect( mLayer, SIGNAL( editingStopped() ), this, SLOT( synchronizeEnabledState() ) );
 
-  Q_FOREACH( QgsAttributeFormInterface* iface, mInterfaces )
+  Q_FOREACH ( QgsAttributeFormInterface* iface, mInterfaces )
   {
     iface->initForm();
   }
+  QApplication::restoreOverrideCursor();
 }
 
 void QgsAttributeForm::cleanPython()
@@ -522,11 +570,14 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
 
         QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, fldIdx, widgetConfig, 0, this, mContext );
         newWidget = eww->widget();
-        mWidgets.append( eww );
+        addWidgetWrapper( eww );
+
+        newWidget->setObjectName( mLayer->pendingFields()[ fldIdx ].name() );
       }
 
       labelOnTop = mLayer->labelOnTop( fieldDef->idx() );
       labelText = mLayer->attributeDisplayName( fieldDef->idx() );
+
       break;
     }
 
@@ -575,7 +626,7 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
 
       QList<QgsAttributeEditorElement*> children = container->children();
 
-      Q_FOREACH( QgsAttributeEditorElement* childDef, children )
+      Q_FOREACH ( QgsAttributeEditorElement* childDef, children )
       {
         QString labelText;
         bool labelOnTop;
@@ -592,7 +643,7 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
           {
             gbLayout->addWidget( mypLabel, index, 0, 1, 2 );
             ++index;
-            gbLayout->addWidget( editor, index, 0, 1 , 2 );
+            gbLayout->addWidget( editor, index, 0, 1, 2 );
           }
           else
           {
@@ -603,7 +654,7 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
 
         ++index;
       }
-      gbLayout->addItem( new QSpacerItem( 0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding ), index , 0 );
+      gbLayout->addItem( new QSpacerItem( 0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding ), index, 0 );
 
       labelText = QString::null;
       labelOnTop = true;
@@ -618,12 +669,31 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
   return newWidget;
 }
 
+void QgsAttributeForm::addWidgetWrapper( QgsEditorWidgetWrapper* eww )
+{
+  Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
+  {
+    QgsEditorWidgetWrapper* meww = qobject_cast<QgsEditorWidgetWrapper*>( ww );
+    if ( meww )
+    {
+      if ( meww->field() == eww->field() )
+      {
+        connect( meww, SIGNAL( valueChanged( QVariant ) ), eww, SLOT( setValue( QVariant ) ) );
+        connect( eww, SIGNAL( valueChanged( QVariant ) ), meww, SLOT( setValue( QVariant ) ) );
+        break;
+      }
+    }
+  }
+
+  mWidgets.append( eww );
+}
+
 void QgsAttributeForm::createWrappers()
 {
   QList<QWidget*> myWidgets = findChildren<QWidget*>();
   const QList<QgsField> fields = mLayer->pendingFields().toList();
 
-  Q_FOREACH( QWidget* myWidget, myWidgets )
+  Q_FOREACH ( QWidget* myWidget, myWidgets )
   {
     // Check the widget's properties for a relation definition
     QVariant vRel = myWidget->property( "qgisRelation" );
@@ -636,12 +706,13 @@ void QgsAttributeForm::createWrappers()
         QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, relation, myWidget, this );
         rww->setConfig( QgsEditorWidgetConfig() );
         rww->setContext( mContext );
+        rww->widget(); // Will initialize the widget
         mWidgets.append( rww );
       }
     }
     else
     {
-      Q_FOREACH( const QgsField& field, fields )
+      Q_FOREACH ( const QgsField& field, fields )
       {
         if ( field.name() == myWidget->objectName() )
         {
@@ -650,7 +721,7 @@ void QgsAttributeForm::createWrappers()
           int idx = mLayer->fieldNameIndex( field.name() );
 
           QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, idx, widgetConfig, myWidget, this, mContext );
-          mWidgets.append( eww );
+          addWidgetWrapper( eww );
         }
       }
     }
@@ -659,12 +730,22 @@ void QgsAttributeForm::createWrappers()
 
 void QgsAttributeForm::connectWrappers()
 {
-  Q_FOREACH( QgsWidgetWrapper* ww, mWidgets )
+  bool isFirstEww = true;
+
+  Q_FOREACH ( QgsWidgetWrapper* ww, mWidgets )
   {
     QgsEditorWidgetWrapper* eww = qobject_cast<QgsEditorWidgetWrapper*>( ww );
 
     if ( eww )
+    {
+      if ( isFirstEww )
+      {
+        setFocusProxy( eww->widget() );
+        isFirstEww = false;
+      }
+
       connect( eww, SIGNAL( valueChanged( const QVariant& ) ), this, SLOT( onAttributeChanged( const QVariant& ) ) );
+    }
   }
 }
 

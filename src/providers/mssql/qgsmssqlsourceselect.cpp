@@ -512,7 +512,7 @@ void QgsMssqlSourceSelect::on_btnConnect_clicked()
   {
     // Let user know we couldn't initialise the MSSQL provider
     QMessageBox::warning( this,
-                          tr( "MSSQL Provider" ), db.lastError( ).text( ) );
+                          tr( "MSSQL Provider" ), db.lastError().text() );
     return;
   }
 
@@ -553,6 +553,7 @@ void QgsMssqlSourceSelect::on_btnConnect_clicked()
       layer.srid = q.value( 3 ).toString();
       layer.type = q.value( 4 ).toString();
       layer.pkCols = QStringList(); //TODO
+      layer.isGeography = false;
 
       QString type = layer.type;
       QString srid = layer.srid;
@@ -595,7 +596,7 @@ void QgsMssqlSourceSelect::on_btnConnect_clicked()
     QApplication::restoreOverrideCursor();
     // Let user know we couldn't retieve tables from the MSSQL provider
     QMessageBox::warning( this,
-                          tr( "MSSQL Provider" ), q.lastError( ).text( ) );
+                          tr( "MSSQL Provider" ), q.lastError().text() );
     return;
   }
 

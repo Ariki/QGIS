@@ -24,9 +24,9 @@ __copyright__ = '(C) 2014, Agresta S. Coop'
 __revision__ = '$Format:%H$'
 
 import os
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterString import ParameterString
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterString
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -40,10 +40,9 @@ class Csv2Grid(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Csv2Grid'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'CSV Files'))
-        self.addParameter(ParameterString(self.COLUMN, 'Column'))
-        self.addOutput(OutputFile(self.OUTPUT, 'Raster Output file', 'asc'))
-
+        self.addParameter(ParameterFile(self.INPUT, self.tr('CSV Files')))
+        self.addParameter(ParameterString(self.COLUMN, self.tr('Column')))
+        self.addOutput(OutputFile( self.OUTPUT, self.tr('Raster Output file'), 'asc'))
 
     def processAlgorithm(self, progress):
         commands = [os.path.join(FusionUtils.FusionPath(), 'CSV2Grid.exe')]

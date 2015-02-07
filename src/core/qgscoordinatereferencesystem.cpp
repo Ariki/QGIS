@@ -184,7 +184,7 @@ bool QgsCoordinateReferenceSystem::createFromUserInput( const QString &theDefini
   return createFromWkt( theWkt );
 }
 
-void QgsCoordinateReferenceSystem::setupESRIWktFix( )
+void QgsCoordinateReferenceSystem::setupESRIWktFix()
 {
   // make sure towgs84 parameter is loaded if gdal >= 1.9
   // this requires setting GDAL_FIX_ESRI_WKT=GEOGCS (see qgis bug #5598 and gdal bug #4673)
@@ -197,7 +197,7 @@ void QgsCoordinateReferenceSystem::setupESRIWktFix( )
     CPLSetConfigOption( "GDAL_FIX_ESRI_WKT", configNew );
     if ( strcmp( configNew, CPLGetConfigOption( "GDAL_FIX_ESRI_WKT", "" ) ) != 0 )
       QgsLogger::warning( QString( "GDAL_FIX_ESRI_WKT could not be set to %1 : %2" )
-                          .arg( configNew ).arg( CPLGetConfigOption( "GDAL_FIX_ESRI_WKT", "" ) ) ) ;
+                          .arg( configNew ).arg( CPLGetConfigOption( "GDAL_FIX_ESRI_WKT", "" ) ) );
     QgsDebugMsg( QString( "set GDAL_FIX_ESRI_WKT : %1" ).arg( configNew ) );
   }
   else
@@ -766,7 +766,7 @@ QgsCoordinateReferenceSystem::RecordMap QgsCoordinateReferenceSystem::getRecord(
     myDatabaseFileName = QgsApplication::qgisUserDbFilePath();
     QFileInfo myFileInfo;
     myFileInfo.setFile( myDatabaseFileName );
-    if ( !myFileInfo.exists( ) )
+    if ( !myFileInfo.exists() )
     {
       QgsDebugMsg( "user qgis.db not found" );
       return myMap;
@@ -1350,7 +1350,7 @@ QString QgsCoordinateReferenceSystem::proj4FromSrsId( const int theSrsId )
     myDatabaseFileName = QgsApplication::qgisUserDbFilePath();
     QFileInfo myFileInfo;
     myFileInfo.setFile( myDatabaseFileName );
-    if ( !myFileInfo.exists( ) ) //its unlikely that this condition will ever be reached
+    if ( !myFileInfo.exists() ) //its unlikely that this condition will ever be reached
     {
       QgsDebugMsg( "users qgis.db not found" );
       return NULL;
@@ -2166,4 +2166,46 @@ QString QgsCoordinateReferenceSystem::geographicCRSAuthId() const
   {
     return "";
   }
+}
+
+QStringList QgsCoordinateReferenceSystem::recentProjections()
+{
+  QStringList projections;
+
+  // Read settings from persistent storage
+  QSettings settings;
+  projections = settings.value( "/UI/recentProjections" ).toStringList();
+  /*** The reading (above) of internal id from persistent storage should be removed sometime in the future */
+  /*** This is kept now for backwards compatibility */
+
+  QStringList projectionsProj4  = settings.value( "/UI/recentProjectionsProj4" ).toStringList();
+  QStringList projectionsAuthId = settings.value( "/UI/recentProjectionsAuthId" ).toStringList();
+  if ( projectionsAuthId.size() >= projections.size() )
+  {
+    // We had saved state with AuthId and Proj4. Use that instead
+    // to find out the crs id
+    projections.clear();
+    for ( int i = 0; i <  projectionsAuthId.size(); i++ )
+    {
+      // Create a crs from the EPSG
+      QgsCoordinateReferenceSystem crs;
+      crs.createFromOgcWmsCrs( projectionsAuthId.at( i ) );
+      if ( ! crs.isValid() )
+      {
+        // Couldn't create from EPSG, try the Proj4 string instead
+        if ( i >= projectionsProj4.size() || !crs.createFromProj4( projectionsProj4.at( i ) ) )
+        {
+          // No? Skip this entry
+          continue;
+        }
+        //If the CRS can be created but do not correspond to a CRS in the database, skip it (for example a deleted custom CRS)
+        if ( crs.srsid() == 0 )
+        {
+          continue;
+        }
+      }
+      projections << QString::number( crs.srsid() );
+    }
+  }
+  return projections;
 }

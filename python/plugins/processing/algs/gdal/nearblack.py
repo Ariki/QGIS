@@ -26,10 +26,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.outputs.OutputRaster import OutputRaster
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterNumber
+from processing.core.parameters import ParameterBoolean
+from processing.core.outputs import OutputRaster
 from processing.algs.gdal.GdalUtils import GdalUtils
 
 
@@ -43,14 +43,14 @@ class nearblack(GdalAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Near black'
         self.group = '[GDAL] Analysis'
-        self.addParameter(ParameterRaster(nearblack.INPUT, 'Input layer',
-                          False))
+        self.addParameter(ParameterRaster(nearblack.INPUT,
+           self.tr('Input layer'), False))
         self.addParameter(ParameterNumber(nearblack.NEAR,
-                          'How far from black (white)', 0, None, 15))
+            self.tr('How far from black (white)'), 0, None, 15))
         self.addParameter(ParameterBoolean(nearblack.WHITE,
-                'Search for nearly white pixels instead of nearly black',
-                False))
-        self.addOutput(OutputRaster(nearblack.OUTPUT, 'Output layer'))
+            self.tr('Search for nearly white pixels instead of nearly black'),
+            False))
+        self.addOutput(OutputRaster(nearblack.OUTPUT, self.tr('Output layer')))
 
     def processAlgorithm(self, progress):
         arguments = []

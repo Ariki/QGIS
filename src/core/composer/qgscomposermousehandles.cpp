@@ -89,12 +89,18 @@ void QgsComposerMouseHandles::paint( QPainter* painter, const QStyleOptionGraphi
     return;
   }
 
-  //draw resize handles around bounds of entire selection
-  double rectHandlerSize = rectHandlerBorderTolerance();
-  drawHandles( painter, rectHandlerSize );
+  if ( mComposition->boundingBoxesVisible() )
+  {
+    //draw resize handles around bounds of entire selection
+    double rectHandlerSize = rectHandlerBorderTolerance();
+    drawHandles( painter, rectHandlerSize );
+  }
 
-  //draw dotted boxes around selected items
-  drawSelectedItemBounds( painter );
+  if ( mIsResizing || mIsDragging || mComposition->boundingBoxesVisible() )
+  {
+    //draw dotted boxes around selected items
+    drawSelectedItemBounds( painter );
+  }
 }
 
 void QgsComposerMouseHandles::drawHandles( QPainter* painter, double rectHandlerSize )
@@ -131,7 +137,7 @@ void QgsComposerMouseHandles::drawHandles( QPainter* painter, double rectHandler
 void QgsComposerMouseHandles::drawSelectedItemBounds( QPainter* painter )
 {
   //draw dotted border around selected items to give visual feedback which items are selected
-  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
   if ( selectedItems.size() == 0 )
   {
     return;
@@ -205,13 +211,15 @@ void QgsComposerMouseHandles::selectionChanged()
       {
         QObject::connect( item, SIGNAL( sizeChanged() ), this, SLOT( selectedItemSizeChanged() ) );
         QObject::connect( item, SIGNAL( itemRotationChanged( double ) ), this, SLOT( selectedItemRotationChanged() ) );
-        QObject::connect( item, SIGNAL( frameChanged( ) ), this, SLOT( selectedItemSizeChanged() ) );
+        QObject::connect( item, SIGNAL( frameChanged() ), this, SLOT( selectedItemSizeChanged() ) );
+        QObject::connect( item, SIGNAL( lockChanged() ), this, SLOT( selectedItemSizeChanged() ) );
       }
       else
       {
         QObject::disconnect( item, SIGNAL( sizeChanged() ), this, 0 );
         QObject::disconnect( item, SIGNAL( itemRotationChanged( double ) ), this, 0 );
-        QObject::disconnect( item, SIGNAL( frameChanged( ) ), this, 0 );
+        QObject::disconnect( item, SIGNAL( frameChanged() ), this, 0 );
+        QObject::disconnect( item, SIGNAL( lockChanged() ), this, 0 );
       }
     }
   }
@@ -243,7 +251,7 @@ void QgsComposerMouseHandles::updateHandles()
   //recalculate size and position of handle item
 
   //first check to see if any items are selected
-  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
   if ( selectedItems.size() > 0 )
   {
     //one or more items are selected, get bounds of all selected items
@@ -282,7 +290,7 @@ void QgsComposerMouseHandles::updateHandles()
 QRectF QgsComposerMouseHandles::selectionBounds() const
 {
   //calculate bounds of all currently selected items in mouse handle coordinate system
-  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
   QList<QgsComposerItem*>::iterator itemIter = selectedItems.begin();
 
   //start with handle bounds of first selected item
@@ -300,7 +308,7 @@ QRectF QgsComposerMouseHandles::selectionBounds() const
 bool QgsComposerMouseHandles::selectionRotation( double & rotation ) const
 {
   //check if all selected items have same rotation
-  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
   QList<QgsComposerItem*>::iterator itemIter = selectedItems.begin();
 
   //start with rotation of first selected item
@@ -558,28 +566,19 @@ void QgsComposerMouseHandles::setViewportCursor( Qt::CursorShape cursor )
 
 void QgsComposerMouseHandles::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 {
-  bool shiftModifier = false;
-  bool controlModifier = false;
-  if ( event->modifiers() & Qt::ShiftModifier )
-  {
-    //shift key depressed
-    shiftModifier = true;
-  }
-  if ( event->modifiers() & Qt::ControlModifier )
-  {
-    //shift key depressed
-    controlModifier = true;
-  }
-
   if ( mIsDragging )
   {
     //currently dragging a selection
-    dragMouseMove( event->lastScenePos(), shiftModifier, controlModifier );
+    //if shift depressed, constrain movement to horizontal/vertical
+    //if control depressed, ignore snapping
+    dragMouseMove( event->lastScenePos(), event->modifiers() & Qt::ShiftModifier, event->modifiers() & Qt::ControlModifier );
   }
   else if ( mIsResizing )
   {
     //currently resizing a selection
-    resizeMouseMove( event->lastScenePos(), shiftModifier, controlModifier );
+    //lock aspect ratio if shift depressed
+    //resize from center if alt depressed
+    resizeMouseMove( event->lastScenePos(), event->modifiers() & Qt::ShiftModifier, event->modifiers() & Qt::AltModifier );
   }
 
   mLastMouseEventPos = event->lastScenePos();
@@ -596,6 +595,7 @@ void QgsComposerMouseHandles::mouseReleaseEvent( QGraphicsSceneMouseEvent* event
   {
     mIsDragging = false;
     mIsResizing = false;
+    update();
     return;
   }
 
@@ -607,7 +607,7 @@ void QgsComposerMouseHandles::mouseReleaseEvent( QGraphicsSceneMouseEvent* event
     QPointF mEndHandleMovePos = scenePos();
 
     //move all selected items
-    QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+    QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
     QList<QgsComposerItem*>::iterator itemIter = selectedItems.begin();
     for ( ; itemIter != selectedItems.end(); ++itemIter )
     {
@@ -630,7 +630,7 @@ void QgsComposerMouseHandles::mouseReleaseEvent( QGraphicsSceneMouseEvent* event
     QUndoCommand* parentCommand = new QUndoCommand( tr( "Change item size" ) );
 
     //resize all selected items
-    QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+    QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
     QList<QgsComposerItem*>::iterator itemIter = selectedItems.begin();
     for ( ; itemIter != selectedItems.end(); ++itemIter )
     {
@@ -688,7 +688,7 @@ void QgsComposerMouseHandles::mouseReleaseEvent( QGraphicsSceneMouseEvent* event
 
 void QgsComposerMouseHandles::resetStatusBar()
 {
-  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems();
+  QList<QgsComposerItem*> selectedItems = mComposition->selectedComposerItems( false );
   int selectedCount = selectedItems.size();
   if ( selectedCount > 1 )
   {
@@ -1045,19 +1045,19 @@ void QgsComposerMouseHandles::resizeMouseMove( const QPointF& currentPosition, b
   //handle non-normalised resizes - eg, dragging the left handle so far to the right that it's past the right handle
   if ( mBeginHandleWidth + rx >= 0 && mBeginHandleHeight + ry >= 0 )
   {
-    mResizeRect = QRectF( 0, 0,  mBeginHandleWidth + rx, mBeginHandleHeight + ry );
+    mResizeRect = QRectF( 0, 0, mBeginHandleWidth + rx, mBeginHandleHeight + ry );
   }
   else if ( mBeginHandleHeight + ry >= 0 )
   {
-    mResizeRect = QRectF( QPointF( -( mBeginHandleWidth + rx ), 0 ),  QPointF( 0, mBeginHandleHeight + ry ) );
+    mResizeRect = QRectF( QPointF( -( mBeginHandleWidth + rx ), 0 ), QPointF( 0, mBeginHandleHeight + ry ) );
   }
   else if ( mBeginHandleWidth + rx >= 0 )
   {
-    mResizeRect = QRectF( QPointF( 0, -( mBeginHandleHeight + ry ) ),  QPointF( mBeginHandleWidth + rx, 0 ) );
+    mResizeRect = QRectF( QPointF( 0, -( mBeginHandleHeight + ry ) ), QPointF( mBeginHandleWidth + rx, 0 ) );
   }
   else
   {
-    mResizeRect = QRectF( QPointF( -( mBeginHandleWidth + rx ), -( mBeginHandleHeight + ry ) ),  QPointF( 0, 0 ) );
+    mResizeRect = QRectF( QPointF( -( mBeginHandleWidth + rx ), -( mBeginHandleHeight + ry ) ), QPointF( 0, 0 ) );
   }
 
   setRect( 0, 0, fabs( mBeginHandleWidth + rx ), fabs( mBeginHandleHeight + ry ) );
@@ -1106,7 +1106,7 @@ QPointF QgsComposerMouseHandles::snapPoint( const QPointF& point, QgsComposerMou
     {
       yLineCoord = mComposition->paperHeight() * numPages + mComposition->spaceBetweenPages() * ( numPages - 1 );
     }
-    item->setLine( QLineF( alignX, 0, alignX,  yLineCoord ) );
+    item->setLine( QLineF( alignX, 0, alignX, yLineCoord ) );
     item->show();
   }
   else
@@ -1271,7 +1271,8 @@ void QgsComposerMouseHandles::collectAlignCoordinates( QMap< double, const QgsCo
       const QgsComposerItem* currentItem = dynamic_cast<const QgsComposerItem *>( *itemIt );
       //don't snap to selected items, since they're the ones that will be snapping to something else
       //also ignore group members - only snap to bounds of group itself
-      if ( !currentItem || currentItem->selected() || currentItem->isGroupMember() )
+      //also ignore hidden items
+      if ( !currentItem || currentItem->selected() || currentItem->isGroupMember() || !currentItem->isVisible() )
       {
         continue;
       }
@@ -1280,7 +1281,7 @@ void QgsComposerMouseHandles::collectAlignCoordinates( QMap< double, const QgsCo
       {
         //if snapping to paper use the paper item's rect rather then the bounding rect,
         //since we want to snap to the page edge and not any outlines drawn around the page
-        itemRect = currentItem->rect();
+        itemRect = currentItem->mapRectToScene( currentItem->rect() );
       }
       else
       {

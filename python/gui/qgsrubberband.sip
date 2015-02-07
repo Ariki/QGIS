@@ -5,8 +5,7 @@ class QgsRubberBand: QgsMapCanvasItem
 %End
 
   public:
-    /** Icons
-     *  Added in 1.9 */
+    /** Icons */
     enum IconType
     {
       /**
@@ -39,7 +38,6 @@ class QgsRubberBand: QgsMapCanvasItem
      * Creates a new RubberBand.
      *  @param mapCanvas The map canvas to draw onto. It's CRS will be used map points onto screen coordinates.
      *  @param geometryType Defines how the data should be drawn onto the screen. (Use QGis::Line, QGis::Polygon or QGis::Point)
-     *  @note Added in 1.9.
      */
     QgsRubberBand( QgsMapCanvas* mapCanvas /TransferThis/, QGis::GeometryType geometryType = QGis::Line );
     /**
@@ -48,7 +46,7 @@ class QgsRubberBand: QgsMapCanvasItem
      *  @param mapCanvas The map canvas to draw onto. It's CRS will be used map points onto screen coordinates.
      *  @param isPolygon true: draw as (multi-)polygon, false draw as (multi-)linestring
      */
-    QgsRubberBand( QgsMapCanvas* mapCanvas /TransferThis/, bool isPolygon );
+    QgsRubberBand( QgsMapCanvas* mapCanvas /TransferThis/, bool isPolygon ) /Deprecated/;
     ~QgsRubberBand();
 
     /**
@@ -56,6 +54,20 @@ class QgsRubberBand: QgsMapCanvasItem
      *  @param color  The color used to render this rubberband
      */
     void setColor( const QColor & color );
+
+    /**
+     * Set the fill color for the rubberband
+     *  @param color  The color used to render this rubberband
+     *  @note Added in 2.6
+     */
+    void setFillColor( const QColor & color );
+
+    /**
+     * Set the border color for the rubberband
+     *  @param color  The color used to render this rubberband
+     *  @note Added in 2.6
+     */
+    void setBorderColor( const QColor & color );
 
     /**
      * Set the width of the line. Outline width for polygon.
@@ -66,25 +78,21 @@ class QgsRubberBand: QgsMapCanvasItem
     /**
      * Set the icon type to highlight point geometries.
      *  @param icon The icon to visualize point geometries
-     *  @note Added in 1.9
      */
     void setIcon( IconType icon );
 
     /**
      * Set the size of the point icons
-     *  @note Added in 1.9
      */
     void setIconSize( int iconSize );
 
     /**
     * Set the style of the line
-    *  @note Added in 1.9
     */
     void setLineStyle( Qt::PenStyle penStyle );
 
     /**
     * Set the style of the brush
-    *  @note Added in 1.9
     */
     void setBrushStyle( Qt::BrushStyle brushStyle );
 
@@ -92,7 +100,6 @@ class QgsRubberBand: QgsMapCanvasItem
      * Clears all the geometries in this rubberband.
      * Sets the representation type according to geometryType.
      *  @param geometryType Defines how the data should be drawn onto the screen. (Use QGis::Line, QGis::Polygon or QGis::Point)
-     *  @note Added in 1.9.
      */
     void reset( QGis::GeometryType geometryType = QGis::Line );
 
@@ -125,7 +132,7 @@ class QgsRubberBand: QgsMapCanvasItem
     /**
      * Removes the last point. Most useful in connection with undo operations
      */
-    void removeLastPoint( int geometryIndex = 0 , bool doUpdate = true );
+    void removeLastPoint( int geometryIndex = 0, bool doUpdate = true );
 
     /**
      * Moves the rubber band point specified by index. Note that if the rubber band is
@@ -159,7 +166,6 @@ class QgsRubberBand: QgsMapCanvasItem
     /**
      * Sets this rubber band to a map canvas rectangle
      *  @param rect rectangle in canvas coordinates
-     *  @note added in version 1.7
      */
     void setToCanvasRectangle( const QRect& rect );
 
@@ -173,7 +179,6 @@ class QgsRubberBand: QgsMapCanvasItem
      *  @param geom the geometry object. Will be treated as a collection of vertices.
      *  @param layer the layer containing the feature, used for coord transformation to map
      *               crs. In case of 0 pointer, the coordinates are not going to be transformed.
-     *  @note added in 1.5
      */
     void addGeometry( QgsGeometry* geom, QgsVectorLayer* layer );
 
@@ -187,7 +192,6 @@ class QgsRubberBand: QgsMapCanvasItem
     /**
      * Returns number of geometries
      *  @return number of geometries
-     *  @note added in 1.5
      */
     int size() const;
 
@@ -207,9 +211,10 @@ class QgsRubberBand: QgsMapCanvasItem
     /**
      * Returns the rubberband as a Geometry.
      *  @return A geometry object which reflects the current state of the rubberband.
-     *  @note Added in 1.6
      */
     QgsGeometry* asGeometry();
+
+    virtual void updatePosition();
 
   protected:
     virtual void paint( QPainter* p );

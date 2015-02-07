@@ -38,6 +38,7 @@
 
 
 // QWT Charting widget
+
 #include <qwt_global.h>
 #if (QWT_VERSION<0x060000)
 #include <qwt_array.h>
@@ -47,11 +48,13 @@
 #include <qwt_plot.h>
 #include <qwt_plot_grid.h>
 
+#if (WITH_QWTPOLAR)
 // QWT Polar plot add on
 #include <qwt_symbol.h>
 #include <qwt_polar_grid.h>
 #include <qwt_polar_curve.h>
 #include <qwt_scale_engine.h>
+#endif
 
 #include <QMessageBox>
 #include <QSettings>
@@ -76,6 +79,9 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
   mpRubberBand = 0;
   populateDevices();
   QWidget * mpHistogramWidget = mStackedWidget->widget( 1 );
+#if (!WITH_QWTPOLAR)
+  mBtnSatellites->setVisible( false );
+#endif
   //
   // Set up the graph for signal strength
   //
@@ -109,6 +115,7 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
   //
   // Set up the polar graph for satellite pos
   //
+#if (WITH_QWTPOLAR)
   QWidget * mpPolarWidget = mStackedWidget->widget( 2 );
   mpSatellitesWidget = new QwtPolarPlot( /*QwtText( tr( "Satellite View" ), QwtText::PlainText ),*/ mpPolarWidget );  // possible title for graph removed for now as it is too large in small windows
   mpSatellitesWidget->setAutoReplot( false );   // plot on demand (after all data has been handled)
@@ -129,7 +136,6 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
                               );
 
   // grids, axes
-
   QwtPolarGrid * mypSatellitesGrid = new QwtPolarGrid();
   mypSatellitesGrid->setGridAttribute( QwtPolarGrid::AutoScaling, false );   // This fixes the issue of autoscaling on the Radius grid. It is ON by default AND is separate from the scaleData.doAutoScale in QwtPolarPlot::setScale(), etc. THIS IS VERY TRICKY!
   mypSatellitesGrid->setPen( QPen( Qt::black ) );
@@ -154,7 +160,7 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
   mypSatellitesGrid->attach( mpSatellitesWidget );
 
   //QwtLegend *legend = new QwtLegend;
-  //mpSatellitesWidget->insertLegend(legend,  QwtPolarPlot::BottomLegend);
+  //mpSatellitesWidget->insertLegend(legend, QwtPolarPlot::BottomLegend);
   QVBoxLayout *mpPolarLayout = new QVBoxLayout( mpPolarWidget );
   mpPolarLayout->setContentsMargins( 0, 0, 0, 0 );
   mpPolarLayout->addWidget( mpSatellitesWidget );
@@ -162,6 +168,7 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
 
   // replot on command
   mpSatellitesWidget->replot();
+#endif
   mpPlot->replot();
 
   // Restore state
@@ -310,7 +317,7 @@ void QgsGPSInformationWidget::on_mSpinTrackWidth_valueChanged( int theValue )
   }
 }
 
-void QgsGPSInformationWidget::on_mBtnTrackColor_clicked( )
+void QgsGPSInformationWidget::on_mBtnTrackColor_clicked()
 {
   QColor myColor = QColorDialog::getColor( mTrackColor, this );
   if ( myColor.isValid() )  // check that a color was picked
@@ -323,33 +330,33 @@ void QgsGPSInformationWidget::on_mBtnTrackColor_clicked( )
   }
 }
 
-void QgsGPSInformationWidget::on_mBtnPosition_clicked( )
+void QgsGPSInformationWidget::on_mBtnPosition_clicked()
 {
   mStackedWidget->setCurrentIndex( 0 );
   if ( mNmea )
     displayGPSInformation( mNmea->currentGPSInformation() );
 }
 
-void QgsGPSInformationWidget::on_mBtnSignal_clicked( )
+void QgsGPSInformationWidget::on_mBtnSignal_clicked()
 {
   mStackedWidget->setCurrentIndex( 1 );
   if ( mNmea )
     displayGPSInformation( mNmea->currentGPSInformation() );
 }
 
-void QgsGPSInformationWidget::on_mBtnSatellites_clicked( )
+void QgsGPSInformationWidget::on_mBtnSatellites_clicked()
 {
   mStackedWidget->setCurrentIndex( 2 );
   if ( mNmea )
     displayGPSInformation( mNmea->currentGPSInformation() );
 }
 
-void QgsGPSInformationWidget::on_mBtnOptions_clicked( )
+void QgsGPSInformationWidget::on_mBtnOptions_clicked()
 {
   mStackedWidget->setCurrentIndex( 3 );
 }
 
-void QgsGPSInformationWidget::on_mBtnDebug_clicked( )
+void QgsGPSInformationWidget::on_mBtnDebug_clicked()
 {
   mStackedWidget->setCurrentIndex( 4 );
 }
@@ -534,15 +541,12 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
   {
     mpPlot->setAxisScale( QwtPlot::xBottom, 0, info.satellitesInView.size() );
   } //signal
-
+#if (WITH_QWTPOLAR)
   if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
   {
-    while ( !mMarkerList.isEmpty() )
-    {
-      delete mMarkerList.takeFirst();
-    }
+    qDeleteAll( mMarkerList );
   } //satellites
-
+#endif
   if ( mStackedWidget->currentIndex() == 4 ) //debug
   {
     mGPSPlainTextEdit->clear();
@@ -582,11 +586,13 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
       // Add a marker to the polar plot
       if ( currentInfo.id > 0 )       // don't show satellite if id=0 (no satellite indication)
       {
+#if (WITH_QWTPOLAR)
         QwtPolarMarker *mypMarker = new QwtPolarMarker();
 #if (QWT_POLAR_VERSION<0x010000)
         mypMarker->setPosition( QwtPolarPoint( currentInfo.azimuth, currentInfo.elevation ) );
 #else
         mypMarker->setPosition( QwtPointPolar( currentInfo.azimuth, currentInfo.elevation ) );
+#endif
 #endif
         if ( currentInfo.signal < 30 ) //weak signal
         {
@@ -596,13 +602,15 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
         {
           myColor = Qt::black; //strong signal
         }
+#if (WITH_QWTPOLAR)
 #if (QWT_POLAR_VERSION<0x010000)
         mypMarker->setSymbol( QwtSymbol( QwtSymbol::Ellipse,
-                                         symbolBrush , QPen( myColor ), markerSize ) );
+                                         symbolBrush, QPen( myColor ), markerSize ) );
 #else
         mypMarker->setSymbol( new QwtSymbol( QwtSymbol::Ellipse,
-                                             symbolBrush , QPen( myColor ), markerSize ) );
+                                             symbolBrush, QPen( myColor ), markerSize ) );
 #endif
+
         mypMarker->setLabelAlignment( Qt::AlignHCenter | Qt::AlignTop );
         QwtText text( QString::number( currentInfo.id ) );
         text.setColor( myColor );
@@ -610,6 +618,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
         mypMarker->setLabel( text );
         mypMarker->attach( mpSatellitesWidget );
         mMarkerList << mypMarker;
+#endif
       } // currentInfo.id > 0
     } //satellites
   } //satellite processing loop
@@ -623,12 +632,12 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
 #endif
     mpPlot->replot();
   } //signal
-
+#if (WITH_QWTPOLAR)
   if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
   {
     mpSatellitesWidget->replot();
   } //satellites
-
+#endif
   if ( validFlag )
   {
     validFlag = info.longitude >= -180.0 && info.longitude <= 180.0 && info.latitude >= -90.0 && info.latitude <= 90.0;
@@ -696,7 +705,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
            ( radRecenterWhenNeeded->isChecked() && !myExtentLimit.contains( myPoint ) ) )
       {
         mpCanvas->setExtent( myRect );
-        mpCanvas->refresh( );
+        mpCanvas->refresh();
       }
     } //otherwise never recenter automatically
 
@@ -729,7 +738,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
   } // show marker
 }
 
-void QgsGPSInformationWidget::on_mBtnAddVertex_clicked( )
+void QgsGPSInformationWidget::on_mBtnAddVertex_clicked()
 {
   addVertex();
 }
@@ -740,7 +749,7 @@ void QgsGPSInformationWidget::addVertex()
 
   if ( !mpRubberBand )
   {
-    createRubberBand( );
+    createRubberBand();
   }
 
   // we store the capture list in wgs84 and then transform to layer crs when
@@ -764,15 +773,15 @@ void QgsGPSInformationWidget::addVertex()
   mpRubberBand->addPoint( myPoint );
 }
 
-void QgsGPSInformationWidget::on_mBtnResetFeature_clicked( )
+void QgsGPSInformationWidget::on_mBtnResetFeature_clicked()
 {
   mNmea->disconnect( this, SLOT( displayGPSInformation( const QgsGPSInformation& ) ) );
-  createRubberBand( ); //deletes existing rubberband
+  createRubberBand(); //deletes existing rubberband
   mCaptureList.clear();
   connectGpsSlot();
 }
 
-void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked( )
+void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
 {
   QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( mpCanvas->currentLayer() );
   QGis::WkbType layerWKBType = vlayer->wkbType();
@@ -940,6 +949,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked( )
       else if ( avoidIntersectionsReturn == 3 )
       {
         QMessageBox::critical( 0, tr( "Error" ), tr( "An error was reported during intersection removal" ) );
+        delete f;
         connectGpsSlot();
         return;
       }
@@ -950,6 +960,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked( )
       QMessageBox::critical( 0, tr( "Error" ), tr( "Cannot add feature. "
                              "Unknown WKB type. Choose a different layer and try again." ) );
       connectGpsSlot();
+      delete f;
       return; //unknown wkbtype
     } // layerWKBType == QGis::WKBPolygon
 
@@ -986,13 +997,13 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked( )
   mBtnCloseFeature->setFocus( Qt::OtherFocusReason );
 }
 
-void QgsGPSInformationWidget::connectGpsSlot( )
+void QgsGPSInformationWidget::connectGpsSlot()
 {
   connect( mNmea, SIGNAL( stateChanged( const QgsGPSInformation& ) ),
            this, SLOT( displayGPSInformation( const QgsGPSInformation& ) ) );
 }
 
-void QgsGPSInformationWidget::on_mBtnRefreshDevices_clicked( )
+void QgsGPSInformationWidget::on_mBtnRefreshDevices_clicked()
 {
   populateDevices();
 }
@@ -1018,7 +1029,7 @@ void QgsGPSInformationWidget::populateDevices()
   mCboDevices->setCurrentIndex( idx < 0 ? 0 : idx );
 }
 
-void QgsGPSInformationWidget::createRubberBand( )
+void QgsGPSInformationWidget::createRubberBand()
 {
   if ( mpRubberBand )
   {

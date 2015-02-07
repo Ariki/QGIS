@@ -89,13 +89,20 @@ QgsRasterProjector::QgsRasterProjector(
 }
 
 QgsRasterProjector::QgsRasterProjector()
-    : QgsRasterInterface( 0 ), mSrcDatumTransform( -1 ), mDestDatumTransform( -1 ) , pHelperTop( 0 ), pHelperBottom( 0 )
+    : QgsRasterInterface( 0 ), mSrcDatumTransform( -1 ), mDestDatumTransform( -1 ), pHelperTop( 0 ), pHelperBottom( 0 )
 {
   QgsDebugMsg( "Entered" );
 }
 
 QgsRasterProjector::QgsRasterProjector( const QgsRasterProjector &projector )
     : QgsRasterInterface( 0 )
+    , pHelperTop( NULL )
+    , pHelperBottom( NULL )
+    , mHelperTopRow( 0 )
+    , mCPCols( 0 )
+    , mCPRows( 0 )
+    , mSqrTolerance( 0 )
+    , mApproximate( false )
 {
   mSrcCRS = projector.mSrcCRS;
   mDestCRS = projector.mDestCRS;
@@ -104,6 +111,17 @@ QgsRasterProjector::QgsRasterProjector( const QgsRasterProjector &projector )
   mMaxSrcXRes = projector.mMaxSrcXRes;
   mMaxSrcYRes = projector.mMaxSrcYRes;
   mExtent = projector.mExtent;
+  mDestRows = projector.mDestRows;
+  mDestCols = projector.mDestCols;
+  mDestXRes = projector.mDestXRes;
+  mDestYRes = projector.mDestYRes;
+  mSrcRows = projector.mSrcRows;
+  mSrcCols = projector.mSrcCols;
+  mSrcXRes = projector.mSrcXRes;
+  mSrcYRes = projector.mSrcYRes;
+  mDestRowsPerMatrixRow = projector.mDestRowsPerMatrixRow;
+  mDestColsPerMatrixCol = projector.mDestColsPerMatrixCol;
+
 }
 
 QgsRasterProjector & QgsRasterProjector::operator=( const QgsRasterProjector & projector )
@@ -174,15 +192,18 @@ void QgsRasterProjector::calc()
   if ( mInput )
   {
     QgsRasterDataProvider *provider = dynamic_cast<QgsRasterDataProvider*>( mInput->srcInput() );
-    if ( provider && ( provider->capabilities() & QgsRasterDataProvider::Size ) )
+    if ( provider )
     {
-      mMaxSrcXRes = provider->extent().width() / provider->xSize();
-      mMaxSrcYRes = provider->extent().height() / provider->ySize();
-    }
-    // Get source extent
-    if ( mExtent.isEmpty() )
-    {
-      mExtent = provider->extent();
+      if ( provider->capabilities() & QgsRasterDataProvider::Size )
+      {
+        mMaxSrcXRes = provider->extent().width() / provider->xSize();
+        mMaxSrcYRes = provider->extent().height() / provider->ySize();
+      }
+      // Get source extent
+      if ( mExtent.isEmpty() )
+      {
+        mExtent = provider->extent();
+      }
     }
   }
 
@@ -206,13 +227,13 @@ void QgsRasterProjector::calc()
     myRow.append( QgsPoint() );
     myRow.append( QgsPoint() );
     myRow.append( QgsPoint() );
-    mCPMatrix.insert( i,  myRow );
+    mCPMatrix.insert( i, myRow );
     // And the legal points
     QList<bool> myLegalRow;
     myLegalRow.append( bool( false ) );
     myLegalRow.append( bool( false ) );
     myLegalRow.append( bool( false ) );
-    mCPLegalMatrix.insert( i,  myLegalRow );
+    mCPLegalMatrix.insert( i, myLegalRow );
   }
   for ( int i = 0; i < mCPRows; i++ )
   {
@@ -363,8 +384,8 @@ void QgsRasterProjector::calcSrcRowsCols()
   // TODO: different resolution for rows and cols ?
 
   // For now, we take cell sizes projected to source but not to source axes
-  double myDestColsPerMatrixCell = mDestCols / mCPCols;
-  double myDestRowsPerMatrixCell = mDestRows / mCPRows;
+  double myDestColsPerMatrixCell = ( double )mDestCols / mCPCols;
+  double myDestRowsPerMatrixCell = ( double )mDestRows / mCPRows;
   QgsDebugMsg( QString( "myDestColsPerMatrixCell = %1 myDestRowsPerMatrixCell = %2" ).arg( myDestColsPerMatrixCell ).arg( myDestRowsPerMatrixCell ) );
 
   double myMinSize = DBL_MAX;
@@ -597,8 +618,8 @@ void QgsRasterProjector::insertRows( const QgsCoordinateTransform* ct )
       myLegalRow.append( false );
     }
     QgsDebugMsgLevel( QString( "insert new row at %1" ).arg( 1 + r*2 ), 3 );
-    mCPMatrix.insert( 1 + r*2,  myRow );
-    mCPLegalMatrix.insert( 1 + r*2,  myLegalRow );
+    mCPMatrix.insert( 1 + r*2, myRow );
+    mCPLegalMatrix.insert( 1 + r*2, myLegalRow );
   }
   mCPRows += mCPRows - 1;
   for ( int r = 1; r < mCPRows - 1; r += 2 )
@@ -615,8 +636,8 @@ void QgsRasterProjector::insertCols( const QgsCoordinateTransform* ct )
     QList<bool> myLegalRow;
     for ( int c = 0; c < mCPCols - 1; c++ )
     {
-      mCPMatrix[r].insert( 1 + c*2,  QgsPoint() );
-      mCPLegalMatrix[r].insert( 1 + c*2,  false );
+      mCPMatrix[r].insert( 1 + c*2, QgsPoint() );
+      mCPLegalMatrix[r].insert( 1 + c*2, false );
     }
   }
   mCPCols += mCPCols - 1;
@@ -859,7 +880,7 @@ QgsRasterBlock * QgsRasterProjector::block( int bandNo, QgsRectangle  const & ex
       if ( doNoData && inputBlock->isNoData( srcRow, srcCol ) )
       {
         outputBlock->setIsNoData( i, j );
-        continue ;
+        continue;
       }
 
       qgssize destIndex = ( qgssize )i * width + j;

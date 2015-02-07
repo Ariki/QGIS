@@ -19,6 +19,7 @@
 #include "qgscomposition.h"
 #include "qgssymbolv2.h"
 #include "qgssymbollayerv2utils.h"
+#include "qgscomposermodel.h"
 #include <QPainter>
 
 QgsComposerShape::QgsComposerShape( QgsComposition* composition ): QgsComposerItem( composition ),
@@ -112,6 +113,11 @@ void QgsComposerShape::paint( QPainter* painter, const QStyleOptionGraphicsItem*
   {
     return;
   }
+  if ( !shouldDrawItem() )
+  {
+    return;
+  }
+
   drawBackground( painter );
   drawFrame( painter );
 
@@ -137,23 +143,23 @@ void QgsComposerShape::drawShape( QPainter* p )
   switch ( mShape )
   {
     case Ellipse:
-      p->drawEllipse( QRectF( 0, 0 , rect().width(), rect().height() ) );
+      p->drawEllipse( QRectF( 0, 0, rect().width(), rect().height() ) );
       break;
     case Rectangle:
       //if corner radius set, then draw a rounded rectangle
       if ( mCornerRadius > 0 )
       {
-        p->drawRoundedRect( QRectF( 0, 0 , rect().width(), rect().height() ), mCornerRadius, mCornerRadius );
+        p->drawRoundedRect( QRectF( 0, 0, rect().width(), rect().height() ), mCornerRadius, mCornerRadius );
       }
       else
       {
-        p->drawRect( QRectF( 0, 0 , rect().width(), rect().height() ) );
+        p->drawRect( QRectF( 0, 0, rect().width(), rect().height() ) );
       }
       break;
     case Triangle:
       QPolygonF triangle;
       triangle << QPointF( 0, rect().height() );
-      triangle << QPointF( rect().width() , rect().height() );
+      triangle << QPointF( rect().width(), rect().height() );
       triangle << QPointF( rect().width() / 2.0, 0 );
       p->drawPolygon( triangle );
       break;
@@ -194,7 +200,7 @@ void QgsComposerShape::drawShapeUsingSymbol( QPainter* p )
     {
       //create an ellipse
       QPainterPath ellipsePath;
-      ellipsePath.addEllipse( QRectF( 0, 0 , rect().width() * dotsPerMM, rect().height() * dotsPerMM ) );
+      ellipsePath.addEllipse( QRectF( 0, 0, rect().width() * dotsPerMM, rect().height() * dotsPerMM ) );
       QPolygonF ellipsePoly = ellipsePath.toFillPolygon( t );
       shapePolygon = ti.map( ellipsePoly );
       break;
@@ -205,7 +211,7 @@ void QgsComposerShape::drawShapeUsingSymbol( QPainter* p )
       if ( mCornerRadius > 0 )
       {
         QPainterPath roundedRectPath;
-        roundedRectPath.addRoundedRect( QRectF( 0, 0 , rect().width() * dotsPerMM, rect().height() * dotsPerMM ), mCornerRadius * dotsPerMM, mCornerRadius * dotsPerMM );
+        roundedRectPath.addRoundedRect( QRectF( 0, 0, rect().width() * dotsPerMM, rect().height() * dotsPerMM ), mCornerRadius * dotsPerMM, mCornerRadius * dotsPerMM );
         QPolygonF roundedPoly = roundedRectPath.toFillPolygon( t );
         shapePolygon = ti.map( roundedPoly );
       }
@@ -309,7 +315,7 @@ bool QgsComposerShape::readXML( const QDomElement& itemElem, const QDomDocument&
   if ( !shapeStyleSymbolElem.isNull() )
   {
     delete mShapeStyleSymbol;
-    mShapeStyleSymbol = dynamic_cast<QgsFillSymbolV2*>( QgsSymbolLayerV2Utils::loadSymbol( shapeStyleSymbolElem ) );
+    mShapeStyleSymbol = QgsSymbolLayerV2Utils::loadSymbol<QgsFillSymbolV2>( shapeStyleSymbolElem );
   }
   else
   {
@@ -391,6 +397,22 @@ bool QgsComposerShape::readXML( const QDomElement& itemElem, const QDomDocument&
   return true;
 }
 
+void QgsComposerShape::setShapeType( QgsComposerShape::Shape s )
+{
+  if ( s == mShape )
+  {
+    return;
+  }
+
+  mShape = s;
+
+  if ( mComposition && id().isEmpty() )
+  {
+    //notify the model that the display name has changed
+    mComposition->itemsModel()->updateItemDisplayName( this );
+  }
+}
+
 void QgsComposerShape::setCornerRadius( double radius )
 {
   mCornerRadius = radius;
@@ -422,4 +444,27 @@ void QgsComposerShape::setSceneRect( const QRectF& rectangle )
 
   updateBoundingRect();
   update();
+}
+
+QString QgsComposerShape::displayName() const
+{
+  if ( !id().isEmpty() )
+  {
+    return id();
+  }
+
+  switch ( mShape )
+  {
+    case Ellipse:
+      return tr( "<ellipse>" );
+      break;
+    case Rectangle:
+      return tr( "<rectangle>" );
+      break;
+    case Triangle:
+      return tr( "<triangle>" );
+      break;
+  }
+
+  return tr( "<shape>" );
 }

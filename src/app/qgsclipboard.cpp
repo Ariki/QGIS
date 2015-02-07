@@ -169,12 +169,12 @@ QgsFeatureList QgsClipboard::copyOf( const QgsFields &fields )
     if ( !geometry )
       continue;
 
-    QgsFeature* feature = new QgsFeature();
+    QgsFeature feature;
     if ( !fields.isEmpty() )
-      feature->setFields( &fields , true );
+      feature.setFields( &fields, true );
 
-    feature->setGeometry( geometry );
-    features.append( QgsFeature( *feature ) );
+    feature.setGeometry( geometry );
+    features.append( feature );
   }
 
   if ( features.isEmpty() )
@@ -214,7 +214,7 @@ bool QgsClipboard::empty()
   return text.isEmpty() && mFeatureClipboard.empty();
 }
 
-QgsFeatureList QgsClipboard::transformedCopyOf( QgsCoordinateReferenceSystem destCRS , const QgsFields &fields )
+QgsFeatureList QgsClipboard::transformedCopyOf( QgsCoordinateReferenceSystem destCRS, const QgsFields &fields )
 {
   QgsFeatureList featureList = copyOf( fields );
   QgsCoordinateTransform ct( crs(), destCRS );

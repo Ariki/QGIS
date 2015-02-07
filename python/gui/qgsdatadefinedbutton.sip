@@ -6,10 +6,10 @@ class QgsDataDefinedButton :  QToolButton
   public:
     enum DataType
     {
-      AnyType,
       String,
       Int,
       Double,
+      AnyType
     };
     typedef QFlags<QgsDataDefinedButton::DataType> DataTypes;
 
@@ -146,6 +146,7 @@ class QgsDataDefinedButton :  QToolButton
     static QString intPosOneDesc();
     static QString doubleDesc();
     static QString doublePosDesc();
+    static QString double0to1Desc();
     static QString doubleXYDesc();
     static QString double180RotDesc();
     static QString intTranspDesc();
@@ -158,6 +159,19 @@ class QgsDataDefinedButton :  QToolButton
     static QString penJoinStyleDesc();
     static QString blendModesDesc();
     static QString svgPathDesc();
+    static QString filePathDesc();
+    static QString paperSizeDesc();
+    static QString paperOrientationDesc();
+    static QString horizontalAnchorDesc();
+    static QString verticalAnchorDesc();
+    static QString gradientTypeDesc();
+    static QString gradientCoordModeDesc();
+    static QString gradientSpreadDesc();
+    static QString lineStyleDesc();
+    static QString capStyleDesc();
+    static QString fillStyleDesc();
+    static QString markerStyleDesc();
+    static QString customDashDesc();
 
   public slots:
     /**
@@ -207,3 +221,5 @@ class QgsDataDefinedButton :  QToolButton
     void setField( QString field );
 
 };
+
+QFlags<QgsDataDefinedButton::DataType> operator|(QgsDataDefinedButton::DataType f1, QFlags<QgsDataDefinedButton::DataType> f2);

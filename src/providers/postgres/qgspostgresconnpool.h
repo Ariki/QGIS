@@ -33,7 +33,7 @@ inline void qgsConnectionPool_ConnectionCreate( QString connInfo, QgsPostgresCon
 
 inline void qgsConnectionPool_ConnectionDestroy( QgsPostgresConn* c )
 {
-  c->disconnect(); // will delete itself
+  c->unref(); // will delete itself
 }
 
 
@@ -42,7 +42,7 @@ class QgsPostgresConnPoolGroup : public QObject, public QgsConnectionPoolGroup<Q
     Q_OBJECT
 
   public:
-    QgsPostgresConnPoolGroup( QString name ) : QgsConnectionPoolGroup( name ) { initTimer( this ); }
+    QgsPostgresConnPoolGroup( QString name ) : QgsConnectionPoolGroup<QgsPostgresConn*>( name ) { initTimer( this ); }
 
   protected slots:
     void handleConnectionExpired() { onConnectionExpired(); }
@@ -60,6 +60,12 @@ class QgsPostgresConnPool : public QgsConnectionPool<QgsPostgresConn*, QgsPostgr
   public:
     static QgsPostgresConnPool* instance();
 
+  protected:
+    Q_DISABLE_COPY( QgsPostgresConnPool );
+
+  private:
+    QgsPostgresConnPool();
+    ~QgsPostgresConnPool();
 };
 
 

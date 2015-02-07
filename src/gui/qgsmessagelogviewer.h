@@ -29,8 +29,7 @@ class QShowEvent;
 class QHideEvent;
 
 /** \ingroup gui
- * A generic message for displaying QGIS log messages.
- * \note added in 1.8
+ * A generic dialog widget for displaying QGIS log messages.
  */
 class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogViewer
 {
@@ -47,19 +46,11 @@ class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogV
   public slots:
     void logMessage( QString message, QString tag, QgsMessageLog::MessageLevel level );
 
-  protected:
-    void showEvent( QShowEvent * );
-    void hideEvent( QHideEvent * );
-
   private:
-    QToolButton *mButton;
-    int mCount;
     bool mShowToolTips;
 
   private slots:
     void closeTab( int index );
-    void buttonToggled( bool checked );
-    void buttonDestroyed();
 };
 
 #endif

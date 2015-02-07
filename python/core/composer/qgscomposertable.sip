@@ -20,7 +20,7 @@ class QgsComposerTable: QgsComposerItem
     QgsComposerTable( QgsComposition* composition /TransferThis/ );
     virtual ~QgsComposerTable();
 
-    /** return correct graphics item type. Added in v1.7 */
+    /** return correct graphics item type. */
     virtual int type() const;
 
     /** \brief Reimplementation of QCanvasItem::paint*/
@@ -55,6 +55,24 @@ class QgsComposerTable: QgsComposerItem
      */
     QFont headerFont() const;
 
+    /**Sets the color used to draw header text in the table.
+     * @param color header text color
+     * @see headerFontColor
+     * @see setHeaderFont
+     * @see setContentFontColor
+     * @note added in 2.5
+     */
+    void setHeaderFontColor( const QColor& color );
+
+    /**Returns the color used to draw header text in the table.
+     * @returns color for header text
+     * @see setHeaderFontColor
+     * @see headerFont
+     * @see contentFontColor
+     * @note added in 2.5
+     */
+    QColor headerFontColor() const;
+
     /**Sets the horizontal alignment for table headers
      * @param alignment Horizontal alignment for table header cells
      * @note added in 2.3
@@ -82,6 +100,24 @@ class QgsComposerTable: QgsComposerItem
      * @see headerFont
      */
     QFont contentFont() const;
+
+    /**Sets the color used to draw text in table body cells.
+     * @param color table cell text color
+     * @see contentFontColor
+     * @see setContentFont
+     * @see setHeaderFontColor
+     * @note added in 2.5
+     */
+    void setContentFontColor( const QColor& color );
+
+    /**Returns the color used to draw text in table body cells.
+     * @returns text color for table cells
+     * @see setContentFontColor
+     * @see contentFont
+     * @see headerFontColor
+     * @note added in 2.5
+     */
+    QColor contentFontColor() const;
 
     /**Sets whether grid lines should be drawn in the table
      * @param show set to true to show grid lines
@@ -183,8 +219,6 @@ class QgsComposerTable: QgsComposerItem
     virtual void adjustFrameToSize();
 
   protected:
-    /**Retrieves feature attributes*/
-    // virtual bool getFeatureAttributes( QList<QgsAttributeMap>& attributeMaps );
     /**Calculates the maximum width of text shown in columns.
      * @param maxWidthMap QMap of int to double in which to store the maximum widths. The int will be filled
      * with the column number and the double with the maximum width of text present in the column.

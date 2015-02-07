@@ -23,8 +23,8 @@
 #include <QLabel>
 #include <QTextEdit>
 
-QgsMessageBarItem::QgsMessageBarItem( const QString &text, QgsMessageBar::MessageLevel level, int duration, QWidget *parent ) :
-    QWidget( parent )
+QgsMessageBarItem::QgsMessageBarItem( const QString &text, QgsMessageBar::MessageLevel level, int duration, QWidget *parent )
+    : QWidget( parent )
     , mTitle( "" )
     , mText( text )
     , mLevel( level )
@@ -36,8 +36,8 @@ QgsMessageBarItem::QgsMessageBarItem( const QString &text, QgsMessageBar::Messag
   writeContent();
 }
 
-QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text, QgsMessageBar::MessageLevel level, int duration , QWidget *parent ) :
-    QWidget( parent )
+QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text, QgsMessageBar::MessageLevel level, int duration, QWidget *parent )
+    : QWidget( parent )
     , mTitle( title )
     , mText( text )
     , mLevel( level )
@@ -49,8 +49,8 @@ QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text,
   writeContent();
 }
 
-QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text, QWidget *widget, QgsMessageBar::MessageLevel level, int duration, QWidget *parent ) :
-    QWidget( parent )
+QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text, QWidget *widget, QgsMessageBar::MessageLevel level, int duration, QWidget *parent )
+    : QWidget( parent )
     , mTitle( title )
     , mText( text )
     , mLevel( level )
@@ -62,8 +62,8 @@ QgsMessageBarItem::QgsMessageBarItem( const QString &title, const QString &text,
   writeContent();
 }
 
-QgsMessageBarItem::QgsMessageBarItem( QWidget *widget, QgsMessageBar::MessageLevel level, int duration, QWidget *parent ) :
-    QWidget( parent )
+QgsMessageBarItem::QgsMessageBarItem( QWidget *widget, QgsMessageBar::MessageLevel level, int duration, QWidget *parent )
+    : QWidget( parent )
     , mTitle( "" )
     , mText( "" )
     , mLevel( level )
@@ -110,6 +110,9 @@ void QgsMessageBarItem::writeContent()
         break;
       case QgsMessageBar::WARNING:
         msgIcon = QString( "/mIconWarn.png" );
+        break;
+      case QgsMessageBar::SUCCESS:
+        msgIcon = QString( "/mIconSuccess.png" );
         break;
       default:
         break;
@@ -167,7 +170,12 @@ void QgsMessageBarItem::writeContent()
   }
 
   // STYLESHEET
-  if ( mLevel >= QgsMessageBar::CRITICAL )
+  if ( mLevel == QgsMessageBar::SUCCESS )
+  {
+    mStyleSheet = "QgsMessageBar { background-color: #dff0d8; border: 1px solid #8e998a; } "
+                  "QLabel,QTextEdit { color: black; } ";
+  }
+  else if ( mLevel == QgsMessageBar::CRITICAL )
   {
     mStyleSheet = "QgsMessageBar { background-color: #d65253; border: 1px solid #9b3d3d; } "
                   "QLabel,QTextEdit { color: white; } ";
@@ -177,7 +185,7 @@ void QgsMessageBarItem::writeContent()
     mStyleSheet = "QgsMessageBar { background-color: #ffc800; border: 1px solid #e0aa00; } "
                   "QLabel,QTextEdit { color: black; } ";
   }
-  else if ( mLevel <= QgsMessageBar::INFO )
+  else if ( mLevel == QgsMessageBar::INFO )
   {
     mStyleSheet = "QgsMessageBar { background-color: #e7f5fe; border: 1px solid #b9cfe4; } "
                   "QLabel,QTextEdit { color: #2554a1; } ";

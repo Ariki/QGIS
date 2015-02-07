@@ -325,7 +325,7 @@ QString QgsInvertedPolygonRenderer::dump() const
   return "INVERTED [" + mSubRenderer->dump() + "]";
 }
 
-QgsFeatureRendererV2* QgsInvertedPolygonRenderer::clone()
+QgsFeatureRendererV2* QgsInvertedPolygonRenderer::clone() const
 {
   QgsInvertedPolygonRenderer* newRenderer;
   if ( mSubRenderer.isNull() )
@@ -377,6 +377,13 @@ QgsSymbolV2* QgsInvertedPolygonRenderer::symbolForFeature( QgsFeature& feature )
   return mSubRenderer->symbolForFeature( feature );
 }
 
+QgsSymbolV2* QgsInvertedPolygonRenderer::originalSymbolForFeature( QgsFeature& feat )
+{
+  if ( !mSubRenderer )
+    return 0;
+  return mSubRenderer->originalSymbolForFeature( feat );
+}
+
 QgsSymbolV2List QgsInvertedPolygonRenderer::symbolsForFeature( QgsFeature& feature )
 {
   if ( !mSubRenderer )
@@ -384,6 +391,13 @@ QgsSymbolV2List QgsInvertedPolygonRenderer::symbolsForFeature( QgsFeature& featu
     return QgsSymbolV2List();
   }
   return mSubRenderer->symbolsForFeature( feature );
+}
+
+QgsSymbolV2List QgsInvertedPolygonRenderer::originalSymbolsForFeature( QgsFeature& feat )
+{
+  if ( !mSubRenderer )
+    return QgsSymbolV2List();
+  return mSubRenderer->originalSymbolsForFeature( feat );
 }
 
 QgsSymbolV2List QgsInvertedPolygonRenderer::symbols()
@@ -438,5 +452,22 @@ bool QgsInvertedPolygonRenderer::willRenderFeature( QgsFeature& feat )
     return false;
   }
   return mSubRenderer->willRenderFeature( feat );
+}
+
+QgsInvertedPolygonRenderer* QgsInvertedPolygonRenderer::convertFromRenderer( const QgsFeatureRendererV2 *renderer )
+{
+  if ( renderer->type() == "invertedPolygonRenderer" )
+  {
+    return dynamic_cast<QgsInvertedPolygonRenderer*>( renderer->clone() );
+  }
+
+  if ( renderer->type() == "singleSymbol" ||
+       renderer->type() == "categorizedSymbol" ||
+       renderer->type() == "graduatedSymbol" ||
+       renderer->type() == "RuleRenderer" )
+  {
+    return new QgsInvertedPolygonRenderer( renderer->clone() );
+  }
+  return 0;
 }
 

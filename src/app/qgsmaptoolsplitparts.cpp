@@ -18,13 +18,15 @@
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
 #include "qgsmaptoolsplitparts.h"
+#include "qgssnappingutils.h"
 #include "qgsvectorlayer.h"
 
 #include <QMouseEvent>
 
-QgsMapToolSplitParts::QgsMapToolSplitParts( QgsMapCanvas* canvas ): QgsMapToolCapture( canvas, QgsMapToolCapture::CaptureLine )
+QgsMapToolSplitParts::QgsMapToolSplitParts( QgsMapCanvas* canvas )
+    : QgsMapToolCapture( canvas, QgsMapToolCapture::CaptureLine )
 {
-
+  mToolName = tr( "Split parts" );
 }
 
 QgsMapToolSplitParts::~QgsMapToolSplitParts()
@@ -32,7 +34,7 @@ QgsMapToolSplitParts::~QgsMapToolSplitParts()
 
 }
 
-void QgsMapToolSplitParts::canvasReleaseEvent( QMouseEvent * e )
+void QgsMapToolSplitParts::canvasMapReleaseEvent( QgsMapMouseEvent * e )
 {
   //check if we operate on a vector layer
   QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( mCanvas->currentLayer() );
@@ -54,21 +56,17 @@ void QgsMapToolSplitParts::canvasReleaseEvent( QMouseEvent * e )
   //add point to list and to rubber band
   if ( e->button() == Qt::LeftButton )
   {
-    QList<QgsSnappingResult> snapResults;
-
     //If we snap the first point on a vertex of a line layer, we directly split the feature at this point
     if ( vlayer->geometryType() == QGis::Line && points().isEmpty() )
     {
-      if ( mSnapper.snapToCurrentLayer( e->pos(), snapResults, QgsSnapper::SnapToVertex ) == 0 )
+      QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
+      if ( m.isValid() )
       {
-        if ( snapResults.size() > 0 )
-        {
-          split = true;
-        }
+        split = true;
       }
     }
 
-    int error = addVertex( e->pos() );
+    int error = addVertex( e->mapPoint() );
     if ( error == 1 )
     {
       //current layer is not a vector layer
@@ -120,7 +118,7 @@ void QgsMapToolSplitParts::canvasReleaseEvent( QMouseEvent * e )
     {
       QgisApp::instance()->messageBar()->pushMessage(
         tr( "No part split done" ),
-        tr( "The geometry is invalid. Please repair before trying to split it." ) ,
+        tr( "The geometry is invalid. Please repair before trying to split it." ),
         QgsMessageBar::WARNING,
         QgisApp::instance()->messageTimeout() );
     }

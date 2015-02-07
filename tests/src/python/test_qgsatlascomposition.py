@@ -16,11 +16,9 @@ test_qgsatlascomposition.py
 '''
 import qgis
 import unittest
-from utilities import *
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtXml import *
-from qgis.core import *
+from utilities import getQgisTestApp, unitTestDataPath
+from PyQt4.QtCore import QFileInfo, QRectF, qWarning
+from qgis.core import QGis, QgsVectorLayer, QgsMapLayerRegistry, QgsMapRenderer, QgsCoordinateReferenceSystem, QgsComposition, QgsFillSymbolV2, QgsSingleSymbolRendererV2, QgsComposerLabel, QgsComposerMap, QgsFontUtils, QgsRectangle
 from qgscompositionchecker import QgsCompositionChecker
 
 QGISAPP, CANVAS, IFACE, PARENT = getQgisTestApp()
@@ -78,7 +76,7 @@ class TestQgsAtlasComposition(unittest.TestCase):
         # set the fill symbol of the overview map
         props2 = { "color": "127,0,0,127" }
         fillSymbol2 = QgsFillSymbolV2.createSimple( props2 )
-        mOverview.setOverviewFrameMapSymbol( fillSymbol2 );
+        mOverview.setOverviewFrameMapSymbol( fillSymbol2 )
 
         # header label
         self.mLabel1 = QgsComposerLabel( self.mComposition )
@@ -131,7 +129,7 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_autoscale%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
         self.mAtlasMap.setAtlasDriven( False )
@@ -152,17 +150,18 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_autoscale_old_api%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
         self.mAtlas.setFixedScale( True )
         self.mAtlas.setMargin( 0 )
         self.mAtlas.setComposerMap( None )
+        self.mAtlasMap.setAtlasDriven( False )
 
     def fixedscale_render_test( self ):
         self.mAtlasMap.setAtlasDriven( True )
         self.mAtlasMap.setAtlasScalingMode( QgsComposerMap.Fixed )
-        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) );
+        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) )
 
         self.mAtlas.beginRender()
 
@@ -173,12 +172,12 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_fixedscale%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
     def predefinedscales_render_test( self ):
         self.mAtlasMap.setAtlasDriven( True )
-        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) );
+        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) )
         self.mAtlasMap.setAtlasScalingMode( QgsComposerMap.Predefined )
 
         scales = [1800000, 5000000]
@@ -195,11 +194,11 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_predefinedscales%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
     def hidden_render_test( self ):
-        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) );
+        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) )
         self.mAtlasMap.setAtlasScalingMode( QgsComposerMap.Fixed )
         self.mAtlas.setHideCoverage( True )
 
@@ -212,11 +211,11 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_hiding%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
     def sorting_render_test( self ):
-        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) );
+        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) )
         self.mAtlasMap.setAtlasScalingMode( QgsComposerMap.Fixed )
         self.mAtlas.setHideCoverage( False )
 
@@ -233,11 +232,11 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_sorting%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
     def filtering_render_test( self ):
-        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) );
+        self.mAtlasMap.setNewExtent( QgsRectangle( 209838.166, 6528781.020, 610491.166, 6920530.620 ) )
         self.mAtlasMap.setAtlasScalingMode( QgsComposerMap.Fixed )
         self.mAtlas.setHideCoverage( False )
 
@@ -255,9 +254,8 @@ class TestQgsAtlasComposition(unittest.TestCase):
             checker = QgsCompositionChecker('atlas_filtering%d' % (i + 1), self.mComposition)
             myTestResult, myMessage = checker.testComposition(0, 200)
 
-            assert myTestResult == True
+            assert myTestResult
         self.mAtlas.endRender()
 
 if __name__ == '__main__':
     unittest.main()
-

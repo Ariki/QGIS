@@ -16,7 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
-from processing.modeler.ModelerUtils import ModelerUtils
+
 
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
@@ -27,30 +27,28 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import sys
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
-import processing
+
+from PyQt4.QtCore import Qt, QCoreApplication
+from PyQt4.QtGui import QApplication, QCursor
+
 from qgis.utils import iface
+
+import processing
+from processing.modeler.ModelerUtils import ModelerUtils
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingLog import ProcessingLog
-from processing.core.SilentProgress import SilentProgress
 from processing.gui.AlgorithmClassification import AlgorithmDecorator
 from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.RenderingStyles import RenderingStyles
 from processing.gui.Postprocessing import handleAlgorithmResults
-from processing.gui.UnthreadedAlgorithmExecutor import \
-        UnthreadedAlgorithmExecutor
-from processing.modeler.ModelerAlgorithmProvider import \
-        ModelerAlgorithmProvider
-from processing.modeler.ModelerOnlyAlgorithmProvider import \
-        ModelerOnlyAlgorithmProvider
+from processing.gui.AlgorithmExecutor import runalg
+from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
+from processing.modeler.ModelerOnlyAlgorithmProvider import ModelerOnlyAlgorithmProvider
 from processing.algs.qgis.QGISAlgorithmProvider import QGISAlgorithmProvider
 from processing.algs.grass.GrassAlgorithmProvider import GrassAlgorithmProvider
 from processing.algs.grass7.Grass7AlgorithmProvider import Grass7AlgorithmProvider
-from processing.algs.lidar.LidarToolsAlgorithmProvider import \
-        LidarToolsAlgorithmProvider
+from processing.algs.lidar.LidarToolsAlgorithmProvider import LidarToolsAlgorithmProvider
 from processing.algs.gdal.GdalOgrAlgorithmProvider import GdalOgrAlgorithmProvider
 from processing.algs.otb.OTBAlgorithmProvider import OTBAlgorithmProvider
 from processing.algs.r.RAlgorithmProvider import RAlgorithmProvider
@@ -92,10 +90,10 @@ class Processing:
             if updateList:
                 Processing.updateAlgsList()
         except:
-            ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                   'Could not load provider:'
-                                   + provider.getDescription() + '\n'
-                                   + unicode(sys.exc_info()[1]))
+            ProcessingLog.addToLog(
+                ProcessingLog.LOG_ERROR,
+                Processing.tr('Could not load provider: %s\n%s')
+                % (provider.getDescription(), unicode(sys.exc_info()[1])))
             Processing.removeProvider(provider)
 
     @staticmethod
@@ -140,7 +138,7 @@ class Processing:
         Processing.addProvider(Grass7AlgorithmProvider())
         Processing.addProvider(ScriptAlgorithmProvider())
         Processing.addProvider(TauDEMAlgorithmProvider())
-        Processing.addProvider(ModelerAlgorithmProvider())
+        Processing.addProvider(Processing.modeler)
         Processing.modeler.initializeSettings()
 
         # And initialize
@@ -150,6 +148,9 @@ class Processing:
         ProcessingConfig.readSettings()
         RenderingStyles.loadStyles()
         Processing.loadFromProviders()
+
+        # Inform registered listeners that all providers' algorithms have been loaded
+        Processing.fireAlgsListHasChanged()
 
     @staticmethod
     def updateAlgsList():
@@ -168,7 +169,8 @@ class Processing:
 
     @staticmethod
     def updateProviders():
-        for provider in Processing.providers:
+        providers = [p for p in Processing.providers if p.getName() != "model"]
+        for provider in providers:
             provider.loadAlgorithms()
 
     @staticmethod
@@ -182,6 +184,13 @@ class Processing:
         Processing.listeners.append(listener)
 
     @staticmethod
+    def removeAlgListListener(listener):
+        try:
+            Processing.listeners.remove(listener)
+        except:
+            pass
+
+    @staticmethod
     def fireAlgsListHasChanged():
         for listener in Processing.listeners:
             listener.algsListHasChanged()
@@ -190,7 +199,8 @@ class Processing:
     def loadAlgorithms():
         Processing.algs = {}
         Processing.updateProviders()
-        for provider in Processing.providers:
+        providers = [p for p in Processing.providers if p.getName() != "model"]
+        for provider in providers:
             providerAlgs = provider.algs
             algs = {}
             for alg in providerAlgs:
@@ -200,8 +210,17 @@ class Processing:
         provs = {}
         for provider in Processing.providers:
             provs[provider.getName()] = provider
+
         ModelerUtils.allAlgs = Processing.algs
         ModelerUtils.providers = provs
+
+        Processing.modeler.loadAlgorithms()
+
+        algs = {}
+        for alg in Processing.modeler.algs:
+            algs[alg.commandLineName()] = alg
+        Processing.algs[Processing.modeler.getName()] = algs
+
 
     @staticmethod
     def loadActions():
@@ -269,22 +288,26 @@ class Processing:
                 output = alg.getOutputFromName(name)
                 if output and output.setValue(value):
                     continue
-                print 'Error: Wrong parameter value %s for parameter %s.' \
-                    % (value, name)
-                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR, "Error in %s. Wrong parameter value %s for parameter %s." \
-                    % (alg.name, value, name))
+                print 'Error: Wrong parameter value %s for parameter %s.' % (value, name)
+                ProcessingLog.addToLog(
+                    ProcessingLog.LOG_ERROR,
+                    Processing.tr('Error in %s. Wrong parameter value %s for parameter %s.') % (
+                        alg.name, value, name )
+                )
                 return
             # fill any missing parameters with default values if allowed
             for param in alg.parameters:
                 if param.name not in setParams:
                     if not param.setValue(None):
-                        print ("Error: Missing parameter value for parameter %s." % (param.name))
-                        ProcessingLog.addToLog(ProcessingLog.LOG_ERROR, "Error in %s. Missing parameter value for parameter %s." \
-                            % (alg.name, param.name))
+                        print ('Error: Missing parameter value for parameter %s.' % (param.name))
+                        ProcessingLog.addToLog(
+                            ProcessingLog.LOG_ERROR,
+                            Processing.tr('Error in %s. Missing parameter value for parameter %s.') % (
+                                alg.name, param.name )
+                        )
                         return
         else:
-            if len(args) != alg.getVisibleParametersCount() \
-                    + alg.getVisibleOutputsCount():
+            if len(args) != alg.getVisibleParametersCount() + alg.getVisibleOutputsCount():
                 print 'Error: Wrong number of parameters'
                 processing.alghelp(algOrName)
                 return
@@ -313,22 +336,29 @@ class Processing:
             print 'Warning: Not all input layers use the same CRS.\n' \
                 + 'This can cause unexpected results.'
 
-        ProcessingLog.addToLog(ProcessingLog.LOG_ALGORITHM, alg.getAsCommand())
+        if iface is not None:
+          # Don't set the wait cursor twice, because then when you
+          # restore it, it will still be a wait cursor.
+          cursor = QApplication.overrideCursor()
+          if cursor is None or cursor == 0:
+              QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+          elif cursor.shape() != Qt.WaitCursor:
+              QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 
-        # Don't set the wait cursor twice, because then when you
-        # restore it, it will still be a wait cursor.
-        cursor = QApplication.overrideCursor()
-        if cursor is None or cursor == 0:
-            QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
-        elif cursor.shape() != Qt.WaitCursor:
-            QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
-
-        progress = SilentProgress()
+        progress = None
         if iface is not None :
             progress = MessageBarProgress()
-        ret = UnthreadedAlgorithmExecutor.runalg(alg, progress)
+        ret = runalg(alg, progress)
         if onFinish is not None and ret:
             onFinish(alg, progress)
-        QApplication.restoreOverrideCursor()
-        progress.close()
+
+        if iface is not None:
+          QApplication.restoreOverrideCursor()
+          progress.close()
         return alg
+
+    @staticmethod
+    def tr(string, context=''):
+        if context == '':
+            context = 'Processing'
+        return QCoreApplication.translate(context, string)

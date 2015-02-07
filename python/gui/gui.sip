@@ -2,9 +2,15 @@
         version=0,
         keyword_arguments="Optional")
 
+%Feature HAVE_QSCI_SIP
+
 %Import QtCore/QtCoremod.sip
 %Import QtGui/QtGuimod.sip
 %Import QtXml/QtXmlmod.sip
+
+%If (HAVE_QSCI_SIP)
+%Import Qsci/qscimod4.sip
+%End
 
 %Import core/core.sip
 
@@ -19,8 +25,19 @@
 %Include qgsattributeforminterface.sip
 %Include qgsbusyindicatordialog.sip
 %Include qgscollapsiblegroupbox.sip
+%If (HAVE_QSCI_SIP)
+%Include qgscodeeditor.sip
+%Include qgscodeeditorpython.sip
+%Include qgscodeeditorsql.sip
+%Include qgscodeeditorhtml.sip
+%Include qgscodeeditorcss.sip
+%End
 %Include qgscolorbutton.sip
+%Include qgscolorbuttonv2.sip
 %Include qgscolordialog.sip
+%Include qgscolorswatchgrid.sip
+%Include qgscolorschemelist.sip
+%Include qgscolorwidgets.sip
 %Include qgscomposerview.sip
 %Include qgscredentialdialog.sip
 %Include qgsdetaileditemdata.sip
@@ -40,6 +57,7 @@
 %Include qgsformannotationitem.sip
 %Include qgsgenericprojectionselector.sip
 %Include qgshtmlannotationitem.sip
+%Include qgsidentifymenu.sip
 %Include qgslegendinterface.sip
 %Include qgspluginmanagerinterface.sip
 %Include qgslonglongvalidator.sip
@@ -58,6 +76,7 @@
 %Include qgsmaptool.sip
 %Include qgsmaptoolemitpoint.sip
 %Include qgsmaptoolidentify.sip
+%Include qgsmaptoolidentifyfeature.sip
 %Include qgsmaptoolpan.sip
 %Include qgsmaptooltouch.sip
 %Include qgsmaptoolzoom.sip
@@ -66,10 +85,12 @@
 %Include qgsmessagelogviewer.sip
 %Include qgsmessageviewer.sip
 %Include qgsnewhttpconnection.sip
+%Include qgsnewmemorylayerdialog.sip
 %Include qgsnewvectorlayerdialog.sip
 %Include qgsnumericsortlistviewitem.sip
 %Include qgsowssourceselect.sip
 %Include qgsprojectbadlayerguihandler.sip
+%Include qgsprojectionselectionwidget.sip
 %Include qgsprojectionselector.sip
 %Include qgsquerybuilder.sip
 %Include qgsrasterformatsaveoptionswidget.sip
@@ -78,6 +99,7 @@
 %Include qgsrubberband.sip
 %Include qgsscalecombobox.sip
 %Include qgsscalerangewidget.sip
+%Include qgsscalewidget.sip
 %Include qgsscalevisibilitydialog.sip
 %Include qgssearchquerybuilder.sip
 %Include qgstextannotationitem.sip
@@ -110,7 +132,6 @@
 
 %Include layertree/qgscustomlayerorderwidget.sip
 %Include layertree/qgslayertreemapcanvasbridge.sip
-%Include layertree/qgslayertreemodel.sip
 %Include layertree/qgslayertreeview.sip
 %Include layertree/qgslayertreeviewdefaultactions.sip
 
@@ -129,6 +150,7 @@
 %Include symbology-ng/qgsellipsesymbollayerv2widget.sip
 %Include symbology-ng/qgsgraduatedsymbolrendererv2widget.sip
 %Include symbology-ng/qgsinvertedpolygonrendererwidget.sip
+%Include symbology-ng/qgsheatmaprendererwidget.sip
 %Include symbology-ng/qgslayerpropertieswidget.sip
 %Include symbology-ng/qgspenstylecombobox.sip
 %Include symbology-ng/qgspointdisplacementrendererwidget.sip
@@ -156,5 +178,10 @@
 %Include editorwidgets/core/qgseditorwidgetfactory.sip
 %Include editorwidgets/core/qgseditorwidgetregistry.sip
 %Include editorwidgets/core/qgseditorwidgetwrapper.sip
+%Include editorwidgets/qgsdoublespinbox.sip
+%Include editorwidgets/qgsrelationreferencewidget.sip
+%Include editorwidgets/qgsrelationreferencewidgetwrapper.sip
+%Include editorwidgets/qgsspinbox.sip
+%Include editorwidgets/qgsdatetimeedit.sip
 
 %Include layertree/qgslayertreeview.sip

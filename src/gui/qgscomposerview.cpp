@@ -39,12 +39,13 @@
 #include "qgscomposerruler.h"
 #include "qgscomposerscalebar.h"
 #include "qgscomposershape.h"
-#include "qgscomposerattributetable.h"
+#include "qgscomposerattributetablev2.h"
 #include "qgslogger.h"
 #include "qgsaddremovemultiframecommand.h"
 #include "qgspaperitem.h"
 #include "qgsmapcanvas.h" //for QgsMapCanvas::WheelAction
 #include "qgscursors.h"
+#include "qgscomposerutils.h"
 
 QgsComposerView::QgsComposerView( QWidget* parent, const char* name, Qt::WindowFlags f )
     : QGraphicsView( parent )
@@ -112,6 +113,7 @@ void QgsComposerView::setCurrentTool( QgsComposerView::Tool t )
     case QgsComposerView::AddEllipse:
     case QgsComposerView::AddTriangle:
     case QgsComposerView::AddTable:
+    case QgsComposerView::AddAttributeTable:
     {
       //using a drawing tool
       //lock cursor to prevent composer items changing it
@@ -151,16 +153,10 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
   QPointF snappedScenePoint = composition()->snapPointToGrid( scenePoint );
   mMousePressStartPos = e->pos();
 
-  //lock/unlock position of item with right click
   if ( e->button() == Qt::RightButton )
   {
-    QgsComposerItem* selectedItem = composition()->composerItemAt( scenePoint );
-    if ( selectedItem )
-    {
-      bool lock = selectedItem->positionLock() ? false : true;
-      selectedItem->setPositionLock( lock );
-      selectedItem->update();
-    }
+    //ignore right clicks for now
+    //TODO - show context menu
     return;
   }
   else if ( e->button() == Qt::MidButton )
@@ -213,19 +209,19 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
       if ( previousSelectedItem )
       {
         //select highest item just below previously selected item at position of event
-        selectedItem = composition()->composerItemAt( scenePoint, previousSelectedItem );
+        selectedItem = composition()->composerItemAt( scenePoint, previousSelectedItem, true );
 
         //if we didn't find a lower item we'll use the top-most as fall-back
         //this duplicates mapinfo/illustrator/etc behaviour where ctrl-clicks are "cyclic"
         if ( !selectedItem )
         {
-          selectedItem = composition()->composerItemAt( scenePoint );
+          selectedItem = composition()->composerItemAt( scenePoint, true );
         }
       }
       else
       {
         //select topmost item at position of event
-        selectedItem = composition()->composerItemAt( scenePoint );
+        selectedItem = composition()->composerItemAt( scenePoint, true );
       }
 
       if ( !selectedItem )
@@ -238,7 +234,7 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
       if (( !selectedItem->selected() ) &&        //keep selection if an already selected item pressed
           !( e->modifiers() & Qt::ShiftModifier ) ) //keep selection if shift key pressed
       {
-        composition()->clearSelection();
+        composition()->setAllUnselected();
       }
 
       if (( e->modifiers() & Qt::ShiftModifier ) && ( selectedItem->selected() ) )
@@ -308,13 +304,13 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
         return;
       }
 
-      //find highest QgsComposerItem at clicked position
+      //find highest non-locked QgsComposerItem at clicked position
       //(other graphics items may be higher, eg selection handles)
       QList<QGraphicsItem*>::iterator itemIter = itemsAtCursorPos.begin();
       for ( ; itemIter != itemsAtCursorPos.end(); ++itemIter )
       {
         QgsComposerItem* item = dynamic_cast<QgsComposerItem *>(( *itemIter ) );
-        if ( item )
+        if ( item && !item->positionLock() )
         {
           //we've found the highest QgsComposerItem
           mMoveContentStartPos = scenePoint;
@@ -333,6 +329,7 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
     {
       mRubberBandStartPos = QPointF( snappedScenePoint.x(), snappedScenePoint.y() );
       mRubberBandLineItem = new QGraphicsLineItem( snappedScenePoint.x(), snappedScenePoint.y(), snappedScenePoint.x(), snappedScenePoint.y() );
+      mRubberBandLineItem->setPen( QPen( QBrush( QColor( 227, 22, 22, 200 ) ), 0 ) );
       mRubberBandLineItem->setZValue( 1000 );
       scene()->addItem( mRubberBandLineItem );
       scene()->update();
@@ -349,9 +346,12 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
     case AddLabel:
     case AddLegend:
     case AddTable:
+    case AddAttributeTable:
     {
       QTransform t;
       mRubberBandItem = new QGraphicsRectItem( 0, 0, 0, 0 );
+      mRubberBandItem->setBrush( Qt::NoBrush );
+      mRubberBandItem->setPen( QPen( QBrush( QColor( 227, 22, 22, 200 ) ), 0 ) );
       mRubberBandStartPos = QPointF( snappedScenePoint.x(), snappedScenePoint.y() );
       t.translate( snappedScenePoint.x(), snappedScenePoint.y() );
       mRubberBandItem->setTransform( t );
@@ -374,7 +374,7 @@ void QgsComposerView::mousePressEvent( QMouseEvent* e )
         }
         newScaleBar->applyDefaultSize(); //4 segments, 1/5 of composer map width
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         newScaleBar->setSelected( true );
         emit selectedItemChanged( newScaleBar );
 
@@ -418,6 +418,7 @@ QCursor QgsComposerView::defaultCursorForTool( Tool currentTool )
     case AddLegend:
     case AddPicture:
     case AddTable:
+    case AddAttributeTable:
     {
       QPixmap myCrosshairQPixmap = QPixmap(( const char ** )( cross_hair_cursor ) );
       return QCursor( myCrosshairQPixmap, 8, 8 );
@@ -449,7 +450,7 @@ void QgsComposerView::addShape( Tool currentTool )
     composition()->addComposerShape( composerShape );
     removeRubberBand();
 
-    composition()->clearSelection();
+    composition()->setAllUnselected();
     composerShape->setSelected( true );
     emit selectedItemChanged( composerShape );
 
@@ -486,8 +487,8 @@ void QgsComposerView::startMarqueeSelect( QPointF & scenePoint )
 
   QTransform t;
   mRubberBandItem = new QGraphicsRectItem( 0, 0, 0, 0 );
-  mRubberBandItem->setBrush( QBrush( QColor( 225, 50, 70, 25 ) ) );
-  mRubberBandItem->setPen( QPen( Qt::DotLine ) );
+  mRubberBandItem->setBrush( QBrush( QColor( 224, 178, 76, 63 ) ) );
+  mRubberBandItem->setPen( QPen( QBrush( QColor( 254, 58, 29, 100 ) ), 0, Qt::DotLine ) );
   mRubberBandStartPos = QPointF( scenePoint.x(), scenePoint.y() );
   t.translate( scenePoint.x(), scenePoint.y() );
   mRubberBandItem->setTransform( t );
@@ -513,7 +514,7 @@ void QgsComposerView::endMarqueeSelect( QMouseEvent* e )
   else
   {
     //not adding to or removing from selection, so clear current selection
-    composition()->clearSelection();
+    composition()->setAllUnselected();
   }
 
   if ( !mRubberBandItem || ( mRubberBandItem->rect().width() < 0.1 && mRubberBandItem->rect().height() < 0.1 ) )
@@ -742,12 +743,10 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
       }
       else
       {
-        QPointF scenePoint = mapToScene( e->pos() );
-        QPointF snappedScenePoint = composition()->snapPointToGrid( scenePoint );
-        QgsComposerArrow* composerArrow = new QgsComposerArrow( mRubberBandStartPos, QPointF( snappedScenePoint.x(), snappedScenePoint.y() ), composition() );
+        QgsComposerArrow* composerArrow = new QgsComposerArrow( mRubberBandLineItem->line().p1(), mRubberBandLineItem->line().p2(), composition() );
         composition()->addComposerArrow( composerArrow );
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         composerArrow->setSelected( true );
         emit selectedItemChanged( composerArrow );
 
@@ -776,7 +775,7 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
         QgsComposerMap* composerMap = new QgsComposerMap( composition(), mRubberBandItem->transform().dx(), mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(), mRubberBandItem->rect().height() );
         composition()->addComposerMap( composerMap );
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         composerMap->setSelected( true );
         emit selectedItemChanged( composerMap );
 
@@ -798,7 +797,7 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
         newPicture->setSceneRect( QRectF( mRubberBandItem->transform().dx(), mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(), mRubberBandItem->rect().height() ) );
         composition()->addComposerPicture( newPicture );
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         newPicture->setSelected( true );
         emit selectedItemChanged( newPicture );
 
@@ -827,7 +826,7 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
 
         composition()->addComposerLabel( newLabelItem );
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         newLabelItem->setSelected( true );
         emit selectedItemChanged( newLabelItem );
 
@@ -846,11 +845,16 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
       else
       {
         QgsComposerLegend* newLegend = new QgsComposerLegend( composition() );
+        QList<const QgsComposerMap*> mapItemList = composition()->composerMapItems();
+        if ( mapItemList.size() > 0 )
+        {
+          newLegend->setComposerMap( mapItemList.at( 0 ) );
+        }
         newLegend->setSceneRect( QRectF( mRubberBandItem->transform().dx(), mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(), mRubberBandItem->rect().height() ) );
         composition()->addComposerLegend( newLegend );
         newLegend->updateLegend();
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         newLegend->setSelected( true );
         emit selectedItemChanged( newLegend );
 
@@ -869,21 +873,55 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
       else
       {
         QgsComposerAttributeTable* newTable = new QgsComposerAttributeTable( composition() );
-        newTable->setSceneRect( QRectF( mRubberBandItem->transform().dx(), mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(), qMax( mRubberBandItem->rect().height(), 15.0 ) ) );
         QList<const QgsComposerMap*> mapItemList = composition()->composerMapItems();
         if ( mapItemList.size() > 0 )
         {
           newTable->setComposerMap( mapItemList.at( 0 ) );
         }
+        newTable->setSceneRect( QRectF( mRubberBandItem->transform().dx(), mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(), mRubberBandItem->rect().height() ) );
+
         composition()->addComposerTable( newTable );
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         newTable->setSelected( true );
         emit selectedItemChanged( newTable );
 
         removeRubberBand();
         emit actionFinished();
         composition()->pushAddRemoveCommand( newTable, tr( "Table added" ) );
+      }
+      break;
+
+    case AddAttributeTable:
+      if ( !composition() || !mRubberBandItem )
+      {
+        removeRubberBand();
+        return;
+      }
+      else
+      {
+        QgsComposerAttributeTableV2* newTable = new QgsComposerAttributeTableV2( composition(), true );
+        QList<const QgsComposerMap*> mapItemList = composition()->composerMapItems();
+        if ( mapItemList.size() > 0 )
+        {
+          newTable->setComposerMap( mapItemList.at( 0 ) );
+        }
+        QgsAddRemoveMultiFrameCommand* command = new QgsAddRemoveMultiFrameCommand( QgsAddRemoveMultiFrameCommand::Added,
+            newTable, composition(), tr( "Attribute table added" ) );
+        composition()->undoStack()->push( command );
+        QgsComposerFrame* frame = new QgsComposerFrame( composition(), newTable, mRubberBandItem->transform().dx(),
+            mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(),
+            mRubberBandItem->rect().height() );
+        composition()->beginMultiFrameCommand( newTable, tr( "Attribute table frame added" ) );
+        newTable->addFrame( frame );
+        composition()->endMultiFrameCommand();
+
+        composition()->setAllUnselected();
+        frame->setSelected( true );
+        emit selectedItemChanged( frame );
+
+        removeRubberBand();
+        emit actionFinished();
       }
       break;
 
@@ -906,7 +944,7 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
         composerHtml->addFrame( frame );
         composition()->endMultiFrameCommand();
 
-        composition()->clearSelection();
+        composition()->setAllUnselected();
         frame->setSelected( true );
         emit selectedItemChanged( frame );
 
@@ -923,6 +961,19 @@ void QgsComposerView::mouseMoveEvent( QMouseEvent* e )
   if ( !composition() )
   {
     return;
+  }
+
+  bool shiftModifier = false;
+  bool altModifier = false;
+  if ( e->modifiers() & Qt::ShiftModifier )
+  {
+    //shift key depressed
+    shiftModifier = true;
+  }
+  if ( e->modifiers() & Qt::AltModifier )
+  {
+    //alt key depressed
+    altModifier = true;
   }
 
   mMouseCurrentXY = e->pos();
@@ -960,7 +1011,7 @@ void QgsComposerView::mouseMoveEvent( QMouseEvent* e )
 
     if ( mMarqueeSelect || mMarqueeZoom )
     {
-      updateRubberBand( scenePoint );
+      updateRubberBandRect( scenePoint );
       return;
     }
 
@@ -972,10 +1023,7 @@ void QgsComposerView::mouseMoveEvent( QMouseEvent* e )
 
       case AddArrow:
       {
-        if ( mRubberBandLineItem )
-        {
-          mRubberBandLineItem->setLine( mRubberBandStartPos.x(), mRubberBandStartPos.y(),  scenePoint.x(),  scenePoint.y() );
-        }
+        updateRubberBandLine( scenePoint, shiftModifier );
         break;
       }
 
@@ -988,9 +1036,10 @@ void QgsComposerView::mouseMoveEvent( QMouseEvent* e )
       case AddLabel:
       case AddLegend:
       case AddTable:
+      case AddAttributeTable:
         //adjust rubber band item
       {
-        updateRubberBand( scenePoint );
+        updateRubberBandRect( scenePoint, shiftModifier, altModifier );
         break;
       }
 
@@ -1011,8 +1060,13 @@ void QgsComposerView::mouseMoveEvent( QMouseEvent* e )
   }
 }
 
-void QgsComposerView::updateRubberBand( QPointF & pos )
+void QgsComposerView::updateRubberBandRect( QPointF & pos, const bool constrainSquare, const bool fromCenter )
 {
+  if ( !mRubberBandItem )
+  {
+    return;
+  }
+
   double x = 0;
   double y = 0;
   double width = 0;
@@ -1021,35 +1075,82 @@ void QgsComposerView::updateRubberBand( QPointF & pos )
   double dx = pos.x() - mRubberBandStartPos.x();
   double dy = pos.y() - mRubberBandStartPos.y();
 
-  if ( dx < 0 )
+  if ( constrainSquare )
   {
-    x = pos.x();
-    width = -dx;
+    if ( fabs( dx ) > fabs( dy ) )
+    {
+      width = fabs( dx );
+      height = width;
+    }
+    else
+    {
+      height = fabs( dy );
+      width = height;
+    }
+
+    x = mRubberBandStartPos.x() - (( dx < 0 ) ? width : 0 );
+    y = mRubberBandStartPos.y() - (( dy < 0 ) ? height : 0 );
   }
   else
   {
-    x = mRubberBandStartPos.x();
-    width = dx;
+    //not constraining
+    if ( dx < 0 )
+    {
+      x = pos.x();
+      width = -dx;
+    }
+    else
+    {
+      x = mRubberBandStartPos.x();
+      width = dx;
+    }
+
+    if ( dy < 0 )
+    {
+      y = pos.y();
+      height = -dy;
+    }
+    else
+    {
+      y = mRubberBandStartPos.y();
+      height = dy;
+    }
   }
 
-  if ( dy < 0 )
+  if ( fromCenter )
   {
-    y = pos.y();
-    height = -dy;
-  }
-  else
-  {
-    y = mRubberBandStartPos.y();
-    height = dy;
+    x = mRubberBandStartPos.x() - width;
+    y = mRubberBandStartPos.y() - height;
+    width *= 2.0;
+    height *= 2.0;
   }
 
-  if ( mRubberBandItem )
+  mRubberBandItem->setRect( 0, 0, width, height );
+  QTransform t;
+  t.translate( x, y );
+  mRubberBandItem->setTransform( t );
+}
+
+void QgsComposerView::updateRubberBandLine( const QPointF &pos, const bool constrainAngles )
+{
+  if ( !mRubberBandLineItem )
   {
-    mRubberBandItem->setRect( 0, 0, width, height );
-    QTransform t;
-    t.translate( x, y );
-    mRubberBandItem->setTransform( t );
+    return;
   }
+
+  //snap to grid
+  QPointF snappedScenePoint = composition()->snapPointToGrid( pos );
+
+  QLineF newLine = QLineF( mRubberBandStartPos, snappedScenePoint );
+
+  if ( constrainAngles )
+  {
+    //movement is contrained to 45 degree angles
+    double angle = QgsComposerUtils::snappedAngle( newLine.angle() );
+    newLine.setAngle( angle );
+  }
+
+  mRubberBandLineItem->setLine( newLine );
 }
 
 void QgsComposerView::mouseDoubleClickEvent( QMouseEvent* e )
@@ -1205,7 +1306,7 @@ void QgsComposerView::selectNone()
     return;
   }
 
-  composition()->clearSelection();
+  composition()->setAllUnselected();
 }
 
 void QgsComposerView::selectInvert()
@@ -1341,6 +1442,15 @@ void QgsComposerView::keyPressEvent( QKeyEvent * e )
     //holding shift while pressing cursor keys results in a big step
     increment = 10.0;
   }
+  else if ( e->modifiers() & Qt::AltModifier )
+  {
+    //holding alt while pressing cursor keys results in a 1 pixel step
+    double viewScale = transform().m11();
+    if ( viewScale > 0 )
+    {
+      increment = 1 / viewScale;
+    }
+  }
 
   if ( e->key() == Qt::Key_Left )
   {
@@ -1448,14 +1558,31 @@ void QgsComposerView::wheelEvent( QWheelEvent* event )
 
     QPointF scenePoint = mapToScene( event->pos() );
     //select topmost item at position of event
-    QgsComposerItem* theItem = composition()->composerItemAt( scenePoint );
+    QgsComposerItem* theItem = composition()->composerItemAt( scenePoint, true );
     if ( theItem )
     {
       if ( theItem->isSelected() )
       {
+        QSettings settings;
+        //read zoom mode
+        QgsComposerItem::ZoomMode zoomMode = ( QgsComposerItem::ZoomMode )settings.value( "/qgis/wheel_action", 2 ).toInt();
+        if ( zoomMode == QgsComposerItem::NoZoom )
+        {
+          //do nothing
+          return;
+        }
+
+        double zoomFactor = settings.value( "/qgis/zoom_factor", 2.0 ).toDouble();
+        if ( event->modifiers() & Qt::ControlModifier )
+        {
+          //holding ctrl while wheel zooming results in a finer zoom
+          zoomFactor = 1.0 + ( zoomFactor - 1.0 ) / 20.0;
+        }
+        zoomFactor = event->delta() > 0 ? zoomFactor : 1 / zoomFactor;
+
         QPointF itemPoint = theItem->mapFromScene( scenePoint );
-        theItem->beginCommand( tr( "Zoom item content" ) );
-        theItem->zoomContent( event->delta(), itemPoint.x(), itemPoint.y() );
+        theItem->beginCommand( tr( "Zoom item content" ), QgsComposerMergeCommand::ItemZoomContent );
+        theItem->zoomContent( zoomFactor, itemPoint, zoomMode );
         theItem->endCommand();
       }
     }
@@ -1554,7 +1681,7 @@ void QgsComposerView::setZoomLevel( double zoomLevel )
 
   //desired pixel width for 1mm on screen
   double scale = zoomLevel * dpi / 25.4;
-  setTransform( QTransform::fromScale( scale , scale ) );
+  setTransform( QTransform::fromScale( scale, scale ) );
 
   updateRulers();
   update();
@@ -1655,20 +1782,16 @@ void QgsComposerView::groupItems()
     return;
   }
 
+  //group selected items
   QList<QgsComposerItem*> selectionList = composition()->selectedComposerItems();
-  if ( selectionList.size() < 2 )
-  {
-    return; //not enough items for a group
-  }
-  QgsComposerItemGroup* itemGroup = new QgsComposerItemGroup( composition() );
+  QgsComposerItemGroup* itemGroup = composition()->groupItems( selectionList );
 
-  QList<QgsComposerItem*>::iterator itemIter = selectionList.begin();
-  for ( ; itemIter != selectionList.end(); ++itemIter )
+  if ( !itemGroup )
   {
-    itemGroup->addItem( *itemIter );
+    //group could not be created
+    return;
   }
 
-  composition()->addItem( itemGroup );
   itemGroup->setSelected( true );
   emit selectedItemChanged( itemGroup );
 }
@@ -1680,6 +1803,7 @@ void QgsComposerView::ungroupItems()
     return;
   }
 
+  //hunt through selection for any groups, and ungroup them
   QList<QgsComposerItem*> selectionList = composition()->selectedComposerItems();
   QList<QgsComposerItem*>::iterator itemIter = selectionList.begin();
   for ( ; itemIter != selectionList.end(); ++itemIter )
@@ -1687,10 +1811,7 @@ void QgsComposerView::ungroupItems()
     QgsComposerItemGroup* itemGroup = dynamic_cast<QgsComposerItemGroup *>( *itemIter );
     if ( itemGroup )
     {
-      itemGroup->removeItems();
-      composition()->removeItem( *itemIter );
-      delete( *itemIter );
-      emit itemRemoved( *itemIter );
+      composition()->ungroupItems( itemGroup );
     }
   }
 }

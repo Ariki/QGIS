@@ -27,7 +27,7 @@ class QgsEditorWidgetRegistry : QObject
      * This class is a singleton and has therefore to be accessed with this method instead
      * of a constructor.
      *
-     * @return
+     * @return The one and only instance of the editor widget registry
      */
     static QgsEditorWidgetRegistry* instance();
 
@@ -41,10 +41,17 @@ class QgsEditorWidgetRegistry : QObject
      * @param config    A configuration which should be used for the widget creation
      * @param editor    An editor widget which will be used instead of an autocreated widget
      * @param parent    The parent which will be used for the created wrapper and the created widget
+     * @param context   The editor context (not available in python bindings)
      *
      * @return A new widget wrapper
      */
-    QgsEditorWidgetWrapper* create( const QString& widgetId, QgsVectorLayer* vl, int fieldIdx, const QgsEditorWidgetConfig& config, QWidget* editor = NULL, QWidget* parent = NULL ) /Factory/;
+    QgsEditorWidgetWrapper* create( const QString& widgetId,
+                                    QgsVectorLayer* vl,
+                                    int fieldIdx,
+                                    const QgsEditorWidgetConfig& config,
+                                    QWidget* editor,
+                                    QWidget* parent /TransferThis/,
+                                    const QgsAttributeEditorContext context = QgsAttributeEditorContext() ) /Factory/;
 
     /**
      * Creates a configuration widget

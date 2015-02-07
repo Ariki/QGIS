@@ -12,10 +12,13 @@
 
 %Include qgis.sip
 
+%Include qgstransaction.sip
 %Include qgsapplication.sip
 %Include qgsattributeaction.sip
 %Include qgsbrowsermodel.sip
 %Include qgsclipper.sip
+%Include qgscolorscheme.sip
+%Include qgscolorschemeregistry.sip
 %Include qgscontexthelp.sip
 %Include qgscoordinatereferencesystem.sip
 %Include qgscoordinatetransform.sip
@@ -45,10 +48,14 @@
 %Include qgslabel.sip
 %Include qgslabelattributes.sip
 %Include qgslabelsearchtree.sip
+%Include qgslegendrenderer.sip
+%Include qgslegendsettings.sip
 %Include qgslogger.sip
 %Include qgsmaplayer.sip
+%Include qgsmaplayerlegend.sip
 %Include qgsmaplayerregistry.sip
 %Include qgsmaplayerrenderer.sip
+%Include qgsmaplayerstylemanager.sip
 %Include qgsmaprenderer.sip
 %Include qgsmaprenderercache.sip
 %Include qgsmaprenderercustompainterjob.sip
@@ -61,7 +68,9 @@
 %Include qgsmessagelog.sip
 %Include qgsmessageoutput.sip
 %Include qgsmimedatautils.sip
+%Include qgsmultirenderchecker.sip
 %Include qgsnetworkaccessmanager.sip
+%Include qgsnetworkcontentfetcher.sip
 %Include qgsofflineediting.sip
 %Include qgsogcutils.sip
 %Include qgsowsconnection.sip
@@ -70,6 +79,7 @@
 %Include qgspluginlayer.sip
 %Include qgspluginlayerregistry.sip
 %Include qgspoint.sip
+%Include qgspointlocator.sip
 %Include qgsproject.sip
 %Include qgsprojectproperty.sip
 %Include qgsprojectversion.sip
@@ -88,6 +98,7 @@
 %Include qgsscaleutils.sip
 %Include qgssimplifymethod.sip
 %Include qgssnapper.sip
+%Include qgssnappingutils.sip
 %Include qgsspatialindex.sip
 %Include qgstolerance.sip
 %Include qgsvectordataprovider.sip
@@ -115,6 +126,8 @@
 %Include composer/qgscomposerarrow.sip
 %Include composer/qgscomposerattributetable.sip
 %Include composer/qgscomposerattributetablemodel.sip
+%Include composer/qgscomposerattributetablemodelv2.sip
+%Include composer/qgscomposerattributetablev2.sip
 %Include composer/qgscomposerframe.sip
 %Include composer/qgscomposerhtml.sip
 %Include composer/qgscomposerobject.sip
@@ -125,6 +138,9 @@
 %Include composer/qgscomposerlegend.sip
 %Include composer/qgscomposerlegenditem.sip
 %Include composer/qgscomposermap.sip
+%Include composer/qgscomposermapgrid.sip
+%Include composer/qgscomposermapitem.sip
+%Include composer/qgscomposermapoverview.sip
 %Include composer/qgscomposermultiframe.sip
 %Include composer/qgscomposermultiframecommand.sip
 %Include composer/qgscomposerpicture.sip
@@ -132,8 +148,10 @@
 %Include composer/qgscomposershape.sip
 %Include composer/qgscomposertable.sip
 %Include composer/qgscomposertablecolumn.sip
+%Include composer/qgscomposertablev2.sip
 %Include composer/qgscomposerutils.sip
 %Include composer/qgscomposition.sip
+%Include composer/qgscomposermodel.sip
 %Include composer/qgsatlascomposition.sip
 %Include composer/qgsdoubleboxscalebarstyle.sip
 %Include composer/qgslegendmodel.sip
@@ -152,6 +170,8 @@
 %Include diagram/qgspiediagram.sip
 %Include diagram/qgstextdiagram.sip
 
+%Include effects/qgsimageoperation.sip
+
 %Include gps/qgsgpsconnection.sip
 %Include gps/qgsgpsconnectionregistry.sip
 %Include gps/qgsgpsdconnection.sip
@@ -162,6 +182,8 @@
 %Include layertree/qgslayertree.sip
 %Include layertree/qgslayertreegroup.sip
 %Include layertree/qgslayertreelayer.sip
+%Include layertree/qgslayertreemodel.sip
+%Include layertree/qgslayertreemodellegendnode.sip
 %Include layertree/qgslayertreenode.sip
 %Include layertree/qgslayertreeregistrybridge.sip
 %Include layertree/qgslayertreeutils.sip
@@ -216,10 +238,12 @@
 
 %Include symbology-ng/qgscategorizedsymbolrendererv2.sip
 %Include symbology-ng/qgsgraduatedsymbolrendererv2.sip
+%Include symbology-ng/qgslegendsymbolitemv2.sip
 %Include symbology-ng/qgssinglesymbolrendererv2.sip
 %Include symbology-ng/qgspointdisplacementrenderer.sip
 %Include symbology-ng/qgsrulebasedrendererv2.sip
 %Include symbology-ng/qgsinvertedpolygonrenderer.sip
+%Include symbology-ng/qgsheatmaprenderer.sip
 %Include symbology-ng/qgsrendererv2.sip
 %Include symbology-ng/qgsrendererv2registry.sip
 

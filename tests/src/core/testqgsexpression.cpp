@@ -12,10 +12,13 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <QtTest>
+#include <QtTest/QtTest>
 #include <QObject>
 #include <QString>
 #include <QObject>
+#include <QtConcurrentMap>
+#include <QSharedPointer>
+
 #include <qgsapplication.h>
 //header for class being tested
 #include <qgsexpression.h>
@@ -29,9 +32,19 @@
 Q_DECLARE_METATYPE( QVariant )
 #endif
 
+static void _parseAndEvalExpr( int arg )
+{
+  Q_UNUSED( arg );
+  for ( int i = 0; i < 100; ++i )
+  {
+    QgsExpression exp( "1 + 2 * 2" );
+    exp.evaluate();
+  }
+}
+
 class TestQgsExpression: public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
   private slots:
 
     void initTestCase()
@@ -42,7 +55,14 @@ class TestQgsExpression: public QObject
       // init QGIS's paths - true means that all path will be inited from prefix
       QgsApplication::init();
       QgsApplication::initQgis();
+      // Will make sure the settings dir with the style file for color ramp is created
+      QgsApplication::createDB();
       QgsApplication::showSettings();
+    }
+
+    void cleanupTestCase()
+    {
+      QgsApplication::exitQgis();
     }
 
     void parsing_data()
@@ -70,7 +90,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "string literal" ) << "'test'" << true;
       QTest::newRow( "column reference" ) << "my_col" << true;
       QTest::newRow( "quoted column" ) << "\"my col\"" << true;
-      QTest::newRow( "unary minus" ) << "--3" << true;
+      QTest::newRow( "unary minus" ) << "-(-3)" << true;
       QTest::newRow( "function" ) << "cos(0)" << true;
       QTest::newRow( "function2" ) << "atan2(0,1)" << true;
       QTest::newRow( "operator IN" ) << "x in (a,b)" << true;
@@ -136,6 +156,9 @@ class TestQgsExpression: public QObject
       QTest::newRow( "literal int" ) << "123" << false << QVariant( 123 );
       QTest::newRow( "literal double" ) << "1.2" << false << QVariant( 1.2 );
       QTest::newRow( "literal text" ) << "'hello'" << false << QVariant( "hello" );
+      QTest::newRow( "literal double" ) << ".000001" << false << QVariant( 0.000001 );
+      QTest::newRow( "literal double" ) << "1.0e-6" << false << QVariant( 0.000001 );
+      QTest::newRow( "literal double" ) << "1e-6" << false << QVariant( 0.000001 );
 
       // unary minus
       QTest::newRow( "unary minus double" ) << "-1.3" << false << QVariant( -1.3 );
@@ -150,7 +173,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "plus invalid" ) << "1+'foo'" << true << QVariant();
       QTest::newRow( "minus int" ) << "1-3" << false << QVariant( -2 );
       QTest::newRow( "mul int" ) << "8*7" << false << QVariant( 56 );
-      QTest::newRow( "div int" ) << "20/6" << false << QVariant( 3 );
+      QTest::newRow( "div int" ) << "5/2" << false << QVariant( 2.5 );
       QTest::newRow( "mod int" ) << "20%6" << false << QVariant( 2 );
       QTest::newRow( "minus double" ) << "5.2-3.1" << false << QVariant( 2.1 );
       QTest::newRow( "mul double" ) << "2.1*5" << false << QVariant( 10.5 );
@@ -159,6 +182,12 @@ class TestQgsExpression: public QObject
       QTest::newRow( "pow" ) << "2^8" << false << QVariant( 256. );
       QTest::newRow( "division by zero" ) << "1/0" << false << QVariant();
       QTest::newRow( "division by zero" ) << "1.0/0.0" << false << QVariant();
+      QTest::newRow( "int division" ) << "5//2" << false << QVariant( 2 );
+      QTest::newRow( "int division with doubles" ) << "5.0//2.0" << false << QVariant( 2 );
+      QTest::newRow( "negative int division" ) << "-5//2" << false << QVariant( -3 );
+      QTest::newRow( "negative int division with doubles" ) << "-5.0//2.0" << false << QVariant( -3 );
+      QTest::newRow( "int division by zero" ) << "1//0" << false << QVariant();
+      QTest::newRow( "int division by zero with floats" ) << "1.0//0.0" << false << QVariant();
 
       // comparison
       QTest::newRow( "eq int" ) << "1+1 = 2" << false << QVariant( 1 );
@@ -223,6 +252,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "regexp 3" ) << "'hello' ~ 'llo$'" << false << QVariant( 1 );
 
       // concatenation
+      QTest::newRow( "concat with plus" ) << "'a' + 'b'" << false << QVariant( "ab" );
       QTest::newRow( "concat" ) << "'a' || 'b'" << false << QVariant( "ab" );
       QTest::newRow( "concat with int" ) << "'a' || 1" << false << QVariant( "a1" );
       QTest::newRow( "concat with int" ) << "2 || 'b'" << false << QVariant( "2b" );
@@ -251,8 +281,8 @@ class TestQgsExpression: public QObject
       QTest::newRow( "log10(100)" ) << "log10(100)" << false << QVariant( 2. );
       QTest::newRow( "log(2,32)" ) << "log(2,32)" << false << QVariant( 5. );
       QTest::newRow( "log(10,1000)" ) << "log(10,1000)" << false << QVariant( 3. );
-      QTest::newRow( "log(-2,32)" ) << "log(-2,32)" << false << QVariant( );
-      QTest::newRow( "log(2,-32)" ) << "log(2,-32)" << false << QVariant( );
+      QTest::newRow( "log(-2,32)" ) << "log(-2,32)" << false << QVariant();
+      QTest::newRow( "log(2,-32)" ) << "log(2,-32)" << false << QVariant();
       QTest::newRow( "log(0.5,32)" ) << "log(0.5,32)" << false << QVariant( -5. );
       QTest::newRow( "round(1234.557,2) - round up" ) << "round(1234.557,2)" << false << QVariant( 1234.56 );
       QTest::newRow( "round(1234.554,2) - round down" ) << "round(1234.554,2)" << false << QVariant( 1234.55 );
@@ -262,6 +292,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "max(1,3.5,-2.1)" ) << "max(1,3.5,-2.1)" << false << QVariant( 3.5 );
       QTest::newRow( "min(-1.5)" ) << "min(-1.5)" << false << QVariant( -1.5 );
       QTest::newRow( "min(-16.6,3.5,-2.1)" ) << "min(-16.6,3.5,-2.1)" << false << QVariant( -16.6 );
+      QTest::newRow( "min(5,3.5,-2.1)" ) << "min(5,3.5,-2.1)" << false << QVariant( -2.1 );
       QTest::newRow( "clamp(-2,1,5)" ) << "clamp(-2,1,5)" << false << QVariant( 1.0 );
       QTest::newRow( "clamp(-2,-10,5)" ) << "clamp(-2,-10,5)" << false << QVariant( -2.0 );
       QTest::newRow( "clamp(-2,100,5)" ) << "clamp(-2,100,5)" << false << QVariant( 5.0 );
@@ -304,6 +335,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "substr" ) << "substr('HeLLo', 3,2)" << false << QVariant( "LL" );
       QTest::newRow( "substr outside" ) << "substr('HeLLo', -5,2)" << false << QVariant( "" );
       QTest::newRow( "regexp_substr" ) << "regexp_substr('abc123','(\\\\d+)')" << false << QVariant( "123" );
+      QTest::newRow( "regexp_substr no hit" ) << "regexp_substr('abcdef','(\\\\d+)')" << false << QVariant( "" );
       QTest::newRow( "regexp_substr invalid" ) << "regexp_substr('abc123','([[[')" << true << QVariant();
       QTest::newRow( "strpos" ) << "strpos('Hello World','World')" << false << QVariant( 6 );
       QTest::newRow( "strpos outside" ) << "strpos('Hello World','blah')" << false << QVariant( -1 );
@@ -322,6 +354,8 @@ class TestQgsExpression: public QObject
       QTest::newRow( "wordwrap" ) << "wordwrap('university of qgis',-3,' ')" << false << QVariant( "university\nof qgis" );
       QTest::newRow( "wordwrap" ) << "wordwrap('university of qgis\nsupports many multiline',-5,' ')" << false << QVariant( "university\nof qgis\nsupports\nmany multiline" );
       QTest::newRow( "format" ) << "format('%1 %2 %3 %1', 'One', 'Two', 'Three')" << false << QVariant( "One Two Three One" );
+      QTest::newRow( "concat" ) << "concat('a', 'b', 'c', 'd')" << false << QVariant( "abcd" );
+      QTest::newRow( "concat single" ) << "concat('a')" << false << QVariant( "a" );
 
       // implicit conversions
       QTest::newRow( "implicit int->text" ) << "length(123)" << false << QVariant( 3 );
@@ -337,13 +371,15 @@ class TestQgsExpression: public QObject
       QTest::newRow( "condition else" ) << "case when 1=0 then 'bad' else 678 end" << false << QVariant( 678 );
       QTest::newRow( "condition null" ) << "case when length(123)=0 then 111 end" << false << QVariant();
       QTest::newRow( "condition 2 when" ) << "case when 2>3 then 23 when 3>2 then 32 else 0 end" << false << QVariant( 32 );
-      QTest::newRow( "coalesce null" ) << "coalesce(NULL)" << false << QVariant( );
+      QTest::newRow( "coalesce null" ) << "coalesce(NULL)" << false << QVariant();
       QTest::newRow( "coalesce mid-null" ) << "coalesce(1, NULL, 3)" << false << QVariant( 1 );
       QTest::newRow( "coalesce exp" ) << "coalesce(NULL, 1+1)" << false << QVariant( 2 );
       QTest::newRow( "regexp match" ) << "regexp_match('abc','.b.')" << false << QVariant( 1 );
       QTest::newRow( "regexp match invalid" ) << "regexp_match('abc DEF','[[[')" << true << QVariant();
       QTest::newRow( "regexp match escaped" ) << "regexp_match('abc DEF','\\\\s[A-Z]+')" << false << QVariant( 1 );
       QTest::newRow( "regexp match false" ) << "regexp_match('abc DEF','\\\\s[a-z]+')" << false << QVariant( 0 );
+      QTest::newRow( "if true" ) << "if(1=1, 1, 0)" << false << QVariant( 1 );
+      QTest::newRow( "if false" ) << "if(1=2, 1, 0)" << false << QVariant( 0 );
 
       // Datetime functions
       QTest::newRow( "to date" ) << "todate('2012-06-28')" << false << QVariant( QDate( 2012, 6, 28 ) );
@@ -435,6 +471,9 @@ class TestQgsExpression: public QObject
 
     void eval_precedence()
     {
+      QCOMPARE( QgsExpression::BinaryOperatorText[QgsExpression::boDiv], "/" );
+      QCOMPARE( QgsExpression::BinaryOperatorText[QgsExpression::boConcat], "||" );
+
       QgsExpression e0( "1+2*3" );
       QCOMPARE( e0.evaluate().toInt(), 7 );
 
@@ -708,6 +747,37 @@ class TestQgsExpression: public QObject
       QCOMPARE( vYMax.toDouble(), 6.0 );
     }
 
+    void eval_geometry_wkt()
+    {
+      QgsPolyline polyline, polygon_ring;
+      polyline << QgsPoint( 0, 0 ) << QgsPoint( 10, 0 );
+      polygon_ring << QgsPoint( 2, 1 ) << QgsPoint( 10, 1 ) << QgsPoint( 10, 6 ) << QgsPoint( 2, 6 ) << QgsPoint( 2, 1 );
+
+      QgsPolygon polygon;
+      polygon << polygon_ring;
+
+      QgsFeature fPoint, fPolygon, fPolyline;
+      fPoint.setGeometry( QgsGeometry::fromPoint( QgsPoint( -1.23456789, 9.87654321 ) ) );
+      fPolyline.setGeometry( QgsGeometry::fromPolyline( polyline ) );
+      fPolygon.setGeometry( QgsGeometry::fromPolygon( polygon ) );
+
+      QgsExpression exp1( "geomToWKT($geometry)" );
+      QVariant vWktLine = exp1.evaluate( &fPolyline );
+      QCOMPARE( vWktLine.toString(), QString( "LINESTRING(0 0, 10 0)" ) );
+
+      QgsExpression exp2( "geomToWKT($geometry)" );
+      QVariant vWktPolygon = exp2.evaluate( &fPolygon );
+      QCOMPARE( vWktPolygon.toString(), QString( "POLYGON((2 1,10 1,10 6,2 6,2 1))" ) );
+
+      QgsExpression exp3( "geomToWKT($geometry)" );
+      QVariant vWktPoint = exp3.evaluate( &fPoint );
+      QCOMPARE( vWktPoint.toString(), QString( "POINT(-1.23456789 9.87654321)" ) );
+
+      QgsExpression exp4( "geomToWKT($geometry, 3)" );
+      QVariant vWktPointSimplify = exp4.evaluate( &fPoint );
+      QCOMPARE( vWktPointSimplify.toString(), QString( "POINT(-1.235 9.877)" ) );
+    }
+
     void eval_geometry_constructor_data()
     {
       QTest::addColumn<QString>( "string" );
@@ -745,6 +815,68 @@ class TestQgsExpression: public QObject
     }
 
     void eval_geometry_constructor()
+    {
+      QFETCH( QString, string );
+      QFETCH( void*, geomptr );
+      QFETCH( bool, evalError );
+
+      QgsGeometry* geom = ( QgsGeometry* ) geomptr;
+
+      QgsFeature f;
+      f.setGeometry( geom );
+
+      QgsExpression exp( string );
+      QCOMPARE( exp.hasParserError(), false );
+      QCOMPARE( exp.needsGeometry(), false );
+      QVariant out = exp.evaluate( &f );
+      QCOMPARE( exp.hasEvalError(), evalError );
+
+      QCOMPARE( out.canConvert<QgsGeometry>(), true );
+      QgsGeometry outGeom = out.value<QgsGeometry>();
+      QCOMPARE( geom->equals( &outGeom ), true );
+    }
+
+    void eval_geometry_access_transform_data()
+    {
+      QTest::addColumn<QString>( "string" );
+      QTest::addColumn<void*>( "geomptr" );
+      QTest::addColumn<bool>( "evalError" );
+
+      QgsPoint point( 123, 456 );
+      QgsPolyline line;
+      line << QgsPoint( 1, 1 ) << QgsPoint( 4, 2 ) << QgsPoint( 3, 1 );
+
+      QgsPolyline polyline, polygon_ring;
+      polyline << QgsPoint( 0, 0 ) << QgsPoint( 10, 0 );
+      polygon_ring << QgsPoint( 1, 1 ) << QgsPoint( 6, 1 ) << QgsPoint( 6, 6 ) << QgsPoint( 1, 6 ) << QgsPoint( 1, 1 );
+      QgsPolygon polygon;
+      polygon << polygon_ring;
+
+      QTest::newRow( "geometry Point" ) << "geometry( $currentfeature )" << ( void* ) QgsGeometry::fromPoint( point ) << false;
+      QTest::newRow( "geometry Line" ) << "geometry( $currentfeature )" << ( void* ) QgsGeometry::fromPolyline( line ) << false;
+      QTest::newRow( "geometry Polyline" ) << "geometry( $currentfeature )" << ( void* ) QgsGeometry::fromPolyline( polyline ) << false;
+      QTest::newRow( "geometry Polygon" ) << "geometry( $currentfeature )" << ( void* ) QgsGeometry::fromPolygon( polygon ) << false;
+
+      QgsCoordinateReferenceSystem s;
+      s.createFromOgcWmsCrs( "EPSG:4326" );
+      QgsCoordinateReferenceSystem d;
+      d.createFromOgcWmsCrs( "EPSG:3857" );
+      QgsCoordinateTransform t( s, d );
+
+      QgsGeometry* tLine = QgsGeometry::fromPolyline( line );
+      tLine->transform( t );
+      QgsGeometry* tPolygon = QgsGeometry::fromPolygon( polygon );
+      tPolygon->transform( t );
+
+      QgsGeometry* oLine = QgsGeometry::fromPolyline( line );
+      QgsGeometry* oPolygon = QgsGeometry::fromPolygon( polygon );
+      QTest::newRow( "transform Line" ) << "transform( geomFromWKT('" + oLine->exportToWkt() + "'), 'EPSG:4326', 'EPSG:3857' )" << ( void* ) tLine << false;
+      QTest::newRow( "transform Polygon" ) << "transform( geomFromWKT('" + oPolygon->exportToWkt() + "'), 'EPSG:4326', 'EPSG:3857' )" << ( void* ) tPolygon << false;
+      delete oLine;
+      delete oPolygon;
+    }
+
+    void eval_geometry_access_transform()
     {
       QFETCH( QString, string );
       QFETCH( void*, geomptr );
@@ -835,17 +967,19 @@ class TestQgsExpression: public QObject
       QgsPolygon polygon;
       polygon << polygon_ring;
 
-      QgsGeometry* geom = QgsGeometry::fromPolygon( polygon );
+      QgsGeometry *geom;
 
+      geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "buffer" ) << "buffer( $geometry, 1.0, 3)" << ( void* ) geom << false << true << ( void* ) geom->buffer( 1.0, 3 );
       geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "buffer" ) << "buffer( $geometry, 2.0)" << ( void* ) geom << false << true << ( void* ) geom->buffer( 2.0, 8 );
 
       QgsPoint point1( 10, 20 );
       QgsPoint point2( 30, 20 );
-      QgsGeometry* pnt1 = QgsGeometry::fromPoint( point1 );
-      QgsGeometry* pnt2 = QgsGeometry::fromPoint( point2 );
+      QgsGeometry *pnt1 = QgsGeometry::fromPoint( point1 );
+      QgsGeometry *pnt2 = QgsGeometry::fromPoint( point2 );
       QTest::newRow( "union" ) << "union( $geometry, geomFromWKT('" + pnt2->exportToWkt() + "') )" << ( void* ) pnt1 << false << true << ( void* ) pnt1->combine( pnt2 );
+      delete pnt2;
 
       geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "intersection" ) << "intersection( $geometry, geomFromWKT('POLYGON((0 0, 0 10, 10 0, 0 0))') )" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromWkt( "POLYGON ((0 0,5 5,10 0,0 0))" );
@@ -871,13 +1005,13 @@ class TestQgsExpression: public QObject
     void eval_geometry_method()
     {
       QFETCH( QString, string );
-      QFETCH( void*, geomptr );
+      QFETCH( void *, geomptr );
       QFETCH( bool, evalError );
       QFETCH( bool, needGeom );
-      QFETCH( void*, resultptr );
+      QFETCH( void *, resultptr );
 
-      QgsGeometry* geom = ( QgsGeometry* ) geomptr;
-      QgsGeometry* result = ( QgsGeometry* ) resultptr;
+      QgsGeometry *geom = ( QgsGeometry * ) geomptr;
+      QgsGeometry *result = ( QgsGeometry * ) resultptr;
 
       QgsFeature f;
       f.setGeometry( geom );
@@ -891,6 +1025,8 @@ class TestQgsExpression: public QObject
       QCOMPARE( out.canConvert<QgsGeometry>(), true );
       QgsGeometry outGeom = out.value<QgsGeometry>();
       QVERIFY( compareWkt( outGeom.exportToWkt(), result->exportToWkt() ) );
+
+      delete result;
     }
 
     void eval_special_columns()
@@ -945,9 +1081,27 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression::quotedString( "hello\\world" ), QString( "'hello\\\\world'" ) );
     }
 
+    void reentrant()
+    {
+      // this simply should not crash
+
+      QList<int> lst;
+      for ( int i = 0; i < 10; ++i )
+        lst << i;
+      QtConcurrent::blockingMap( lst, _parseAndEvalExpr );
+    }
+
+    void evaluateToDouble()
+    {
+      QCOMPARE( QgsExpression::evaluateToDouble( QString( "5" ), 0.0 ), 5.0 );
+      QCOMPARE( QgsExpression::evaluateToDouble( QString( "5+6" ), 0.0 ), 11.0 );
+      QCOMPARE( QgsExpression::evaluateToDouble( QString( "5*" ), 7.0 ), 7.0 );
+      QCOMPARE( QgsExpression::evaluateToDouble( QString( "a" ), 9.0 ), 9.0 );
+      QCOMPARE( QgsExpression::evaluateToDouble( QString(), 9.0 ), 9.0 );
+    }
 };
 
 QTEST_MAIN( TestQgsExpression )
 
-#include "moc_testqgsexpression.cxx"
+#include "testqgsexpression.moc"
 

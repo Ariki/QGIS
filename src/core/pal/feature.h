@@ -96,6 +96,8 @@ namespace pal
       bool fixedPosition() const { return fixedPos; }
       //Set label rotation to fixed value
       void setFixedAngle( double a ) { fixedRotation = true; fixedAngle = a; }
+      void setRepeatDistance( double dist ) { repeatDist = dist; }
+      double repeatDistance() const { return repeatDist; }
       void setAlwaysShow( bool bl ) { alwaysShow = bl; }
 
     protected:
@@ -120,8 +122,10 @@ namespace pal
       //Fixed (e.g. data defined) angle only makes sense together with fixed position
       bool fixedRotation;
       double fixedAngle; //fixed angle value (in rad)
+      double repeatDist;
 
       bool alwaysShow; //true is label is to always be shown (but causes overlapping)
+
 
       // array of parts - possibly not necessary
       //int nPart;
@@ -173,6 +177,7 @@ namespace pal
        * \param y y coordinates of the point
        * \param scale map scale is 1:scale
        * \param lPos pointer to an array of candidates, will be filled by generated candidates
+       * \param delta_width delta width
        * \param angle orientation of the label
        * \return the number of generated cadidates
        */
@@ -189,6 +194,7 @@ namespace pal
        * \param scale map scale is 1:scale
        * \param lPos pointer to an array of candidates, will be filled by generated candidates
        * \param mapShape a pointer to the line
+       * \param delta_width delta width
        * \return the number of generated cadidates
        */
       int setPositionForLine( double scale, LabelPosition ***lPos, PointSet *mapShape, double delta_width );
@@ -207,6 +213,7 @@ namespace pal
        * \param scale map scale is 1:scale
        * \param lPos pointer to an array of candidates, will be filled by generated candidates
        * \param mapShape a pointer to the polygon
+       * \param delta_width delta width
        * \return the number of generated cadidates
        */
       int setPositionForPolygon( double scale, LabelPosition ***lPos, PointSet *mapShape, double delta_width );
@@ -254,7 +261,7 @@ namespace pal
        * Called by Pal::save()
        * \param file the file to write
        */
-      void save(std::ofstream *file);
+      void save( std::ofstream *file );
 #endif
 
       /**

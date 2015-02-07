@@ -4,7 +4,7 @@ class QgsSymbolsListWidget : QWidget
 #include <qgssymbolslistwidget.h>
 %End
   public:
-    QgsSymbolsListWidget( QgsSymbolV2* symbol, QgsStyleV2* style, QMenu* menu, QWidget* parent = NULL );
+    QgsSymbolsListWidget( QgsSymbolV2* symbol, QgsStyleV2* style, QMenu* menu, QWidget* parent = 0 );
 
   public slots:
     void setSymbolFromStyle( const QModelIndex & index );
@@ -14,7 +14,7 @@ class QgsSymbolsListWidget : QWidget
     void setLineWidth( double width );
     void addSymbolToStyle();
     void symbolAddedToStyle( QString name, QgsSymbolV2* symbol );
-    void on_mSymbolUnitWidget_changed( );
+    void on_mSymbolUnitWidget_changed();
     void on_mTransparencySlider_valueChanged( int value );
 
     void on_groupsCombo_currentIndexChanged( int index );

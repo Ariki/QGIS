@@ -73,14 +73,12 @@ class QgsComposerItemWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     void showFrameGroup( bool showGroup );
 
   public slots:
-    void on_mFrameColorButton_clicked();
+
     /** Set the frame color
-     * @note added in 1.9
      */
     void on_mFrameColorButton_colorChanged( const QColor& newFrameColor );
     void on_mBackgroundColorButton_clicked();
     /** Set the background color
-     * @note added in 1.9
      */
     void on_mBackgroundColorButton_colorChanged( const QColor& newBackgroundColor );
 //    void on_mTransparencySlider_valueChanged( int value );
@@ -92,11 +90,11 @@ class QgsComposerItemWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     void on_mItemIdLineEdit_editingFinished();
 
     //adjust coordinates in line edits
-    void on_mPageSpinBox_valueChanged( int ) { changeItemPosition(); }
-    void on_mXLineEdit_editingFinished() { changeItemPosition(); }
-    void on_mYLineEdit_editingFinished() { changeItemPosition(); }
-    void on_mWidthLineEdit_editingFinished() { changeItemPosition(); }
-    void on_mHeightLineEdit_editingFinished() { changeItemPosition(); }
+    void on_mPageSpinBox_valueChanged( int );
+    void on_mXPosSpin_valueChanged( double );
+    void on_mYPosSpin_valueChanged( double );
+    void on_mWidthSpin_valueChanged( double );
+    void on_mHeightSpin_valueChanged( double );
 
     void on_mUpperLeftCheckBox_stateChanged( int state );
     void on_mUpperMiddleCheckBox_stateChanged( int state );
@@ -109,9 +107,10 @@ class QgsComposerItemWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     void on_mLowerRightCheckBox_stateChanged( int state );
 
     void on_mBlendModeCombo_currentIndexChanged( int index );
-    void on_mTransparencySlider_valueChanged( int value );
+    void on_mTransparencySpnBx_valueChanged( int value );
 
     void on_mItemRotationSpinBox_valueChanged( double val );
+    void on_mExcludeFromPrintsCheckBox_toggled( bool checked );
 
     void setValuesForGuiElements();
     //sets the values for all position related (x, y, width, height) elements
@@ -120,7 +119,7 @@ class QgsComposerItemWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     void setValuesForGuiNonPositionElements();
 
   protected:
-    QgsComposerObject::DataDefinedProperty ddPropertyForWidget( QgsDataDefinedButton *widget );
+    QgsComposerObject::DataDefinedProperty ddPropertyForWidget( QgsDataDefinedButton *widget ) override;
 
   protected slots:
     /**Initializes data defined buttons to current atlas coverage layer*/
@@ -130,6 +129,12 @@ class QgsComposerItemWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     QgsComposerItemWidget();
 
     QgsComposerItem* mItem;
+
+    bool mFreezeXPosSpin;
+    bool mFreezeYPosSpin;
+    bool mFreezeWidthSpin;
+    bool mFreezeHeightSpin;
+    bool mFreezePageSpin;
 
 //    void changeItemTransparency( int value );
     void changeItemPosition();

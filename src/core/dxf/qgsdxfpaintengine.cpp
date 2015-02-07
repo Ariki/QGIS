@@ -20,7 +20,8 @@
 #include "qgsdxfpaintdevice.h"
 #include "qgslogger.h"
 
-QgsDxfPaintEngine::QgsDxfPaintEngine( const QgsDxfPaintDevice* dxfDevice, QgsDxfExport* dxf ): QPaintEngine( QPaintEngine::AllFeatures /*QPaintEngine::PainterPaths | QPaintEngine::PaintOutsidePaintEvent*/ )
+QgsDxfPaintEngine::QgsDxfPaintEngine( const QgsDxfPaintDevice* dxfDevice, QgsDxfExport* dxf )
+    : QPaintEngine( QPaintEngine::AllFeatures /*QPaintEngine::PainterPaths | QPaintEngine::PaintOutsidePaintEvent*/ )
     , mPaintDevice( dxfDevice ), mDxf( dxf )
 {
 
@@ -76,14 +77,16 @@ void QgsDxfPaintEngine::drawPolygon( const QPointF* points, int pointCount, Poly
     return;
   }
 
-  QgsPolyline polyline( pointCount );
+  QgsPolygon polygon( 1 );
+  polygon[0].resize( pointCount );
+
+  QgsPolyline &polyline = polygon[0];
   for ( int i = 0; i < pointCount; ++i )
   {
     polyline[i] = toDxfCoordinates( points[i] );
   }
 
-  bool closed = ( pointCount > 3 && points[0] == points[pointCount - 1] );
-  mDxf->writePolyline( polyline, mLayer, "CONTINUOUS", currentColor(), currentWidth(), closed );
+  mDxf->writePolygon( polygon, mLayer, "SOLID", currentColor() );
 }
 
 void QgsDxfPaintEngine::drawRects( const QRectF* rects, int rectCount )
@@ -221,11 +224,11 @@ QgsPoint QgsDxfPaintEngine::toDxfCoordinates( const QPointF& pt ) const
   return QgsPoint( dxfPt.x(), dxfPt.y() );
 }
 
-int QgsDxfPaintEngine::currentColor() const
+QColor QgsDxfPaintEngine::currentColor() const
 {
   if ( !mDxf )
   {
-    return 0;
+    return QColor();
   }
 
   QColor c = mPen.color();
@@ -233,7 +236,7 @@ int QgsDxfPaintEngine::currentColor() const
   {
     c = mBrush.color();
   }
-  return mDxf->closestColorMatch( c.rgb() );
+  return c;
 }
 
 double QgsDxfPaintEngine::currentWidth() const
@@ -297,7 +300,6 @@ double QgsDxfPaintEngine::power( double a, int b )
   double tmp = a;
   for ( int i = 2; i <= qAbs(( double )b ); i++ )
   {
-
     a *= tmp;
   }
   if ( b > 0 )
@@ -306,7 +308,7 @@ double QgsDxfPaintEngine::power( double a, int b )
   }
   else
   {
-    return ( 1.0 / a );
+    return 1.0 / a;
   }
 }
 

@@ -28,22 +28,40 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
-import resources_rc
-import os.path, sys
+from PyQt4.QtCore import QSettings, QDir, QFile, QCoreApplication, QObject, SIGNAL
+from PyQt4.QtGui import QIcon, QMessageBox, QMenu, QAction
+from qgis.core import QGis
+
+import os.path
+import sys
 # Set up current path, so that we know where to look for mudules
 currentPath = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/tools'))
 # Multi-function modules
-import doGeometry, doGeoprocessing, doVisual
+import doGeometry
+import doGeoprocessing
+import doVisual
 # Single function modules
 # TODO: Eliminate the following modules in favour of above multi-function formats
-import doIntersectLines, doSelectByLocation, doVectorSplit, doMeanCoords
-import doPointDistance, doPointsInPolygon, doRandom, doRandPoints, doRegPoints
-import doSpatialJoin, doSubsetSelect, doSumLines, doVectorGrid, doMergeShapes
-import doValidate, doSimplify, doDefineProj, doSpatialIndex, doEliminate
+import doIntersectLines
+import doSelectByLocation
+import doVectorSplit
+import doMeanCoords
+import doPointDistance
+import doPointsInPolygon
+import doRandom
+import doRandPoints
+import doRegPoints
+import doSpatialJoin
+import doSubsetSelect
+import doSumLines
+import doVectorGrid
+import doMergeShapes
+import doValidate
+import doSimplify
+import doDefineProj
+import doSpatialIndex
+import doEliminate
 
 class fToolsPlugin:
   def __init__(self,iface):
@@ -119,117 +137,122 @@ class fToolsPlugin:
 
   def initGui(self):
     if int(self.QgisVersion) < 1:
-      QMessageBox.warning(self.iface.getMainWindow(), "fTools",
-      QCoreApplication.translate("fTools", "QGIS version detected: ") +unicode(self.QgisVersion)+".xx\n"
-      + QCoreApplication.translate("fTools", "This version of fTools requires at least QGIS version 1.0.0\nPlugin will not be enabled."))
+      QMessageBox.warning(
+          self.iface.getMainWindow(), "fTools",
+          QCoreApplication.translate("fTools", "QGIS version detected: ") +unicode(self.QgisVersion)+".xx\n"
+          + QCoreApplication.translate("fTools", "This version of fTools requires at least QGIS version 1.0.0\nPlugin will not be enabled."))
       return None
     QObject.connect(self.iface, SIGNAL("currentThemeChanged (QString)"), self.updateThemeIcons)
 
     self.analysisMenu = QMenu(QCoreApplication.translate("fTools", "&Analysis Tools"))
     self.analysisMenu.setObjectName("analysisMenu")
-    self.distMatrix = QAction(QCoreApplication.translate("fTools", "Distance matrix"),self.iface.mainWindow())
+    self.distMatrix = QAction(QCoreApplication.translate("fTools", "Distance Matrix..."),self.iface.mainWindow())
     self.distMatrix.setObjectName("distMatrix")
-    self.sumLines = QAction(QCoreApplication.translate("fTools", "Sum line lengths"), self.iface.mainWindow())
+    self.sumLines = QAction(QCoreApplication.translate("fTools", "Sum Line Lengths..."), self.iface.mainWindow())
     self.sumLines.setObjectName("sumLines")
-    self.pointsPoly = QAction(QCoreApplication.translate("fTools", "Points in polygon"),self.iface.mainWindow())
+    self.pointsPoly = QAction(QCoreApplication.translate("fTools", "Points in Polygon..."),self.iface.mainWindow())
     self.pointsPoly.setObjectName("pointsPoly")
-    self.compStats = QAction(QCoreApplication.translate("fTools",  "Basic statistics"),self.iface.mainWindow())
+    self.compStats = QAction(QCoreApplication.translate("fTools",  "Basic Statistics..."),self.iface.mainWindow())
     self.compStats.setObjectName("compStats")
-    self.listUnique = QAction(QCoreApplication.translate("fTools", "List unique values"),self.iface.mainWindow())
+    self.listUnique = QAction(QCoreApplication.translate("fTools", "List Unique Values..."),self.iface.mainWindow())
     self.listUnique.setObjectName("listUnique")
-    self.nearestNeigh = QAction(QCoreApplication.translate("fTools", "Nearest neighbour analysis"), self.iface.mainWindow())
+    self.nearestNeigh = QAction(QCoreApplication.translate("fTools", "Nearest Neighbour Analysis..."), self.iface.mainWindow())
     self.nearestNeigh.setObjectName("nearestNeigh")
-    self.meanCoords = QAction(QCoreApplication.translate("fTools", "Mean coordinate(s)"),self.iface.mainWindow())
+    self.meanCoords = QAction(QCoreApplication.translate("fTools", "Mean Coordinate(s)..."),self.iface.mainWindow())
     self.meanCoords.setObjectName("meanCoords")
-    self.intLines = QAction(QCoreApplication.translate("fTools", "Line intersections") ,self.iface.mainWindow())
+    self.intLines = QAction(QCoreApplication.translate("fTools", "Line Intersections...") ,self.iface.mainWindow())
     self.intLines.setObjectName("intLines")
-    self.analysisMenu.addActions([self.distMatrix, self.sumLines, self.pointsPoly,
+    self.analysisMenu.addActions([
+        self.distMatrix, self.sumLines, self.pointsPoly,
         self.listUnique, self.compStats, self.nearestNeigh, self.meanCoords, self.intLines])
 
     self.researchMenu = QMenu(QCoreApplication.translate("fTools", "&Research Tools"))
     self.researchMenu.setObjectName("researchMenu")
-    self.randSel = QAction(QCoreApplication.translate("fTools", "Random selection"),self.iface.mainWindow())
+    self.randSel = QAction(QCoreApplication.translate("fTools", "Random Selection..."),self.iface.mainWindow())
     self.randSel.setObjectName("randSel")
-    self.randSub = QAction(QCoreApplication.translate("fTools", "Random selection within subsets"),self.iface.mainWindow())
+    self.randSub = QAction(QCoreApplication.translate("fTools", "Random Selection Within Subsets..."),self.iface.mainWindow())
     self.randSub.setObjectName("randSub")
-    self.randPoints = QAction(QCoreApplication.translate("fTools", "Random points"),self.iface.mainWindow())
+    self.randPoints = QAction(QCoreApplication.translate("fTools", "Random Points..."),self.iface.mainWindow())
     self.randPoints.setObjectName("randPoints")
-    self.regPoints = QAction(QCoreApplication.translate("fTools", "Regular points"), self.iface.mainWindow())
+    self.regPoints = QAction(QCoreApplication.translate("fTools", "Regular Points..."), self.iface.mainWindow())
     self.regPoints.setObjectName("regPoints")
-    self.vectGrid = QAction(QCoreApplication.translate("fTools", "Vector grid"), self.iface.mainWindow())
+    self.vectGrid = QAction(QCoreApplication.translate("fTools", "Vector Grid..."), self.iface.mainWindow())
     self.vectGrid.setObjectName("vectGrid")
-    self.selectLocation = QAction(QCoreApplication.translate("fTools", "Select by location"), self.iface.mainWindow())
+    self.selectLocation = QAction(QCoreApplication.translate("fTools", "Select by Location..."), self.iface.mainWindow())
     self.selectLocation.setObjectName("selectLocation")
-    self.layerExtent = QAction(QCoreApplication.translate("fTools", "Polygon from layer extent"), self.iface.mainWindow())
+    self.layerExtent = QAction(QCoreApplication.translate("fTools", "Polygon from Layer Extent..."), self.iface.mainWindow())
     self.layerExtent.setObjectName("layerExtent")
-    self.researchMenu.addActions([self.randSel, self.randSub, self.randPoints,
+    self.researchMenu.addActions([
+        self.randSel, self.randSub, self.randPoints,
         self.regPoints, self.vectGrid, self.selectLocation, self.layerExtent])
 
     self.geoMenu = QMenu(QCoreApplication.translate("fTools", "&Geoprocessing Tools"))
     self.geoMenu.setObjectName("geoMenu")
-    self.minConvex = QAction(QCoreApplication.translate("fTools", "Convex hull(s)"),self.iface.mainWindow())
+    self.minConvex = QAction(QCoreApplication.translate("fTools", "Convex Hull(s)..."),self.iface.mainWindow())
     self.minConvex.setObjectName("minConvex")
-    self.dynaBuffer = QAction(QCoreApplication.translate("fTools", "Buffer(s)"),self.iface.mainWindow())
+    self.dynaBuffer = QAction(QCoreApplication.translate("fTools", "Buffer(s)..."),self.iface.mainWindow())
     self.dynaBuffer.setObjectName("dynaBuffer")
-    self.intersect = QAction(QCoreApplication.translate("fTools", "Intersect"),self.iface.mainWindow())
+    self.intersect = QAction(QCoreApplication.translate("fTools", "Intersect..."),self.iface.mainWindow())
     self.intersect.setObjectName("intersect")
-    self.union = QAction(QCoreApplication.translate("fTools", "Union"),self.iface.mainWindow())
+    self.union = QAction(QCoreApplication.translate("fTools", "Union..."),self.iface.mainWindow())
     self.union.setObjectName("union")
-    self.symDifference = QAction(QCoreApplication.translate("fTools", "Symetrical difference"),self.iface.mainWindow())
+    self.symDifference = QAction(QCoreApplication.translate("fTools", "Symetrical Difference..."),self.iface.mainWindow())
     self.symDifference.setObjectName("symDifference")
-    self.clip = QAction(QCoreApplication.translate("fTools", "Clip"),self.iface.mainWindow())
+    self.clip = QAction(QCoreApplication.translate("fTools", "Clip..."),self.iface.mainWindow())
     self.clip.setObjectName("clip")
-    self.dissolve = QAction(QCoreApplication.translate("fTools", "Dissolve"),self.iface.mainWindow())
+    self.dissolve = QAction(QCoreApplication.translate("fTools", "Dissolve..."),self.iface.mainWindow())
     self.dissolve.setObjectName("dissolve")
-    self.erase = QAction(QCoreApplication.translate("fTools", "Difference"),self.iface.mainWindow())
+    self.erase = QAction(QCoreApplication.translate("fTools", "Difference..."),self.iface.mainWindow())
     self.erase.setObjectName("erase")
-    self.eliminate = QAction( QCoreApplication.translate( "fTools", "Eliminate sliver polygons" ),self.iface.mainWindow() )
+    self.eliminate = QAction( QCoreApplication.translate( "fTools", "Eliminate Sliver Polygons..." ),self.iface.mainWindow() )
     self.eliminate.setObjectName("eliminate")
-    self.geoMenu.addActions([self.minConvex, self.dynaBuffer, self.intersect,
+    self.geoMenu.addActions([
+        self.minConvex, self.dynaBuffer, self.intersect,
         self.union, self.symDifference, self.clip, self.erase, self.dissolve,
         self.eliminate])
 
     self.conversionMenu = QMenu(QCoreApplication.translate("fTools", "G&eometry Tools"))
     self.conversionMenu.setObjectName("conversionMenu")
-    self.compGeo = QAction(QCoreApplication.translate("fTools", "Export/Add geometry columns"),self.iface.mainWindow())
+    self.compGeo = QAction(QCoreApplication.translate("fTools", "Export/Add Geometry Columns..."),self.iface.mainWindow())
     self.compGeo.setObjectName("compGeo")
-    self.checkGeom = QAction(QCoreApplication.translate("fTools", "Check geometry validity"),self.iface.mainWindow())
+    self.checkGeom = QAction(QCoreApplication.translate("fTools", "Check Geometry Validity..."),self.iface.mainWindow())
     self.checkGeom.setObjectName("checkGeom")
-    self.centroids = QAction(QCoreApplication.translate("fTools", "Polygon centroids"),self.iface.mainWindow())
+    self.centroids = QAction(QCoreApplication.translate("fTools", "Polygon Centroids..."),self.iface.mainWindow())
     self.centroids.setObjectName("centroids")
-    self.delaunay = QAction(QCoreApplication.translate("fTools", "Delaunay triangulation"),self.iface.mainWindow())
+    self.delaunay = QAction(QCoreApplication.translate("fTools", "Delaunay Triangulation..."),self.iface.mainWindow())
     self.delaunay.setObjectName("delaunay")
-    self.voronoi = QAction(QCoreApplication.translate("fTools", "Voronoi Polygons"),self.iface.mainWindow())
+    self.voronoi = QAction(QCoreApplication.translate("fTools", "Voronoi Polygons..."),self.iface.mainWindow())
     self.voronoi.setObjectName("voronoi")
-    self.extNodes = QAction(QCoreApplication.translate("fTools", "Extract nodes"),self.iface.mainWindow())
+    self.extNodes = QAction(QCoreApplication.translate("fTools", "Extract Nodes..."),self.iface.mainWindow())
     self.extNodes.setObjectName("extNodes")
-    self.simplify = QAction(QCoreApplication.translate("fTools", "Simplify geometries"),self.iface.mainWindow())
+    self.simplify = QAction(QCoreApplication.translate("fTools", "Simplify Geometries..."),self.iface.mainWindow())
     self.simplify.setObjectName("simplify")
-    self.densify = QAction(QCoreApplication.translate("fTools", "Densify geometries"),self.iface.mainWindow())
+    self.densify = QAction(QCoreApplication.translate("fTools", "Densify Geometries..."),self.iface.mainWindow())
     self.densify.setObjectName("densify")
-    self.multiToSingle = QAction(QCoreApplication.translate("fTools", "Multipart to singleparts"),self.iface.mainWindow())
+    self.multiToSingle = QAction(QCoreApplication.translate("fTools", "Multipart to Singleparts..."),self.iface.mainWindow())
     self.multiToSingle.setObjectName("multiToSingle")
-    self.singleToMulti = QAction(QCoreApplication.translate("fTools", "Singleparts to multipart"),self.iface.mainWindow())
+    self.singleToMulti = QAction(QCoreApplication.translate("fTools", "Singleparts to Multipart..."),self.iface.mainWindow())
     self.singleToMulti.setObjectName("singleToMulti")
-    self.polysToLines = QAction(QCoreApplication.translate("fTools", "Polygons to lines"),self.iface.mainWindow())
+    self.polysToLines = QAction(QCoreApplication.translate("fTools", "Polygons to Lines..."),self.iface.mainWindow())
     self.polysToLines.setObjectName("polysToLines")
-    self.linesToPolys = QAction(QCoreApplication.translate("fTools", "Lines to polygons"),self.iface.mainWindow())
+    self.linesToPolys = QAction(QCoreApplication.translate("fTools", "Lines to Polygons..."),self.iface.mainWindow())
     self.linesToPolys.setObjectName("linesToPolys")
-    self.conversionMenu.addActions([self.checkGeom, self.compGeo, self.centroids, self.delaunay, self.voronoi,
+    self.conversionMenu.addActions([
+        self.checkGeom, self.compGeo, self.centroids, self.delaunay, self.voronoi,
         self.simplify, self.densify, self.multiToSingle, self.singleToMulti, self.polysToLines, self.linesToPolys,
         self.extNodes])
 
     self.dataManageMenu = QMenu(QCoreApplication.translate("fTools", "&Data Management Tools"))
     self.dataManageMenu.setObjectName("dataManageMenu")
-    self.define = QAction(QCoreApplication.translate("fTools", "Define current projection"), self.iface.mainWindow())
+    self.define = QAction(QCoreApplication.translate("fTools", "Define Current Projection..."), self.iface.mainWindow())
     self.define.setObjectName("define")
-    self.spatJoin = QAction(QCoreApplication.translate("fTools", "Join attributes by location"), self.iface.mainWindow())
+    self.spatJoin = QAction(QCoreApplication.translate("fTools", "Join Attributes by Location..."), self.iface.mainWindow())
     self.spatJoin.setObjectName("spatJoin")
-    self.splitVect = QAction(QCoreApplication.translate("fTools", "Split vector layer"), self.iface.mainWindow())
+    self.splitVect = QAction(QCoreApplication.translate("fTools", "Split Vector Layer..."), self.iface.mainWindow())
     self.splitVect.setObjectName("splitVect")
-    self.mergeShapes = QAction(QCoreApplication.translate("fTools", "Merge shapefiles to one"), self.iface.mainWindow())
+    self.mergeShapes = QAction(QCoreApplication.translate("fTools", "Merge Shapefiles to One..."), self.iface.mainWindow())
     self.mergeShapes.setObjectName("mergeShapes")
-    self.spatialIndex = QAction(QCoreApplication.translate("fTools", "Create spatial index"), self.iface.mainWindow())
+    self.spatialIndex = QAction(QCoreApplication.translate("fTools", "Create Spatial Index..."), self.iface.mainWindow())
     self.spatialIndex.setObjectName("spatialIndex")
     self.dataManageMenu.addActions([self.define, self.spatJoin, self.splitVect, self.mergeShapes, self.spatialIndex])
 

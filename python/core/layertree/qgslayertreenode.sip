@@ -27,10 +27,13 @@
  * file. The storage is not efficient for large amount of data.
  *
  * Custom properties that have already been used within QGIS:
+ * - "loading" - whether the project is being currently loaded (root node only)
  * - "overview" - whether to show a layer in overview
  * - "showFeatureCount" - whether to show feature counts in layer tree (vector only)
  * - "embedded" - whether the node comes from an external project
  * - "embedded_project" - path to the external project (embedded root node only)
+ * - "legend/..." - properties for legend appearance customization
+ * - "expandedLegendNodes" - list of layer's legend nodes' rules in expanded state
  *
  * @see also QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeGroup
  * @note added in 2.4
@@ -118,7 +121,7 @@ class QgsLayerTreeNode : QObject
   protected:
 
     QgsLayerTreeNode( NodeType t );
-    
+
   private:
     QgsLayerTreeNode( const QgsLayerTreeNode& other );
 

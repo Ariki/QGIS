@@ -41,10 +41,10 @@ class SagaDescriptionCreator:
                 command,
                 shell=True,
                 stdout=f2,
-                stdin=subprocess.PIPE,
+                stdin=open(os.devnull),
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
-                )
+            )
             f2.close()
         f.close()
 
@@ -77,10 +77,10 @@ class SagaDescriptionCreator:
                     command,
                     shell=True,
                     stdout=f,
-                    stdin=subprocess.PIPE,
+                    stdin=open(os.devnull),
                     stderr=f,
                     universal_newlines=True,
-                    )
+                )
                 f.close()
 
     def create(self):

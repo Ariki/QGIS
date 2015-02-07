@@ -26,9 +26,9 @@ __copyright__ = "(C) 2014 by Niccolo' Marchi"
 __revision__ = '$Format:%H$'
 
 import os
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterBoolean
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -43,15 +43,16 @@ class FirstLastReturn(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'First&Last Return'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input .las'))
-        self.addParameter(ParameterBoolean(self.SWITCH, 'Use LAS info', True))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output layers'))
+        self.addParameter(ParameterFile(self.INPUT, self.tr('Input .las')))
+        self.addParameter(ParameterBoolean(
+            self.SWITCH, self.tr('Use LAS info'), True))
+        self.addOutput(OutputFile(self.OUTPUT, self.tr('Output layers')))
         self.addAdvancedModifiers()
 
     def processAlgorithm(self, progress):
         commands = [os.path.join(FusionUtils.FusionPath(), 'FirstLastReturn.exe')]
         commands.append('/verbose')
-        if self.getParameterValue(self.SWITCH) == True:
+        if self.getParameterValue(self.SWITCH):
             commands.append('/uselas')
         self.addAdvancedModifiersToCommand(commands)
         outFile = self.getOutputValue(self.OUTPUT)

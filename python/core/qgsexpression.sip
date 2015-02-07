@@ -19,15 +19,16 @@ class QgsExpression
     //! Get the expression ready for evaluation - find out column indexes.
     bool prepare( const QgsFields &fields );
 
-    /**Get list of columns referenced by the expression.
+    /**
+     * Get list of columns referenced by the expression.
      * @note if the returned list contains the QgsFeatureRequest::AllAttributes constant then
      * all attributes from the layer are required for evaluation of the expression.
      * QgsFeatureRequest::setSubsetOfAttributes automatically handles this case.
      */
-    QStringList referencedColumns();
+    QStringList referencedColumns() const;
 
     //! Returns true if the expression uses feature geometry for some computation
-    bool needsGeometry();
+    bool needsGeometry() const;
 
     // evaluation
 
@@ -97,15 +98,42 @@ class QgsExpression
 
        Additional substitutions can be passed through the substitutionMap
        parameter
+       @param action
+       @param feat
+       @param layer
+       @param substitutionMap
+       @param distanceArea optional QgsDistanceArea. If specified, the QgsDistanceArea is used for distance
+       and area conversion
     */
     static QString replaceExpressionText( const QString &action, const QgsFeature *feat,
                                           QgsVectorLayer *layer,
-                                          const QMap<QString, QVariant> *substitutionMap = 0 );
+                                          const QMap<QString, QVariant> *substitutionMap = 0,
+                                          const QgsDistanceArea* distanceArea = 0
+                                        );
+
+    /**Attempts to evaluate a text string as an expression to a resultant double
+     * value.
+     * @param text text to evaluate as expression
+     * @param fallbackValue value to return if text can not be evaluated as a double
+     * @returns evaluated double value, or fallback value
+     * @note added in QGIS 2.7
+    */
+    static double evaluateToDouble( const QString& text, const double fallbackValue );
+
+    /**
+     * @brief list of unary operators
+     * @note if any change is made here, the definition of QgsExpression::UnaryOperatorText[] must be adapted.
+     */
     enum UnaryOperator
     {
       uoNot,
       uoMinus,
     };
+
+    /**
+     * @brief list of binary operators
+     * @note if any change is made here, the definition of QgsExpression::BinaryOperatorText[] must be adapted.
+     */
     enum BinaryOperator
     {
       // logical
@@ -132,6 +160,7 @@ class QgsExpression
       boMinus,
       boMul,
       boDiv,
+      boIntDiv,
       boMod,
       boPow,
 
@@ -168,7 +197,13 @@ class QgsExpression
         /** Does this function use a geometry object. */
         bool usesgeometry();
 
-	virtual QStringList referencedColumns() const;
+        /** True if this function should use lazy evaluation.  Lazy evaluation functions take QgsExpression::Node objects
+         * rather than the node results when called.  You can use node->eval(parent, feature) to evaluate the node and return the result
+         * Functions are non lazy default and will be given the node return value when called **/
+        bool lazyEval();
+
+        virtual QStringList referencedColumns() const;
+
         /** The group the function belongs to. */
         QString group();
         /** The help text for the function. */
@@ -445,4 +480,8 @@ class QgsExpression
 
   protected:
     void initGeomCalculator();
+
+  private:
+    QgsExpression( const QgsExpression& );
+    QgsExpression & operator=( const QgsExpression& );
 };

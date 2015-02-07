@@ -21,9 +21,9 @@ Based on qgis_pgis_topoview by Sandro Santilli <strk@keybit.net>
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from PyQt4.QtGui import QAction, QIcon
+from qgis.core import QgsMapLayerRegistry, QgsVectorLayer, QGis
+from qgis.gui import QgsMessageBar
 
 import os
 current_path = os.path.dirname(__file__)
@@ -42,7 +42,7 @@ def load(db, mainwindow):
         c = db.connector._get_cursor()
         db.connector._execute( c, sql )
         res = db.connector._fetchone( c )
-        if res == None or int(res[0]) <= 0:
+        if res is None or int(res[0]) <= 0:
                 return
 
         # add the action to the DBManager menu
@@ -58,7 +58,6 @@ def load(db, mainwindow):
 def run(item, action, mainwindow):
         db = item.database()
         uri = db.uri()
-        conninfo = uri.connectionInfo()
         iface = mainwindow.iface
 
         quoteId = db.connector.quoteId
@@ -68,19 +67,19 @@ def run(item, action, mainwindow):
         isTopoSchema = False
 
         if not hasattr(item, 'schema'):
-                QMessageBox.critical(mainwindow, "Invalid topology", u'Select a topology schema to continue.')
-                return False
+            mainwindow.infoBar.pushMessage("Invalid topology", u'Select a topology schema to continue.', QgsMessageBar.INFO, mainwindow.iface.messageTimeout())
+            return False
 
-        if item.schema() != None:
-                sql = u"SELECT srid FROM topology.topology WHERE name = %s" % quoteStr(item.schema().name)
-                c = db.connector._get_cursor()
-                db.connector._execute( c, sql )
-                res = db.connector._fetchone( c )
-                isTopoSchema = res != None
+        if item.schema() is not None:
+            sql = u"SELECT srid FROM topology.topology WHERE name = %s" % quoteStr(item.schema().name)
+            c = db.connector._get_cursor()
+            db.connector._execute( c, sql )
+            res = db.connector._fetchone( c )
+            isTopoSchema = res is not None
 
         if not isTopoSchema:
-                QMessageBox.critical(mainwindow, "Invalid topology", u'Schema "%s" is not registered in topology.topology.' % item.schema().name)
-                return False
+            mainwindow.infoBar.pushMessage("Invalid topology", u'Schema "{0}" is not registered in topology.topology.'.format(item.schema().name), QgsMessageBar.WARNING, mainwindow.iface.messageTimeout())
+            return False
 
         toposrid = str(res[0])
 
@@ -95,16 +94,11 @@ def run(item, action, mainwindow):
         iface.mapCanvas().setRenderFlag( False )
         try:
                 supergroup = legend.addGroup(u'Topology "%s"' % toponame, False)
-                # should not be needed: http://hub.qgis.org/issues/6938
-                legend.setGroupVisible(supergroup, False)
-
                 provider = db.dbplugin().providerName()
-                uri = db.uri();
+                uri = db.uri()
 
                 # FACES
                 group = legend.addGroup(u'Faces', False, supergroup)
-                # should not be needed: http://hub.qgis.org/issues/6938
-                legend.setGroupVisible(group, False)
 
           # face mbr
                 uri.setDataSource(toponame, 'face', 'mbr', '', 'face_id')
@@ -113,14 +107,14 @@ def run(item, action, mainwindow):
                 layer = QgsVectorLayer(uri.uri(), u'%s.face_mbr' % toponame, provider)
                 layer.loadNamedStyle(os.path.join(template_dir, 'face_mbr.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
                 face_extent = layer.extent()
 
           # face geometry
                 sql = u'SELECT face_id, topology.ST_GetFaceGeometry(%s, face_id) as geom ' \
-                       'FROM %s.face WHERE face_id > 0' % (quoteStr(toponame), quoteId(toponame))
+                      'FROM %s.face WHERE face_id > 0' % (quoteStr(toponame), quoteId(toponame))
                 uri.setDataSource('', u'(%s\n)' % sql, 'geom', '', 'face_id')
                 uri.setSrid( toposrid )
                 uri.setWkbType( QGis.WKBPolygon )
@@ -128,13 +122,13 @@ def run(item, action, mainwindow):
                 layer.setExtent(face_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'face.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # face_seed
                 sql = u'SELECT face_id, ST_PointOnSurface(topology.ST_GetFaceGeometry(%s, face_id)) as geom ' \
-                       'FROM %s.face WHERE face_id > 0' % (quoteStr(toponame), quoteId(toponame))
+                      'FROM %s.face WHERE face_id > 0' % (quoteStr(toponame), quoteId(toponame))
                 uri.setDataSource('', u'(%s)' % sql, 'geom', '', 'face_id')
                 uri.setSrid( toposrid )
                 uri.setWkbType( QGis.WKBPoint )
@@ -142,17 +136,15 @@ def run(item, action, mainwindow):
                 layer.setExtent(face_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'face_seed.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # TODO: add polygon0, polygon1 and polygon2 ?
 
 
                 # NODES
                 group = legend.addGroup(u'Nodes', False, supergroup)
-                # should not be needed: http://hub.qgis.org/issues/6938
-                legend.setGroupVisible(group, False)
 
           # node
                 uri.setDataSource(toponame, 'node', 'geom', '', 'node_id')
@@ -161,9 +153,9 @@ def run(item, action, mainwindow):
                 layer = QgsVectorLayer(uri.uri(), u'%s.node' % toponame, provider)
                 layer.loadNamedStyle(os.path.join(template_dir, 'node.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
                 node_extent = layer.extent()
 
           # node labels
@@ -174,14 +166,12 @@ def run(item, action, mainwindow):
                 layer.setExtent(node_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'node_label.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
                 # EDGES
                 group = legend.addGroup(u'Edges', False, supergroup)
-                # should not be needed: http://hub.qgis.org/issues/6938
-                legend.setGroupVisible(group, False)
 
           # edge
                 uri.setDataSource(toponame, 'edge_data', 'geom', '', 'edge_id')
@@ -189,9 +179,9 @@ def run(item, action, mainwindow):
                 uri.setWkbType( QGis.WKBLineString )
                 layer = QgsVectorLayer(uri.uri(), u'%s.edge' % toponame, provider)
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
                 edge_extent = layer.extent()
 
           # directed edge
@@ -202,9 +192,9 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'edge.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
 
           # edge labels
@@ -215,9 +205,9 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'edge_label.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # face_left
                 uri.setDataSource(toponame, 'edge_data', 'geom', '', 'edge_id')
@@ -227,9 +217,9 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'face_left.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # face_right
                 uri.setDataSource(toponame, 'edge_data', 'geom', '', 'edge_id')
@@ -239,9 +229,9 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'face_right.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # next_left
                 uri.setDataSource(toponame, 'edge_data', 'geom', '', 'edge_id')
@@ -251,9 +241,9 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'next_left.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
           # next_right
                 uri.setDataSource(toponame, 'edge_data', 'geom', '', 'edge_id')
@@ -263,13 +253,12 @@ def run(item, action, mainwindow):
                 layer.setExtent(edge_extent)
                 layer.loadNamedStyle(os.path.join(template_dir, 'next_right.qml'))
                 registry.addMapLayers([layer])
+                legend.moveLayer(layer, group)
                 legend.setLayerVisible(layer, False)
                 legend.setLayerExpanded(layer, False)
-                legend.moveLayer(layer, group)
 
         finally:
                 # restore canvas render flag
                 iface.mapCanvas().setRenderFlag( prevRenderFlagState )
 
         return True
-

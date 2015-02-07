@@ -57,13 +57,19 @@ class CORE_EXPORT QgsComposerObject: public QObject
       ItemRotation, /*< rotation of item */
       Transparency, /*< item transparency */
       BlendMode, /*< item blend mode */
+      ExcludeFromExports, /*< exclude item from exports */
       //composer map
       MapRotation, /*< map rotation */
       MapScale, /*< map scale */
       MapXMin, /*< map extent x minimum */
       MapYMin, /*< map extent y minimum */
       MapXMax, /*< map extent x maximum */
-      MapYMax /*< map extent y maximum */
+      MapYMax, /*< map extent y maximum */
+      MapAtlasMargin, /*< map atlas margin*/
+      //composer picture
+      PictureSource, /*< picture source url */
+      //html item
+      SourceUrl /*< html source url */
     };
 
     /** Specifies whether the value returned by a function should be the original, user
@@ -104,7 +110,7 @@ class CORE_EXPORT QgsComposerObject: public QObject
      * @param property data defined property to return
      * @note this method was added in version 2.5
     */
-    QgsDataDefined* dataDefinedProperty( const DataDefinedProperty property );
+    QgsDataDefined* dataDefinedProperty( const DataDefinedProperty property ) const;
 
     /**Sets parameters for a data defined property for the item
      * @param property data defined property to set

@@ -51,14 +51,17 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-440</y>
+        <y>-73</y>
         <width>340</width>
-        <height>879</height>
+        <height>819</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="mainLayout">
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="groupBox">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Main properties</string>
          </property>
@@ -68,13 +71,7 @@
          <property name="collapsed" stdset="0">
           <bool>false</bool>
          </property>
-         <layout class="QFormLayout" name="formLayout">
-          <property name="fieldGrowthPolicy">
-           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-          </property>
-          <property name="labelAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
+         <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
           <item row="0" column="0">
            <widget class="QLabel" name="mMapLabel">
             <property name="sizePolicy">
@@ -125,6 +122,9 @@
        </item>
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="mGroupBoxUnits">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Units</string>
          </property>
@@ -134,16 +134,7 @@
          <property name="collapsed" stdset="0">
           <bool>false</bool>
          </property>
-         <layout class="QFormLayout" name="formLayout_2">
-          <property name="fieldGrowthPolicy">
-           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-          </property>
-          <property name="labelAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-          <item row="0" column="0" colspan="2">
-           <widget class="QComboBox" name="mUnitsComboBox"/>
-          </item>
+         <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
           <item row="1" column="0">
            <widget class="QLabel" name="mUnitLabelLabel">
             <property name="text">
@@ -166,7 +157,7 @@
              <string>Map units per bar unit</string>
             </property>
             <property name="wordWrap">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
             <property name="buddy">
              <cstring>mMapUnitsPerBarUnitSpinBox</cstring>
@@ -174,20 +165,29 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QDoubleSpinBox" name="mMapUnitsPerBarUnitSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mMapUnitsPerBarUnitSpinBox">
             <property name="decimals">
              <number>6</number>
             </property>
             <property name="maximum">
              <double>9999999999999.000000000000000</double>
             </property>
+            <property name="showClearButton">
+             <bool>false</bool>
+            </property>
            </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QComboBox" name="mUnitsComboBox"/>
           </item>
          </layout>
         </widget>
        </item>
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="mGroupBoxSegments">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Segments</string>
          </property>
@@ -197,13 +197,7 @@
          <property name="collapsed" stdset="0">
           <bool>false</bool>
          </property>
-         <layout class="QFormLayout" name="formLayout_3">
-          <property name="fieldGrowthPolicy">
-           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-          </property>
-          <property name="labelAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
+         <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
           <item row="0" column="0">
            <widget class="QLabel" name="mSegmentLabel">
             <property name="text">
@@ -214,7 +208,7 @@
           <item row="0" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout">
             <item>
-             <widget class="QSpinBox" name="mSegmentsLeftSpinBox">
+             <widget class="QgsSpinBox" name="mSegmentsLeftSpinBox">
               <property name="suffix">
                <string/>
               </property>
@@ -224,12 +218,15 @@
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="mNumberOfSegmentsSpinBox">
+             <widget class="QgsSpinBox" name="mNumberOfSegmentsSpinBox">
               <property name="suffix">
                <string/>
               </property>
               <property name="prefix">
                <string>right </string>
+              </property>
+              <property name="value">
+               <number>0</number>
               </property>
              </widget>
             </item>
@@ -249,7 +246,7 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QDoubleSpinBox" name="mSegmentSizeSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mSegmentSizeSpinBox">
             <property name="suffix">
              <string> units</string>
             </property>
@@ -258,6 +255,9 @@
             </property>
             <property name="maximum">
              <double>9999999999999.000000000000000</double>
+            </property>
+            <property name="showClearButton">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -269,12 +269,15 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QSpinBox" name="mHeightSpinBox">
+           <widget class="QgsSpinBox" name="mHeightSpinBox">
             <property name="suffix">
              <string> mm</string>
             </property>
             <property name="prefix">
              <string/>
+            </property>
+            <property name="showClearButton">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -283,6 +286,9 @@
        </item>
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="groupBox_5">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Display</string>
          </property>
@@ -292,13 +298,7 @@
          <property name="collapsed" stdset="0">
           <bool>true</bool>
          </property>
-         <layout class="QFormLayout" name="formLayout_4">
-          <property name="fieldGrowthPolicy">
-           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-          </property>
-          <property name="labelAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
+         <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
           <item row="0" column="0">
            <widget class="QLabel" name="label_4">
             <property name="text">
@@ -307,7 +307,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QDoubleSpinBox" name="mBoxSizeSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mBoxSizeSpinBox">
             <property name="prefix">
              <string/>
             </property>
@@ -324,7 +324,7 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QDoubleSpinBox" name="mLabelBarSpaceSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mLabelBarSpaceSpinBox">
             <property name="prefix">
              <string/>
             </property>
@@ -341,7 +341,7 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QDoubleSpinBox" name="mLineWidthSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mLineWidthSpinBox">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -362,6 +362,9 @@
             </property>
             <property name="value">
              <double>0.200000000000000</double>
+            </property>
+            <property name="showClearButton">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -400,6 +403,9 @@
        </item>
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="groupBox_4">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Fonts and colors</string>
          </property>
@@ -409,8 +415,180 @@
          <property name="collapsed" stdset="0">
           <bool>true</bool>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
-          <item>
+         <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Font color</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QgsColorButtonV2" name="mFontColorButton">
+              <property name="minimumSize">
+               <size>
+                <width>120</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>120</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Fill color</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QgsColorButtonV2" name="mFillColorButton">
+              <property name="minimumSize">
+               <size>
+                <width>120</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>120</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>Secondary fill color</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QgsColorButtonV2" name="mFillColor2Button">
+              <property name="minimumSize">
+               <size>
+                <width>120</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>120</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Stroke color</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <item>
+             <widget class="QgsColorButtonV2" name="mStrokeColorButton">
+              <property name="minimumSize">
+               <size>
+                <width>120</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>120</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0" colspan="2">
            <widget class="QPushButton" name="mFontButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -420,34 +598,6 @@
             </property>
             <property name="text">
              <string>Font...</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsColorButton" name="mFontColorButton">
-            <property name="text">
-             <string>Font color...</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsColorButton" name="mFillColorButton">
-            <property name="text">
-             <string>Fill color...</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsColorButton" name="mFillColor2Button">
-            <property name="text">
-             <string>Secondary fill color...</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QgsColorButton" name="mStrokeColorButton">
-            <property name="text">
-             <string>Stroke color...</string>
             </property>
            </widget>
           </item>
@@ -463,15 +613,20 @@
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QgsCollapsibleGroupBoxBasic</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
+   <class>QgsColorButtonV2</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbuttonv2.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsColorButton</class>
-   <extends>QPushButton</extends>
-   <header>qgscolorbutton.h</header>
+   <class>QgsDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qgsdoublespinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsPenJoinStyleComboBox</class>
@@ -483,7 +638,41 @@
    <extends>QComboBox</extends>
    <header>qgspenstylecombobox.h</header>
   </customwidget>
+  <customwidget>
+   <class>QgsCollapsibleGroupBoxBasic</class>
+   <extends>QGroupBox</extends>
+   <header location="global">qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>scrollArea</tabstop>
+  <tabstop>groupBox</tabstop>
+  <tabstop>mMapComboBox</tabstop>
+  <tabstop>mStyleComboBox</tabstop>
+  <tabstop>mGroupBoxUnits</tabstop>
+  <tabstop>mUnitsComboBox</tabstop>
+  <tabstop>mUnitLabelLineEdit</tabstop>
+  <tabstop>mMapUnitsPerBarUnitSpinBox</tabstop>
+  <tabstop>mGroupBoxSegments</tabstop>
+  <tabstop>mSegmentsLeftSpinBox</tabstop>
+  <tabstop>mNumberOfSegmentsSpinBox</tabstop>
+  <tabstop>mSegmentSizeSpinBox</tabstop>
+  <tabstop>mHeightSpinBox</tabstop>
+  <tabstop>groupBox_5</tabstop>
+  <tabstop>mBoxSizeSpinBox</tabstop>
+  <tabstop>mLabelBarSpaceSpinBox</tabstop>
+  <tabstop>mLineWidthSpinBox</tabstop>
+  <tabstop>mLineJoinStyleCombo</tabstop>
+  <tabstop>mLineCapStyleCombo</tabstop>
+  <tabstop>mAlignmentComboBox</tabstop>
+  <tabstop>groupBox_4</tabstop>
+  <tabstop>mFontButton</tabstop>
+  <tabstop>mFontColorButton</tabstop>
+  <tabstop>mFillColorButton</tabstop>
+  <tabstop>mFillColor2Button</tabstop>
+  <tabstop>mStrokeColorButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

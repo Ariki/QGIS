@@ -37,6 +37,17 @@ QgsRasterFileWriter::QgsRasterFileWriter( const QString& outputUrl ):
 }
 
 QgsRasterFileWriter::QgsRasterFileWriter()
+    : mMode( Raw )
+    , mOutputProviderKey( "gdal" )
+    , mOutputFormat( "GTiff" )
+    , mTiledMode( false )
+    , mMaxTileWidth( 500 )
+    , mMaxTileHeight( 500 )
+    , mBuildPyramidsFlag( QgsRaster::PyramidsFlagNo )
+    , mPyramidsFormat( QgsRaster::PyramidsGTiff )
+    , mProgressDialog( 0 )
+    , mPipe( 0 )
+    , mInput( 0 )
 {
 
 }
@@ -254,7 +265,7 @@ QgsRasterFileWriter::WriterError QgsRasterFileWriter::writeDataRaster( const Qgs
   globalOutputParameters( outputExtent, nCols, nRows, geoTransform, pixelSize );
 
   // initOutput() returns 0 in tile mode!
-  destProvider = initOutput( nCols, nRows, crs, geoTransform, nBands,  destDataType, destHasNoDataValueList, destNoDataValueList );
+  destProvider = initOutput( nCols, nRows, crs, geoTransform, nBands, destDataType, destHasNoDataValueList, destNoDataValueList );
 
   WriterError error = writeDataRaster( pipe, iter, nCols, nRows, outputExtent, crs, destDataType, destHasNoDataValueList, destNoDataValueList, destProvider, progressDialog );
 
@@ -283,7 +294,7 @@ QgsRasterFileWriter::WriterError QgsRasterFileWriter::writeDataRaster( const Qgs
     destDataType =  destDataTypeList.value( 0 );
 
     // Try again
-    destProvider = initOutput( nCols, nRows, crs, geoTransform, nBands,  destDataType , destHasNoDataValueList, destNoDataValueList );
+    destProvider = initOutput( nCols, nRows, crs, geoTransform, nBands, destDataType, destHasNoDataValueList, destNoDataValueList );
     error = writeDataRaster( pipe, iter, nCols, nRows, outputExtent, crs, destDataType, destHasNoDataValueList, destNoDataValueList, destProvider, progressDialog );
   }
 
@@ -310,7 +321,7 @@ QgsRasterFileWriter::WriterError QgsRasterFileWriter::writeDataRaster(
   QgsDebugMsg( "Entered" );
 
   const QgsRasterInterface* iface = iter->input();
-  const QgsRasterDataProvider* srcProvider = dynamic_cast<const QgsRasterDataProvider*>( iface->srcInput() );
+  const QgsRasterDataProvider *srcProvider = dynamic_cast<const QgsRasterDataProvider*>( iface->srcInput() );
   int nBands = iface->bandCount();
   QgsDebugMsg( QString( "nBands = %1" ).arg( nBands ) );
 
@@ -394,7 +405,7 @@ QgsRasterFileWriter::WriterError QgsRasterFileWriter::writeDataRaster(
     QList<QgsRasterBlock*> destBlockList;
     for ( int i = 1; i <= nBands; ++i )
     {
-      if ( srcProvider->dataType( i ) == destDataType )
+      if ( srcProvider && srcProvider->dataType( i ) == destDataType )
       {
         destBlockList.push_back( blockList[i-1] );
       }
@@ -883,7 +894,7 @@ QgsRasterDataProvider* QgsRasterFileWriter::createPartProvider( const QgsRectang
 
   // perhaps we need a separate createOptions for tiles ?
 
-  QgsRasterDataProvider* destProvider = QgsRasterDataProvider::create( mOutputProviderKey, outputFile, mOutputFormat, nBands, type, iterCols, iterRows, geoTransform, crs, mCreateOptions ) ;
+  QgsRasterDataProvider* destProvider = QgsRasterDataProvider::create( mOutputProviderKey, outputFile, mOutputFormat, nBands, type, iterCols, iterRows, geoTransform, crs, mCreateOptions );
 
   // TODO: return provider and report error
   return destProvider;
@@ -907,7 +918,7 @@ QgsRasterDataProvider* QgsRasterFileWriter::initOutput( int nCols, int nRows, co
       mCreateOptions << "COPY_SRC_OVERVIEWS=YES";
 #endif
 
-    QgsRasterDataProvider* destProvider = QgsRasterDataProvider::create( mOutputProviderKey, mOutputUrl, mOutputFormat, nBands, type, nCols, nRows, geoTransform, crs, mCreateOptions ) ;
+    QgsRasterDataProvider* destProvider = QgsRasterDataProvider::create( mOutputProviderKey, mOutputUrl, mOutputFormat, nBands, type, nCols, nRows, geoTransform, crs, mCreateOptions );
 
     if ( !destProvider )
     {

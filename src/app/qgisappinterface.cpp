@@ -32,6 +32,7 @@
 #include "qgscomposerview.h"
 #include "qgsmaplayer.h"
 #include "qgsmaplayerregistry.h"
+#include "qgsmaptooladvanceddigitizing.h"
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
 #include "qgslayertreeview.h"
@@ -45,9 +46,10 @@
 
 
 QgisAppInterface::QgisAppInterface( QgisApp * _qgis )
-    : qgis( _qgis ),
-    legendIface( _qgis->layerTreeView() ),
-    pluginManagerIface( _qgis->pluginManager() )
+    : qgis( _qgis )
+    , mTimer( NULL )
+    , legendIface( _qgis->layerTreeView() )
+    , pluginManagerIface( _qgis->pluginManager() )
 {
   // connect signals
   connect( qgis->layerTreeView(), SIGNAL( currentLayerChanged( QgsMapLayer * ) ),
@@ -64,6 +66,8 @@ QgisAppInterface::QgisAppInterface( QgisApp * _qgis )
            this, SIGNAL( newProjectCreated() ) );
   connect( qgis, SIGNAL( projectRead() ),
            this, SIGNAL( projectRead() ) );
+  connect( qgis, SIGNAL( layerSavedAs( QgsMapLayer*, QString ) ),
+           this, SIGNAL( layerSavedAs( QgsMapLayer*, QString ) ) );
 }
 
 QgisAppInterface::~QgisAppInterface()
@@ -449,6 +453,7 @@ QMenu *QgisAppInterface::editMenu() { return qgis->editMenu(); }
 QMenu *QgisAppInterface::viewMenu() { return qgis->viewMenu(); }
 QMenu *QgisAppInterface::layerMenu() { return qgis->layerMenu(); }
 QMenu *QgisAppInterface::newLayerMenu() { return qgis->newLayerMenu(); }
+QMenu *QgisAppInterface::addLayerMenu() { return qgis->addLayerMenu(); }
 QMenu *QgisAppInterface::settingsMenu() { return qgis->settingsMenu(); }
 QMenu *QgisAppInterface::pluginMenu() { return qgis->pluginMenu(); }
 QMenu *QgisAppInterface::rasterMenu() { return qgis->rasterMenu(); }
@@ -555,6 +560,8 @@ QAction *QgisAppInterface::actionAddAllToOverview() { return qgis->actionAddAllT
 QAction *QgisAppInterface::actionRemoveAllFromOverview() { return qgis->actionRemoveAllFromOverview(); }
 QAction *QgisAppInterface::actionHideAllLayers() { return qgis->actionHideAllLayers(); }
 QAction *QgisAppInterface::actionShowAllLayers() { return qgis->actionShowAllLayers(); }
+QAction *QgisAppInterface::actionHideSelectedLayers() { return qgis->actionHideSelectedLayers(); }
+QAction *QgisAppInterface::actionShowSelectedLayers() { return qgis->actionShowSelectedLayers(); }
 
 //! Plugin menu actions
 QAction *QgisAppInterface::actionManagePlugins() { return qgis->actionManagePlugins(); }
@@ -572,7 +579,7 @@ QAction *QgisAppInterface::actionQgisHomePage() { return qgis->actionQgisHomePag
 QAction *QgisAppInterface::actionCheckQgisVersion() { return qgis->actionCheckQgisVersion(); }
 QAction *QgisAppInterface::actionAbout() { return qgis->actionAbout(); }
 
-bool QgisAppInterface::openFeatureForm( QgsVectorLayer *vlayer, QgsFeature &f, bool updateFeatureOnly )
+bool QgisAppInterface::openFeatureForm( QgsVectorLayer *vlayer, QgsFeature &f, bool updateFeatureOnly, bool showModal )
 {
   Q_UNUSED( updateFeatureOnly );
   if ( !vlayer )
@@ -581,11 +588,12 @@ bool QgisAppInterface::openFeatureForm( QgsVectorLayer *vlayer, QgsFeature &f, b
   QgsFeatureAction action( tr( "Attributes changed" ), f, vlayer, -1, -1, QgisApp::instance() );
   if ( vlayer->isEditable() )
   {
-    return action.editFeature();
+    return action.editFeature( showModal );
   }
   else
   {
-    return action.viewFeatureForm();
+    action.viewFeatureForm();
+    return true;
   }
 }
 
@@ -594,7 +602,7 @@ void QgisAppInterface::preloadForm( QString uifile )
   QSignalMapper* signalMapper = new QSignalMapper( this );
   mTimer = new QTimer( this );
 
-  connect( mTimer , SIGNAL( timeout() ), signalMapper, SLOT( map() ) );
+  connect( mTimer, SIGNAL( timeout() ), signalMapper, SLOT( map() ) );
   connect( signalMapper, SIGNAL( mapped( QString ) ), mTimer, SLOT( stop() ) );
   connect( signalMapper, SIGNAL( mapped( QString ) ), this, SLOT( cacheloadForm( QString ) ) );
 
@@ -619,7 +627,7 @@ void QgisAppInterface::cacheloadForm( QString uifile )
   }
 }
 
-QDialog* QgisAppInterface::getFeatureForm( QgsVectorLayer *l, QgsFeature &feature )
+QgsAttributeDialog* QgisAppInterface::getFeatureForm( QgsVectorLayer *l, QgsFeature &feature )
 {
   QgsDistanceArea myDa;
 
@@ -627,8 +635,15 @@ QDialog* QgisAppInterface::getFeatureForm( QgsVectorLayer *l, QgsFeature &featur
   myDa.setEllipsoidalMode( QgisApp::instance()->mapCanvas()->mapSettings().hasCrsTransformEnabled() );
   myDa.setEllipsoid( QgsProject::instance()->readEntry( "Measure", "/Ellipsoid", GEO_NONE ) );
 
-  QgsAttributeDialog *dialog = new QgsAttributeDialog( l, &feature, false, NULL, true );
-  return dialog->dialog();
+  QgsAttributeEditorContext context;
+  context.setDistanceArea( myDa );
+  context.setVectorLayerTools( qgis->vectorLayerTools() );
+  QgsAttributeDialog *dialog = new QgsAttributeDialog( l, &feature, false, NULL, true, context );
+  if ( !feature.isValid() )
+  {
+    dialog->setIsAddDialog( true );
+  }
+  return dialog;
 }
 
 QgsVectorLayerTools* QgisAppInterface::vectorLayerTools()

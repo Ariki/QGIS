@@ -50,17 +50,17 @@ class APP_EXPORT QgsMapToolIdentifyAction : public QgsMapToolIdentify
     ~QgsMapToolIdentifyAction();
 
     //! Overridden mouse move event
-    virtual void canvasMoveEvent( QMouseEvent * e );
+    virtual void canvasMoveEvent( QMouseEvent * e ) override;
 
     //! Overridden mouse press event
-    virtual void canvasPressEvent( QMouseEvent * e );
+    virtual void canvasPressEvent( QMouseEvent * e ) override;
 
     //! Overridden mouse release event
-    virtual void canvasReleaseEvent( QMouseEvent * e );
+    virtual void canvasReleaseEvent( QMouseEvent * e ) override;
 
-    virtual void activate();
+    virtual void activate() override;
 
-    virtual void deactivate();
+    virtual void deactivate() override;
 
   public slots:
     void handleCopyToClipboard( QgsFeatureStore & );
@@ -71,13 +71,17 @@ class APP_EXPORT QgsMapToolIdentifyAction : public QgsMapToolIdentify
     void identifyMessage( QString );
     void copyToClipboard( QgsFeatureStore & );
 
+  private slots:
+    void showAttributeTable( QgsMapLayer* layer, const QList<QgsFeature> featureList );
+
   private:
     //! Pointer to the identify results dialog for name/value pairs
     QPointer<QgsIdentifyResultsDialog> mResultsDialog;
 
     QgsIdentifyResultsDialog *resultsDialog();
 
-    virtual QGis::UnitType displayUnits();
+    virtual QGis::UnitType displayUnits() override;
+
 };
 
 #endif

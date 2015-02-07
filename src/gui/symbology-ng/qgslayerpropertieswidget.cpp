@@ -69,6 +69,7 @@ static void _initWidgetFunctions()
   _initWidgetFunction( "SimpleFill", QgsSimpleFillSymbolLayerV2Widget::create );
   _initWidgetFunction( "GradientFill", QgsGradientFillSymbolLayerV2Widget::create );
   _initWidgetFunction( "ShapeburstFill", QgsShapeburstFillSymbolLayerV2Widget::create );
+  _initWidgetFunction( "RasterFill", QgsRasterFillSymbolLayerWidget::create );
   _initWidgetFunction( "SVGFill", QgsSVGFillSymbolLayerWidget::create );
   _initWidgetFunction( "CentroidFill", QgsCentroidFillSymbolLayerV2Widget::create );
   _initWidgetFunction( "LinePatternFill", QgsLinePatternFillSymbolLayerWidget::create );
@@ -151,8 +152,8 @@ void QgsLayerPropertiesWidget::updateSymbolLayerWidget( QgsSymbolLayerV2* layer 
       w->setSymbolLayer( layer );
       stackedWidget->addWidget( w );
       stackedWidget->setCurrentWidget( w );
-      // start recieving updates from widget
-      connect( w , SIGNAL( changed() ), this, SLOT( emitSignalChanged() ) );
+      // start receiving updates from widget
+      connect( w, SIGNAL( changed() ), this, SLOT( emitSignalChanged() ) );
       return;
     }
   }
@@ -176,7 +177,8 @@ void QgsLayerPropertiesWidget::layerTypeChanged()
     return;
 
   // change layer to a new (with different type)
-  QgsSymbolLayerV2* newLayer = am->createSymbolLayer( QgsStringMap() );
+  // base new layer on existing layer's properties
+  QgsSymbolLayerV2* newLayer = am->createSymbolLayer( layer->properties() );
   if ( newLayer == NULL )
     return;
 

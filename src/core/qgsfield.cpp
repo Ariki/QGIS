@@ -17,6 +17,7 @@
 #include "qgsfield.h"
 
 #include <QSettings>
+#include <QtCore/qmath.h>
 
 #if 0
 QgsField::QgsField( QString nam, QString typ, int len, int prec, bool num,
@@ -128,6 +129,27 @@ QString QgsField::displayString( const QVariant& v ) const
   return v.toString();
 }
 
+bool QgsField::convertCompatible( QVariant& v ) const
+{
+  if ( v.isNull() )
+  {
+    v.convert( mType );
+    return true;
+  }
+
+  if ( !v.convert( mType ) )
+  {
+    return false;
+  }
+
+  if ( mType == QVariant::Double && mPrecision > 0 )
+  {
+    v = qRound64( v.toDouble() * qPow( 10, mPrecision ) ) / qPow( 10, mPrecision );
+    return true;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -145,6 +167,17 @@ bool QgsFields::append( const QgsField& field, FieldOrigin origin, int originInd
   if ( originIndex == -1 && origin == OriginProvider )
     originIndex = mFields.count();
   mFields.append( Field( field, origin, originIndex ) );
+
+  mNameToIndex.insert( field.name(), mFields.count() - 1 );
+  return true;
+}
+
+bool QgsFields::appendExpressionField( const QgsField& field, int originIndex )
+{
+  if ( mNameToIndex.contains( field.name() ) )
+    return false;
+
+  mFields.append( Field( field, OriginExpression, originIndex ) );
 
   mNameToIndex.insert( field.name(), mFields.count() - 1 );
   return true;

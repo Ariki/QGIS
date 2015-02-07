@@ -15,31 +15,61 @@
 
 #include "qgsrelationwidgetwrapper.h"
 
-#include "qgsrelationeditor.h"
+#include "qgsrelationeditorwidget.h"
+#include "qgsattributeeditorcontext.h"
 
 #include <QWidget>
 
 QgsRelationWidgetWrapper::QgsRelationWidgetWrapper( QgsVectorLayer* vl, const QgsRelation& relation, QWidget* editor, QWidget* parent )
     : QgsWidgetWrapper( vl, editor, parent )
     , mRelation( relation )
-    , mRelationWidget( 0 )
+    , mWidget( NULL )
 {
 }
 
 QWidget* QgsRelationWidgetWrapper::createWidget( QWidget* parent )
 {
-  return new QWidget( parent );
+  return new QgsRelationEditorWidget( parent );
 }
 
 void QgsRelationWidgetWrapper::setFeature( const QgsFeature& feature )
 {
-  delete( mRelationWidget );
-  mRelationWidget = QgsRelationEditorWidget::createRelationEditor( mRelation, feature, context(), widget() );
-  widget()->layout()->addWidget( mRelationWidget );
+  if ( mWidget && mRelation.isValid() )
+    mWidget->setRelationFeature( mRelation, feature );
 }
 
 void QgsRelationWidgetWrapper::initWidget( QWidget* editor )
 {
-  if ( !editor->layout() )
-    editor->setLayout( new QGridLayout( editor ) );
+  QgsRelationEditorWidget* w = dynamic_cast<QgsRelationEditorWidget*>( editor );
+
+  // if the editor cannot be cast to relation editor, insert a new one
+  if ( !w )
+  {
+    w = new QgsRelationEditorWidget( editor );
+    w->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding );
+    if ( ! editor->layout() )
+    {
+      editor->setLayout( new QGridLayout() );
+    }
+    editor->layout()->addWidget( w );
+  }
+
+  QgsAttributeEditorContext myContext( QgsAttributeEditorContext( context(), mRelation, QgsAttributeEditorContext::Multiple, QgsAttributeEditorContext::Embed ) );
+
+  w->setEditorContext( myContext );
+
+  // If this widget is already embedded by the same relation, reduce functionality
+  const QgsAttributeEditorContext* ctx = &context();
+  do
+  {
+    if ( ctx->relation().name() == mRelation.name() && ctx->formMode() == QgsAttributeEditorContext::Embed )
+    {
+      w->setVisible( false );
+      break;
+    }
+    ctx = ctx->parentContext();
+  }
+  while ( ctx );
+
+  mWidget = w;
 }

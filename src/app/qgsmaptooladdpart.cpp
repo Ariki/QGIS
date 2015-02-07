@@ -20,19 +20,19 @@
 #include "qgsvectorlayer.h"
 #include "qgslogger.h"
 
-#include <QMessageBox>
 #include <QMouseEvent>
 
 QgsMapToolAddPart::QgsMapToolAddPart( QgsMapCanvas* canvas )
     : QgsMapToolCapture( canvas )
 {
+  mToolName = tr( "Add part" );
 }
 
 QgsMapToolAddPart::~QgsMapToolAddPart()
 {
 }
 
-void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
+void QgsMapToolAddPart::canvasMapReleaseEvent( QgsMapMouseEvent * e )
 {
   //check if we operate on a vector layer
   QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( mCanvas->currentLayer() );
@@ -62,7 +62,7 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
 
   if ( !selectionErrorMsg.isEmpty() )
   {
-    emit messageEmitted( tr( "Could not add part. %1" ).arg( selectionErrorMsg ) , QgsMessageBar::WARNING );
+    emit messageEmitted( tr( "Could not add part. %1" ).arg( selectionErrorMsg ), QgsMessageBar::WARNING );
     stopCapturing();
     return;
   }
@@ -73,9 +73,9 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
     case CapturePoint:
     {
       QgsPoint layerPoint;
-      QgsPoint mapPoint;
+      QgsPoint mapPoint = e->mapPoint();
 
-      if ( nextPoint( e->pos(), layerPoint, mapPoint ) != 0 )
+      if ( nextPoint( mapPoint, layerPoint ) != 0 )
       {
         QgsDebugMsg( "nextPoint failed" );
         return;
@@ -92,7 +92,7 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
       //add point to list and to rubber band
       if ( e->button() == Qt::LeftButton )
       {
-        int error = addVertex( e->pos() );
+        int error = addVertex( e->mapPoint() );
         if ( error == 1 )
         {
           QgsDebugMsg( "current layer is not a vector layer" );
@@ -101,7 +101,7 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
         else if ( error == 2 )
         {
           //problem with coordinate transformation
-          emit messageEmitted( tr( "Coordinate transform error. Cannot transform the point to the layers coordinate system" ) , QgsMessageBar::WARNING );
+          emit messageEmitted( tr( "Coordinate transform error. Cannot transform the point to the layers coordinate system" ), QgsMessageBar::WARNING );
           return;
         }
 
@@ -114,6 +114,11 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
 
         return;
       }
+
+      if ( !isCapturing() )
+        return;
+
+      // we are now going to finish the capturing
 
       if ( mode() == CapturePolygon )
       {
@@ -195,6 +200,6 @@ void QgsMapToolAddPart::canvasReleaseEvent( QMouseEvent * e )
       break;
   }
 
-  emit messageEmitted( errorMessage , QgsMessageBar::WARNING );
+  emit messageEmitted( errorMessage, QgsMessageBar::WARNING );
   vlayer->destroyEditCommand();
 }

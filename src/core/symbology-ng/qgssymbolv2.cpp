@@ -283,9 +283,10 @@ QColor QgsSymbolV2::color() const
   return QColor( 0, 0, 0 );
 }
 
-void QgsSymbolV2::drawPreviewIcon( QPainter* painter, QSize size )
+void QgsSymbolV2::drawPreviewIcon( QPainter* painter, QSize size, QgsRenderContext* customContext )
 {
-  QgsRenderContext context = QgsSymbolLayerV2Utils::createRenderContext( painter );
+  QgsRenderContext context = customContext ? *customContext : QgsSymbolLayerV2Utils::createRenderContext( painter );
+  context.setForceVectorOutput( true );
   QgsSymbolV2RenderContext symbolContext( context, outputUnit(), mAlpha, false, mRenderHints, 0, 0, mapUnitScale() );
 
   for ( QgsSymbolLayerV2List::iterator it = mLayers.begin(); it != mLayers.end(); ++it )
@@ -305,6 +306,19 @@ void QgsSymbolV2::drawPreviewIcon( QPainter* painter, QSize size )
     else
       ( *it )->drawPreviewIcon( symbolContext, size );
   }
+}
+
+QImage QgsSymbolV2::asImage( QSize size, QgsRenderContext* customContext )
+{
+  QImage image( size, QImage::Format_ARGB32_Premultiplied );
+  image.fill( 0 );
+
+  QPainter p( &image );
+  p.setRenderHint( QPainter::Antialiasing );
+
+  drawPreviewIcon( &p, size, customContext );
+
+  return image;
 }
 
 

@@ -39,7 +39,7 @@ class APP_EXPORT QgsFeatureAction : public QAction
   public slots:
     void execute();
     bool viewFeatureForm( QgsHighlight *h = 0 );
-    bool editFeature();
+    bool editFeature( bool showModal = true );
 
     /**
      * Add a new feature to the layer.
@@ -48,9 +48,9 @@ class APP_EXPORT QgsFeatureAction : public QAction
      *
      * @param defaultAttributes  Provide some default attributes here if desired.
      *
-     * @return true if feature was added
+     * @return true if feature was added if showModal is true. If showModal is false, returns true in every case
      */
-    bool addFeature( const QgsAttributeMap& defaultAttributes = QgsAttributeMap() );
+    bool addFeature( const QgsAttributeMap& defaultAttributes = QgsAttributeMap(), bool showModal = true );
 
   private slots:
     void onFeatureSaved( const QgsFeature& feature );

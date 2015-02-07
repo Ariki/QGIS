@@ -27,7 +27,7 @@
 #include <QDebug>
 #include <QBuffer>
 
-QgsRenderChecker::QgsRenderChecker( ) :
+QgsRenderChecker::QgsRenderChecker() :
     mReport( "" ),
     mMatchTarget( 0 ),
     mElapsedTime( 0 ),
@@ -36,7 +36,7 @@ QgsRenderChecker::QgsRenderChecker( ) :
     mMismatchCount( 0 ),
     mColorTolerance( 0 ),
     mElapsedTimeTarget( 0 ),
-    mControlPathPrefix( "" )
+    mBufferDashMessages( false )
 {
 }
 
@@ -48,10 +48,10 @@ QString QgsRenderChecker::controlImagePath() const
   return myControlImageDir;
 }
 
-void QgsRenderChecker::setControlName( const QString theName )
+void QgsRenderChecker::setControlName( const QString &theName )
 {
   mControlName = theName;
-  mExpectedImageFile = controlImagePath() + theName + QDir::separator()
+  mExpectedImageFile = controlImagePath() + theName + QDir::separator() + mControlPathSuffix
                        + theName + ".png";
 }
 
@@ -76,6 +76,27 @@ void QgsRenderChecker::setMapRenderer( QgsMapRenderer* thepMapRenderer )
 void QgsRenderChecker::setMapSettings( const QgsMapSettings& mapSettings )
 {
   mMapSettings = mapSettings;
+}
+
+void QgsRenderChecker::drawBackground( QImage* image )
+{
+  // create a 2x2 checker-board image
+  uchar pixDataRGB[] = { 255, 255, 255, 255,
+                         127, 127, 127, 255,
+                         127, 127, 127, 255,
+                         255, 255, 255, 255
+                       };
+
+  QImage img( pixDataRGB, 2, 2, 8, QImage::Format_ARGB32 );
+  QPixmap pix = QPixmap::fromImage( img.scaled( 20, 20 ) );
+
+  // fill image with texture
+  QBrush brush;
+  brush.setTexture( pix );
+  QPainter p( image );
+  p.setRenderHint( QPainter::Antialiasing, false );
+  p.fillRect( QRect( 0, 0, image->width(), image->height() ), brush );
+  p.end();
 }
 
 bool QgsRenderChecker::isKnownAnomaly( QString theDiffImageFile )
@@ -110,10 +131,8 @@ bool QgsRenderChecker::isKnownAnomaly( QString theDiffImageFile )
                      .arg( theDiffImageFile )
                      .arg( myImageHash );
     //foo CDash
-    QString myMeasureMessage = "<DartMeasurement name=\"Anomaly check"
-                               "\" type=\"text/text\">" +  myHashMessage +
-                               "</DartMeasurement>";
-    qDebug() << myMeasureMessage;
+    emitDashMessage( "Anomaly check", QgsDartMeasurement::Text, myHashMessage );
+
     mReport += "<tr><td colspan=3>" + myHashMessage + "</td></tr>";
     if ( myImageHash == myAnomalyHash )
     {
@@ -127,6 +146,19 @@ bool QgsRenderChecker::isKnownAnomaly( QString theDiffImageFile )
              "No anomaly found! ";
   mReport += "</td></tr>";
   return false;
+}
+
+void QgsRenderChecker::emitDashMessage( const QgsDartMeasurement& dashMessage )
+{
+  if ( mBufferDashMessages )
+    mDashMessages << dashMessage;
+  else
+    dashMessage.send();
+}
+
+void QgsRenderChecker::emitDashMessage( const QString& name, QgsDartMeasurement::Type type, const QString& value )
+{
+  emitDashMessage( QgsDartMeasurement( name, type, value ) );
 }
 
 bool QgsRenderChecker::runTest( QString theTestName,
@@ -228,8 +260,8 @@ bool QgsRenderChecker::compareImages( QString theTestName,
   QImage myDifferenceImage( myExpectedImage.width(),
                             myExpectedImage.height(),
                             QImage::Format_RGB32 );
-  QString myDiffImageFile = QDir::tempPath() + QDir::separator() +
-                            QDir::separator()  +
+  QString myDiffImageFile = QDir::tempPath() +
+                            QDir::separator() +
                             theTestName + "_result_diff.png";
   myDifferenceImage.fill( qRgb( 152, 219, 249 ) );
 
@@ -279,17 +311,18 @@ bool QgsRenderChecker::compareImages( QString theTestName,
                            " src=\"file://" +
                            myDiffImageFile  +
                            "\"></td>\n</tr>\n</table>";
+
+  QString prefix;
+  if ( !mControlPathPrefix.isNull() )
+  {
+    prefix = QString( " (prefix %1)" ).arg( mControlPathPrefix );
+  }
   //
   // To get the images into CDash
   //
-  QString myDashMessage = "<DartMeasurementFile name=\"Rendered Image " + theTestName + "\""
-                          " type=\"image/png\">" + mRenderedImageFile +
-                          "</DartMeasurementFile>\n"
-                          "<DartMeasurementFile name=\"Expected Image " + theTestName + "\" type=\"image/png\">" +
-                          mExpectedImageFile + "</DartMeasurementFile>\n"
-                          "<DartMeasurementFile name=\"Difference Image " + theTestName + "\" type=\"image/png\">" +
-                          myDiffImageFile + "</DartMeasurementFile>\n";
-  qDebug( ) << myDashMessage;
+  emitDashMessage( "Rendered Image " + theTestName + prefix, QgsDartMeasurement::ImagePng, mRenderedImageFile );
+  emitDashMessage( "Expected Image " + theTestName + prefix, QgsDartMeasurement::ImagePng, mExpectedImageFile );
+  emitDashMessage( "Difference Image " + theTestName + prefix, QgsDartMeasurement::ImagePng, myDiffImageFile );
 
   //
   // Put the same info to debug too
@@ -367,12 +400,7 @@ bool QgsRenderChecker::compareImages( QString theTestName,
   //
   // And send it to CDash
   //
-  myDashMessage = "<DartMeasurement name=\"Mismatch Count "
-                  "\" type=\"numeric/integer\">" +
-                  QString::number( mMismatchCount ) + "/" +
-                  QString::number( mMatchTarget ) +
-                  "</DartMeasurement>";
-  qDebug( ) << myDashMessage;
+  emitDashMessage( "Mismatch Count", QgsDartMeasurement::Integer, QString( "%1/%2" ).arg( mMismatchCount ).arg( mMatchTarget ) );
 
   bool myAnomalyMatchFlag = isKnownAnomaly( myDiffImageFile );
 
@@ -385,17 +413,13 @@ bool QgsRenderChecker::compareImages( QString theTestName,
   }
   else
   {
-    QString myMessage = "Difference image did not match any known anomaly.";
     mReport += "<tr><td colspan=3>"
                "</td></tr>";
-    QString myMeasureMessage = "<DartMeasurement name=\"No Anomalies Match"
-                               "\" type=\"text/text\">" +  myMessage +
-                               " If you feel the difference image should be considered an anomaly "
-                               "you can do something like this\n"
-                               "cp " + myDiffImageFile  + " ../tests/testdata/control_images/" + theTestName +
-                               "/<imagename>.{wld,png}"
-                               "</DartMeasurement>";
-    qDebug() << myMeasureMessage;
+    emitDashMessage( "No Anomalies Match", QgsDartMeasurement::Text, "Difference image did not match any known anomaly."
+                     " If you feel the difference image should be considered an anomaly "
+                     "you can do something like this\n"
+                     "cp " + myDiffImageFile  + " ../tests/testdata/control_images/" + theTestName +
+                     "/<imagename>.{wld,png}" );
   }
 
   if ( mMismatchCount <= theMismatchCount )

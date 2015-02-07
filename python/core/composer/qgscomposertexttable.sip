@@ -5,10 +5,10 @@ class QgsComposerTextTable: QgsComposerTable
 #include <qgscomposertexttable.h>
 %End
   public:
-    QgsComposerTextTable( QgsComposition* c );
+    QgsComposerTextTable( QgsComposition* c /TransferThis/ );
     ~QgsComposerTextTable();
 
-    /** return correct graphics item type. Added in v1.7 */
+    /** return correct graphics item type. */
     virtual int type() const;
 
     /**Sets the text to use for the header row for the table

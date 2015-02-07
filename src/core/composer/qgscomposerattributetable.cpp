@@ -18,6 +18,7 @@
 #include "qgscomposerattributetable.h"
 #include "qgscomposertablecolumn.h"
 #include "qgscomposermap.h"
+#include "qgscomposerutils.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsvectorlayer.h"
 
@@ -134,6 +135,10 @@ QgsComposerAttributeTable::~QgsComposerAttributeTable()
 void QgsComposerAttributeTable::paint( QPainter* painter, const QStyleOptionGraphicsItem* itemStyle, QWidget* pWidget )
 {
   if ( mComposerMap && mComposerMap->isDrawing() )
+  {
+    return;
+  }
+  if ( !shouldDrawItem() )
   {
     return;
   }
@@ -373,11 +378,11 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
   attributeMaps.clear();
 
   //prepare filter expression
-  std::auto_ptr<QgsExpression> filterExpression;
+  QScopedPointer<QgsExpression> filterExpression;
   bool activeFilter = false;
   if ( mFilterFeatures && !mFeatureFilter.isEmpty() )
   {
-    filterExpression = std::auto_ptr<QgsExpression>( new QgsExpression( mFeatureFilter ) );
+    filterExpression.reset( new QgsExpression( mFeatureFilter ) );
     if ( !filterExpression->hasParserError() )
     {
       activeFilter = true;
@@ -417,7 +422,7 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
   while ( fit.nextFeature( f ) && counter < mMaximumNumberOfFeatures )
   {
     //check feature against filter
-    if ( activeFilter )
+    if ( activeFilter && !filterExpression.isNull() )
     {
       QVariant result = filterExpression->evaluate( &f, mVectorLayer->pendingFields() );
       // skip this feature if the filter evaluation is false
@@ -444,7 +449,7 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
         QgsExpression* expression = new QgsExpression(( *columnIt )->attribute() );
         expression->setCurrentRowNumber( counter + 1 );
         expression->prepare( mVectorLayer->pendingFields() );
-        QVariant value = expression->evaluate( f ) ;
+        QVariant value = expression->evaluate( f );
         attributeMaps.last().insert( i, value.toString() );
       }
 
@@ -462,6 +467,8 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
     c.setAscending( sortColumns.at( i ).second );
     qStableSort( attributeMaps.begin(), attributeMaps.end(), c );
   }
+
+  adjustFrameToSize();
   return true;
 }
 
@@ -484,22 +491,10 @@ void QgsComposerAttributeTable::setSceneRect( const QRectF& rectangle )
   //update rect for data defined size and position
   QRectF evaluatedRect = evalItemRect( rectangle );
 
-  double titleHeight =  2 * mGridStrokeWidth + 2 * mLineTextDistance + fontAscentMillimeters( mHeaderFont );
-  double attributeHeight = mGridStrokeWidth + 2 * mLineTextDistance + fontAscentMillimeters( mContentFont );
-  if (( evaluatedRect.height() - titleHeight ) > 0 )
-  {
-    mMaximumNumberOfFeatures = ( evaluatedRect.height() - titleHeight ) / attributeHeight;
-  }
-  else
-  {
-    mMaximumNumberOfFeatures = 0;
-  }
   QgsComposerItem::setSceneRect( evaluatedRect );
 
   //refresh table attributes, since number of features has likely changed
   refreshAttributes();
-
-  emit maximumNumberOfFeaturesChanged( mMaximumNumberOfFeatures );
 }
 
 void QgsComposerAttributeTable::setSortAttributes( const QList<QPair<int, bool> > att )

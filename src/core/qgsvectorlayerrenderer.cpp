@@ -113,7 +113,7 @@ bool QgsVectorLayerRenderer::render()
 
   if ( !mRendererV2 )
   {
-    mErrors.append( "No renderer for drawing." );
+    mErrors.append( QObject::tr( "No renderer for drawing." ) );
     return false;
   }
 
@@ -127,14 +127,18 @@ bool QgsVectorLayerRenderer::render()
 
   mRendererV2->startRender( mContext, mFields );
 
+  QgsRectangle requestExtent = mContext.extent();
+  mRendererV2->modifyRequestExtent( requestExtent, mContext );
+
   QgsFeatureRequest featureRequest = QgsFeatureRequest()
-                                     .setFilterRect( mContext.extent() )
+                                     .setFilterRect( requestExtent )
                                      .setSubsetOfAttributes( mAttrNames, mFields );
 
   // enable the simplification of the geometries (Using the current map2pixel context) before send it to renderer engine.
   if ( mSimplifyGeometry )
   {
     double map2pixelTol = mSimplifyMethod.threshold();
+    bool validTransform = true;
 
     const QgsMapToPixel& mtp = mContext.mapToPixel();
     map2pixelTol *= mtp.mapUnitsPerPixel();
@@ -146,7 +150,7 @@ bool QgsVectorLayerRenderer::render()
       try
       {
         QgsPoint center = mContext.extent().center();
-        double rectSize = ct->sourceCrs().geographicFlag() ?  0.0008983 /* ~100/(40075014/360=111319.4833) */ : 100;
+        double rectSize = ct->sourceCrs().geographicFlag() ? 0.0008983 /* ~100/(40075014/360=111319.4833) */ : 100;
 
         QgsRectangle sourceRect = QgsRectangle( center.x(), center.y(), center.x() + rectSize, center.y() + rectSize );
         QgsRectangle targetRect = ct->transform( sourceRect );
@@ -174,18 +178,28 @@ bool QgsVectorLayerRenderer::render()
       catch ( QgsCsException &cse )
       {
         QgsMessageLog::logMessage( QObject::tr( "Simplify transform error caught: %1" ).arg( cse.what() ), QObject::tr( "CRS" ) );
+        validTransform = false;
       }
     }
 
-    QgsSimplifyMethod simplifyMethod;
-    simplifyMethod.setMethodType( QgsSimplifyMethod::OptimizeForRendering );
-    simplifyMethod.setTolerance( map2pixelTol );
-    simplifyMethod.setForceLocalOptimization( mSimplifyMethod.forceLocalOptimization() );
+    if ( validTransform )
+    {
+      QgsSimplifyMethod simplifyMethod;
+      simplifyMethod.setMethodType( QgsSimplifyMethod::OptimizeForRendering );
+      simplifyMethod.setTolerance( map2pixelTol );
+      simplifyMethod.setForceLocalOptimization( mSimplifyMethod.forceLocalOptimization() );
 
-    featureRequest.setSimplifyMethod( simplifyMethod );
+      featureRequest.setSimplifyMethod( simplifyMethod );
 
-    QgsVectorSimplifyMethod vectorMethod = mSimplifyMethod;
-    mContext.setVectorSimplifyMethod( vectorMethod );
+      QgsVectorSimplifyMethod vectorMethod = mSimplifyMethod;
+      mContext.setVectorSimplifyMethod( vectorMethod );
+    }
+    else
+    {
+      QgsVectorSimplifyMethod vectorMethod;
+      vectorMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
+      mContext.setVectorSimplifyMethod( vectorMethod );
+    }
   }
   else
   {
@@ -327,7 +341,7 @@ void QgsVectorLayerRenderer::drawRendererV2Levels( QgsFeatureIterator& fit )
       mCache->cacheGeometry( fet.id(), *fet.geometry() );
     }
 
-    if ( sym && mContext.labelingEngine() )
+    if ( mContext.labelingEngine() )
     {
       if ( mLabeling )
       {

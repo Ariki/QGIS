@@ -92,6 +92,60 @@ void QgsComposerUtils::rotate( const double angle, double &x, double &y )
   y = yRot;
 }
 
+double QgsComposerUtils::normalizedAngle( const double angle )
+{
+  double clippedAngle = angle;
+  if ( clippedAngle >= 360.0 || clippedAngle <= -360.0 )
+  {
+    clippedAngle = fmod( clippedAngle, 360.0 );
+  }
+  if ( clippedAngle < 0.0 )
+  {
+    clippedAngle += 360.0;
+  }
+  return clippedAngle;
+}
+
+double QgsComposerUtils::snappedAngle( const double angle )
+{
+  //normalize angle to 0-360 degrees
+  double clippedAngle = normalizedAngle( angle );
+
+  //snap angle to 45 degree
+  if ( clippedAngle >= 22.5 && clippedAngle < 67.5 )
+  {
+    return 45.0;
+  }
+  else if ( clippedAngle >= 67.5 && clippedAngle < 112.5 )
+  {
+    return 90.0;
+  }
+  else if ( clippedAngle >= 112.5 && clippedAngle < 157.5 )
+  {
+    return 135.0;
+  }
+  else if ( clippedAngle >= 157.5 && clippedAngle < 202.5 )
+  {
+    return 180.0;
+  }
+  else if ( clippedAngle >= 202.5 && clippedAngle < 247.5 )
+  {
+    return 225.0;
+  }
+  else if ( clippedAngle >= 247.5 && clippedAngle < 292.5 )
+  {
+    return 270.0;
+  }
+  else if ( clippedAngle >= 292.5 && clippedAngle < 337.5 )
+  {
+    return 315.0;
+  }
+  else
+  {
+    return 0.0;
+  }
+}
+
 QRectF QgsComposerUtils::largestRotatedRectWithinBounds( const QRectF originalRect, const QRectF boundsRect, const double rotation )
 {
   double originalWidth = originalRect.width();
@@ -100,7 +154,7 @@ QRectF QgsComposerUtils::largestRotatedRectWithinBounds( const QRectF originalRe
   double boundsHeight = boundsRect.height();
   double ratioBoundsRect = boundsWidth / boundsHeight;
 
-  double clippedRotation = fmod( rotation, 360.0 );
+  double clippedRotation = normalizedAngle( rotation );
 
   //shortcut for some rotation values
   if ( clippedRotation == 0 || clippedRotation == 90 || clippedRotation == 180 || clippedRotation == 270 )
@@ -297,7 +351,7 @@ void QgsComposerUtils::readDataDefinedProperty( const QgsComposerObject::DataDef
   else
   {
     //QgsDataDefined for property doesn't currently exist, need to add new
-    dd = new QgsDataDefined( );
+    dd = new QgsDataDefined();
     dataDefinedProperties->insert( property, dd );
   }
 
@@ -370,4 +424,108 @@ void QgsComposerUtils::writeDataDefinedPropertyMap( QDomElement &itemElem, QDomD
       }
     }
   }
+}
+
+QFont QgsComposerUtils::scaledFontPixelSize( const QFont &font )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont scaledFont = font;
+  double pixelSize = pointsToMM( scaledFont.pointSizeF() ) * FONT_WORKAROUND_SCALE + 0.5;
+  scaledFont.setPixelSize( pixelSize );
+  return scaledFont;
+}
+
+double QgsComposerUtils::fontAscentMM( const QFont &font )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont metricsFont = scaledFontPixelSize( font );
+  QFontMetricsF fontMetrics( metricsFont );
+  return ( fontMetrics.ascent() / FONT_WORKAROUND_SCALE );
+}
+
+double QgsComposerUtils::fontDescentMM( const QFont &font )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont metricsFont = scaledFontPixelSize( font );
+  QFontMetricsF fontMetrics( metricsFont );
+  return ( fontMetrics.descent() / FONT_WORKAROUND_SCALE );
+}
+
+double QgsComposerUtils::fontHeightMM( const QFont &font )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont metricsFont = scaledFontPixelSize( font );
+  QFontMetricsF fontMetrics( metricsFont );
+  return ( fontMetrics.height() / FONT_WORKAROUND_SCALE );
+}
+
+double QgsComposerUtils::fontHeightCharacterMM( const QFont &font, const QChar &character )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont metricsFont = scaledFontPixelSize( font );
+  QFontMetricsF fontMetrics( metricsFont );
+  return ( fontMetrics.boundingRect( character ).height() / FONT_WORKAROUND_SCALE );
+}
+
+double QgsComposerUtils::textWidthMM( const QFont &font, const QString &text )
+{
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont metricsFont = scaledFontPixelSize( font );
+  QFontMetricsF fontMetrics( metricsFont );
+  return ( fontMetrics.width( text ) / FONT_WORKAROUND_SCALE );
+}
+
+void QgsComposerUtils::drawText( QPainter *painter, const QPointF &pos, const QString &text, const QFont &font, const QColor &color )
+{
+  if ( !painter )
+  {
+    return;
+  }
+
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont textFont = scaledFontPixelSize( font );
+
+  painter->save();
+  painter->setFont( textFont );
+  if ( color.isValid() )
+  {
+    painter->setPen( color );
+  }
+  double scaleFactor = 1.0 / FONT_WORKAROUND_SCALE;
+  painter->scale( scaleFactor, scaleFactor );
+  painter->drawText( pos * FONT_WORKAROUND_SCALE, text );
+  painter->restore();
+}
+
+void QgsComposerUtils::drawText( QPainter *painter, const QRectF &rect, const QString &text, const QFont &font, const QColor &color, const Qt::AlignmentFlag halignment, const Qt::AlignmentFlag valignment, const int flags )
+{
+  if ( !painter )
+  {
+    return;
+  }
+
+  //upscale using FONT_WORKAROUND_SCALE
+  //ref: http://osgeo-org.1560.x6.nabble.com/Multi-line-labels-and-font-bug-td4157152.html
+  QFont textFont = scaledFontPixelSize( font );
+
+  QRectF scaledRect( rect.x() * FONT_WORKAROUND_SCALE, rect.y() * FONT_WORKAROUND_SCALE,
+                     rect.width() * FONT_WORKAROUND_SCALE, rect.height() * FONT_WORKAROUND_SCALE );
+
+  painter->save();
+  painter->setFont( textFont );
+  if ( color.isValid() )
+  {
+    painter->setPen( color );
+  }
+  double scaleFactor = 1.0 / FONT_WORKAROUND_SCALE;
+  painter->scale( scaleFactor, scaleFactor );
+  painter->drawText( scaledRect, halignment | valignment | flags, text );
+  painter->restore();
 }

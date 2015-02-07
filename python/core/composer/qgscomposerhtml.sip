@@ -5,7 +5,7 @@ class QgsComposerHtml: QgsComposerMultiFrame
 %End
 
  public:
- 
+
     /** Source modes for the HTML content to render in the item
     */
     enum ContentMode
@@ -13,9 +13,12 @@ class QgsComposerHtml: QgsComposerMultiFrame
       Url, /*< Using this mode item fetches its content via a url*/
       ManualHtml /*< HTML content is manually set for the item*/
     };
-    
-    QgsComposerHtml( QgsComposition* c, bool createUndoCommands );
+
+    QgsComposerHtml( QgsComposition* c /TransferThis/, bool createUndoCommands );
+
+    //should be private - fix for QGIS 3.0
     QgsComposerHtml();
+
     ~QgsComposerHtml();
 
     /**Sets the source mode for item's HTML content.
@@ -73,7 +76,7 @@ class QgsComposerHtml: QgsComposerMultiFrame
      * @note added in 2.5
      */
     QString html() const;
-    
+
     /**Returns whether html item will evaluate QGIS expressions prior to rendering
      * the HTML content. If set, any content inside [% %] tags will be
      * treated as a QGIS expression and evaluated against the current atlas
@@ -92,18 +95,7 @@ class QgsComposerHtml: QgsComposerMultiFrame
      * @see evaluateExpressions
      * @note added in QGIS 2.5
      */
-    void setEvaluateExpressions( bool evaluateExpressions );    
-
-    QSizeF totalSize() const;
-    void render( QPainter* p, const QRectF& renderExtent );
-
-    bool writeXML( QDomElement& elem, QDomDocument & doc, bool ignoreFrames = false ) const;
-    bool readXML( const QDomElement& itemElem, const QDomDocument& doc, bool ignoreFrames = false );
-
-    void addFrame( QgsComposerFrame* frame, bool recalcFrameSizes = true );
-
-    //overriden to break frames without dividing lines of text
-    double findNearbyPageBreak( double yPos );
+    void setEvaluateExpressions( bool evaluateExpressions );
 
     /**Returns whether html item is using smart breaks. Smart breaks prevent
      * the html frame contents from breaking mid-way though a line of text.
@@ -145,11 +137,66 @@ class QgsComposerHtml: QgsComposerMultiFrame
      */
     double maxBreakDistance() const;
 
+    /**Sets the user stylesheet CSS rules to use while rendering the HTML content. These
+     * allow for overriding the styles specified within the HTML source. Setting the stylesheet
+     * using this function does not automatically refresh the item's contents. Call loadHtml
+     * to trigger a refresh of the item after setting the stylesheet rules.
+     * @param stylesheet CSS rules for user stylesheet
+     * @see userStylesheet
+     * @see setUserStylesheetEnabled
+     * @see loadHtml
+     * @note added in 2.5
+     */
+    void setUserStylesheet( const QString stylesheet );
+
+    /**Returns the user stylesheet CSS rules used while rendering the HTML content. These
+     * overriding the styles specified within the HTML source.
+     * @returns CSS rules for user stylesheet
+     * @see setUserStylesheet
+     * @see userStylesheetEnabled
+     * @note added in 2.5
+     */
+    QString userStylesheet() const;
+
+    /**Sets whether user stylesheets are enabled for the HTML content.
+     * @param stylesheetEnabled set to true to enable user stylesheets
+     * @see userStylesheetEnabled
+     * @see setUserStylesheet
+     * @note added in 2.5
+     */
+    void setUserStylesheetEnabled( const bool stylesheetEnabled );
+
+    /**Returns whether user stylesheets are enabled for the HTML content.
+     * @returns true if user stylesheets are enabled
+     * @see setUserStylesheetEnabled
+     * @see userStylesheet
+     * @note added in 2.5
+     */
+    bool userStylesheetEnabled() const;
+
+    virtual QString displayName() const;
+    QSizeF totalSize() const;
+    void render( QPainter* p, const QRectF& renderExtent, const int frameIndex );
+    bool writeXML( QDomElement& elem, QDomDocument & doc, bool ignoreFrames = false ) const;
+    bool readXML( const QDomElement& itemElem, const QDomDocument& doc, bool ignoreFrames = false );
+    void addFrame( QgsComposerFrame* frame /Transfer/, bool recalcFrameSizes = true );
+    //overriden to break frames without dividing lines of text
+    double findNearbyPageBreak( double yPos );
+
   public slots:
 
     /**Reloads the html source from the url and redraws the item.
+     * @param useCache set to true to use a cached copy of remote html
+     * content
      * @see setUrl
      * @see url
      */
-    void loadHtml();
+    void loadHtml( const bool useCache = false );
+
+    /**Recalculates the frame sizes for the current viewport dimensions*/
+    void recalculateFrameSizes();
+    void refreshExpressionContext();
+
+    virtual void refreshDataDefinedProperty( const QgsComposerObject::DataDefinedProperty property = QgsComposerObject::AllProperties );
+
 };

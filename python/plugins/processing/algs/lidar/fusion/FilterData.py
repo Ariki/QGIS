@@ -27,9 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 import subprocess
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterNumber
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -45,12 +45,14 @@ class FilterData(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Filter Data outliers'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input las layer'))
-        self.addParameter(ParameterNumber(self.VALUE,
-                          'Standard Deviation multiplier'))
-        self.addParameter(ParameterNumber(self.VALUE, 'Window size', None,
-                          None, 10))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output filtered las file'))
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input las layer')))
+        self.addParameter(ParameterNumber(
+            self.VALUE, self.tr('Standard Deviation multiplier')))
+        self.addParameter(ParameterNumber(
+            self.VALUE, self.tr('Window size'), None, None, 10))
+        self.addOutput(OutputFile(
+            self.OUTPUT, self.tr('Output filtered las file')))
         self.addAdvancedModifiers()
 
     def processAlgorithm(self, progress):

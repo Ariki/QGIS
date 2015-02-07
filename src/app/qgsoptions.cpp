@@ -36,6 +36,9 @@
 #include "qgsrasterpyramidsoptionswidget.h"
 #include "qgsdialog.h"
 #include "qgscomposer.h"
+#include "qgscolorschemeregistry.h"
+#include "qgssymbollayerv2utils.h"
+#include "qgscolordialog.h"
 
 #include <QInputDialog>
 #include <QFileDialog>
@@ -100,7 +103,9 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   }
 
   mIdentifyHighlightColorButton->setColorDialogTitle( tr( "Identify highlight color" ) );
-  mIdentifyHighlightColorButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mIdentifyHighlightColorButton->setAllowAlpha( true );
+  mIdentifyHighlightColorButton->setContext( "gui" );
+  mIdentifyHighlightColorButton->setDefaultColor( QGis::DEFAULT_HIGHLIGHT_COLOR );
 
   QSettings settings;
 
@@ -308,6 +313,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
 
 
   spinBoxAttrTableRowCache->setValue( settings.value( "/qgis/attributeTableRowCache", 10000 ).toInt() );
+  spinBoxAttrTableRowCache->setSpecialValueText( tr( "All" ) );
 
   // set the prompt for raster sublayers
   // 0 = Always -> always ask (if there are existing sublayers)
@@ -357,8 +363,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   }
   QString myLayerDefaultCrs = settings.value( "/Projections/layerDefaultCrs", GEO_EPSG_CRS_AUTHID ).toString();
   mLayerDefaultCrs.createFromOgcWmsCrs( myLayerDefaultCrs );
-  //display the crs as friendly text rather than in wkt
-  leLayerGlobalCrs->setText( mLayerDefaultCrs.authid() + " - " + mLayerDefaultCrs.description() );
+  leLayerGlobalCrs->setCrs( mLayerDefaultCrs );
 
   //on the fly CRS transformation settings
   //it would be logical to have single settings value but originaly the radio buttons were checkboxes
@@ -377,8 +382,8 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
 
   QString myDefaultCrs = settings.value( "/Projections/projectDefaultCrs", GEO_EPSG_CRS_AUTHID ).toString();
   mDefaultCrs.createFromOgcWmsCrs( myDefaultCrs );
-  //display the crs as friendly text rather than in wkt
-  leProjectGlobalCrs->setText( mDefaultCrs.authid() + " - " + mDefaultCrs.description() );
+  leProjectGlobalCrs->setCrs( mDefaultCrs );
+  leProjectGlobalCrs->setOptionVisible( QgsProjectionSelectionWidget::DefaultCrs, false );
 
   //default datum transformations
   settings.beginGroup( "/Projections" );
@@ -539,6 +544,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   QString name = QApplication::style()->objectName();
   cmbStyle->setCurrentIndex( cmbStyle->findText( name, Qt::MatchFixedString ) );
 
+  mNativeColorDialogsChkBx->setChecked( settings.value( "/qgis/native_color_dialogs", false ).toBool() );
   mLiveColorDialogsChkBx->setChecked( settings.value( "/qgis/live_color_dialogs", false ).toBool() );
 
   //set the state of the checkboxes
@@ -578,6 +584,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   cbxCopyWKTGeomFromTable->setChecked( settings.value( "/qgis/copyGeometryAsWKT", true ).toBool() );
   leNullValue->setText( settings.value( "qgis/nullValue", "NULL" ).toString() );
   cbxIgnoreShapeEncoding->setChecked( settings.value( "/qgis/ignoreShapeEncoding", true ).toBool() );
+  cbxCanvasRotation->setChecked( QgsMapCanvas::rotationEnabled() );
 
   cmbLegendDoubleClickAction->setCurrentIndex( settings.value( "/qgis/legendDoubleClickAction", 0 ).toInt() );
 
@@ -615,20 +622,28 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   int myBlue = settings.value( "/qgis/default_selection_color_blue", 0 ).toInt();
   int myAlpha = settings.value( "/qgis/default_selection_color_alpha", 255 ).toInt();
   pbnSelectionColor->setColor( QColor( myRed, myGreen, myBlue, myAlpha ) );
-  pbnSelectionColor->setColorDialogTitle( tr( "Selection color" ) );
-  pbnSelectionColor->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  pbnSelectionColor->setColorDialogTitle( tr( "Set selection color" ) );
+  pbnSelectionColor->setAllowAlpha( true );
+  pbnSelectionColor->setContext( "gui" );
+  pbnSelectionColor->setDefaultColor( QColor( 255, 255, 0, 255 ) );
 
   //set the default color for canvas background
   myRed = settings.value( "/qgis/default_canvas_color_red", 255 ).toInt();
   myGreen = settings.value( "/qgis/default_canvas_color_green", 255 ).toInt();
   myBlue = settings.value( "/qgis/default_canvas_color_blue", 255 ).toInt();
   pbnCanvasColor->setColor( QColor( myRed, myGreen, myBlue ) );
+  pbnCanvasColor->setColorDialogTitle( tr( "Set canvas color" ) );
+  pbnCanvasColor->setContext( "gui" );
+  pbnCanvasColor->setDefaultColor( Qt::white );
 
   // set the default color for the measure tool
   myRed = settings.value( "/qgis/default_measure_color_red", 222 ).toInt();
   myGreen = settings.value( "/qgis/default_measure_color_green", 155 ).toInt();
   myBlue = settings.value( "/qgis/default_measure_color_blue", 67 ).toInt();
   pbnMeasureColor->setColor( QColor( myRed, myGreen, myBlue ) );
+  pbnMeasureColor->setColorDialogTitle( tr( "Set measuring tool color" ) );
+  pbnMeasureColor->setContext( "gui" );
+  pbnMeasureColor->setDefaultColor( QColor( 222, 155, 67 ) );
 
   capitaliseCheckBox->setChecked( settings.value( "/qgis/capitaliseLayerName", QVariant( false ) ).toBool() );
 
@@ -674,6 +689,21 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   }
 
   //
+  // Color palette
+  //
+  connect( mButtonCopyColors, SIGNAL( clicked() ), mTreeCustomColors, SLOT( copyColors() ) );
+  connect( mButtonRemoveColor, SIGNAL( clicked() ), mTreeCustomColors, SLOT( removeSelection() ) );
+  connect( mButtonPasteColors, SIGNAL( clicked() ), mTreeCustomColors, SLOT( pasteColors() ) );
+
+  //find custom color scheme from registry
+  QList<QgsCustomColorScheme *> customSchemes;
+  QgsColorSchemeRegistry::instance()->schemes( customSchemes );
+  if ( customSchemes.length() > 0 )
+  {
+    mTreeCustomColors->setScheme( customSchemes.at( 0 ) );
+  }
+
+  //
   // Composer settings
   //
 
@@ -701,7 +731,9 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   QColor gridColor = QColor( gridRed, gridGreen, gridBlue, gridAlpha );
   mGridColorButton->setColor( gridColor );
   mGridColorButton->setColorDialogTitle( tr( "Select grid color" ) );
-  mGridColorButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mGridColorButton->setAllowAlpha( true );
+  mGridColorButton->setContext( "gui" );
+  mGridColorButton->setDefaultColor( QColor( 190, 190, 190, 100 ) );
 
   //default composer grid style
   QString gridStyleString;
@@ -725,7 +757,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
 
   //grid and guide defaults
   mGridResolutionSpinBox->setValue( settings.value( "/Composer/defaultSnapGridResolution", 10.0 ).toDouble() );
-  mSnapToleranceSpinBox->setValue( settings.value( "/Composer/defaultSnapTolerancePixels", 10 ).toInt() );
+  mSnapToleranceSpinBox->setValue( settings.value( "/Composer/defaultSnapTolerancePixels", 5 ).toInt() );
   mOffsetXSpinBox->setValue( settings.value( "/Composer/defaultSnapGridOffsetX", 0 ).toDouble() );
   mOffsetYSpinBox->setValue( settings.value( "/Composer/defaultSnapGridOffsetY", 0 ).toDouble() );
 
@@ -756,7 +788,9 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   myBlue = settings.value( "/qgis/digitizing/line_color_blue", 0 ).toInt();
   myAlpha = settings.value( "/qgis/digitizing/line_color_alpha", 200 ).toInt();
   mLineColorToolButton->setColor( QColor( myRed, myGreen, myBlue, myAlpha ) );
-  mLineColorToolButton->setColorDialogOptions( QColorDialog::ShowAlphaChannel );
+  mLineColorToolButton->setAllowAlpha( true );
+  mLineColorToolButton->setContext( "gui" );
+  mLineColorToolButton->setDefaultColor( QColor( 255, 0, 0, 200 ) );
 
   //default snap mode
   mDefaultSnapModeComboBox->insertItem( 0, tr( "To vertex" ), "to vertex" );
@@ -767,7 +801,8 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
   mDefaultSnapModeComboBox->setCurrentIndex( mDefaultSnapModeComboBox->findData( defaultSnapString ) );
   mDefaultSnappingToleranceSpinBox->setValue( settings.value( "/qgis/digitizing/default_snapping_tolerance", 0 ).toDouble() );
   mSearchRadiusVertexEditSpinBox->setValue( settings.value( "/qgis/digitizing/search_radius_vertex_edit", 10 ).toDouble() );
-  if ( settings.value( "/qgis/digitizing/default_snapping_tolerance_unit", 0 ).toInt() == QgsTolerance::MapUnits )
+  int defSnapUnits = settings.value( "/qgis/digitizing/default_snapping_tolerance_unit", QgsTolerance::ProjectUnits ).toInt();
+  if ( defSnapUnits == QgsTolerance::ProjectUnits || defSnapUnits == QgsTolerance::LayerUnits )
   {
     index = mDefaultSnappingToleranceComboBox->findText( tr( "map units" ) );
   }
@@ -776,7 +811,8 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl ) :
     index = mDefaultSnappingToleranceComboBox->findText( tr( "pixels" ) );
   }
   mDefaultSnappingToleranceComboBox->setCurrentIndex( index );
-  if ( settings.value( "/qgis/digitizing/search_radius_vertex_edit_unit", QgsTolerance::Pixels ).toInt() == QgsTolerance::MapUnits )
+  int defRadiusUnits = settings.value( "/qgis/digitizing/search_radius_vertex_edit_unit", QgsTolerance::Pixels ).toInt();
+  if ( defRadiusUnits == QgsTolerance::ProjectUnits || defRadiusUnits == QgsTolerance::LayerUnits )
   {
     index = mSearchRadiusVertexEditComboBox->findText( tr( "map units" ) );
   }
@@ -856,10 +892,7 @@ void QgsOptions::setCurrentPage( QString pageWidgetName )
 
 void QgsOptions::on_mProxyTypeComboBox_currentIndexChanged( int idx )
 {
-  leProxyHost->setEnabled( idx != 0 );
-  leProxyPort->setEnabled( idx != 0 );
-  leProxyUser->setEnabled( idx != 0 );
-  leProxyPassword->setEnabled( idx != 0 );
+  frameManualProxy->setEnabled( idx != 0 );
 }
 
 void QgsOptions::on_cbxProjectDefaultNew_toggled( bool checked )
@@ -875,7 +908,7 @@ void QgsOptions::on_cbxProjectDefaultNew_toggled( bool checked )
   }
 }
 
-void QgsOptions::on_pbnProjectDefaultSetCurrent_clicked( )
+void QgsOptions::on_pbnProjectDefaultSetCurrent_clicked()
 {
   QString fileName = QgsApplication::qgisSettingsDirPath() + QString( "project_default.qgs" );
   if ( QgsProject::instance()->write( QFileInfo( fileName ) ) )
@@ -888,7 +921,7 @@ void QgsOptions::on_pbnProjectDefaultSetCurrent_clicked( )
   }
 }
 
-void QgsOptions::on_pbnProjectDefaultReset_clicked( )
+void QgsOptions::on_pbnProjectDefaultReset_clicked()
 {
   QString fileName = QgsApplication::qgisSettingsDirPath() + QString( "project_default.qgs" );
   if ( QFile::exists( fileName ) )
@@ -898,7 +931,7 @@ void QgsOptions::on_pbnProjectDefaultReset_clicked( )
   cbxProjectDefaultNew->setChecked( false );
 }
 
-void QgsOptions::on_pbnTemplateFolderBrowse_pressed( )
+void QgsOptions::on_pbnTemplateFolderBrowse_pressed()
 {
   QString newDir = QFileDialog::getExistingDirectory( 0, tr( "Choose a directory to store project template files" ),
                    leTemplateFolder->text() );
@@ -908,7 +941,7 @@ void QgsOptions::on_pbnTemplateFolderBrowse_pressed( )
   }
 }
 
-void QgsOptions::on_pbnTemplateFolderReset_pressed( )
+void QgsOptions::on_pbnTemplateFolderReset_pressed()
 {
   leTemplateFolder->setText( QgsApplication::qgisSettingsDirPath() + QString( "project_templates" ) );
 }
@@ -1078,6 +1111,7 @@ void QgsOptions::saveOptions()
   settings.setValue( "/qgis/legendDoubleClickAction", cmbLegendDoubleClickAction->currentIndex() );
   bool legendLayersCapitalise = settings.value( "/qgis/capitaliseLayerName", false ).toBool();
   settings.setValue( "/qgis/capitaliseLayerName", capitaliseCheckBox->isChecked() );
+  QgsMapCanvas::enableRotation( cbxCanvasRotation->isChecked() );
 
   // Default simplify drawing configuration
   QgsVectorSimplifyMethod::SimplifyHints simplifyHints = QgsVectorSimplifyMethod::NoSimplification;
@@ -1123,6 +1157,7 @@ void QgsOptions::saveOptions()
 
   settings.setValue( "/qgis/messageTimeout", mMessageTimeoutSpnBx->value() );
 
+  settings.setValue( "/qgis/native_color_dialogs", mNativeColorDialogsChkBx->isChecked() );
   settings.setValue( "/qgis/live_color_dialogs", mLiveColorDialogsChkBx->isChecked() );
 
   // rasters settings
@@ -1239,9 +1274,9 @@ void QgsOptions::saveOptions()
   settings.setValue( "/qgis/digitizing/default_snapping_tolerance", mDefaultSnappingToleranceSpinBox->value() );
   settings.setValue( "/qgis/digitizing/search_radius_vertex_edit", mSearchRadiusVertexEditSpinBox->value() );
   settings.setValue( "/qgis/digitizing/default_snapping_tolerance_unit",
-                     ( mDefaultSnappingToleranceComboBox->currentIndex() == 0 ? QgsTolerance::MapUnits : QgsTolerance::Pixels ) );
+                     ( mDefaultSnappingToleranceComboBox->currentIndex() == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
   settings.setValue( "/qgis/digitizing/search_radius_vertex_edit_unit",
-                     ( mSearchRadiusVertexEditComboBox->currentIndex()  == 0 ? QgsTolerance::MapUnits : QgsTolerance::Pixels ) );
+                     ( mSearchRadiusVertexEditComboBox->currentIndex()  == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
 
   settings.setValue( "/qgis/digitizing/marker_only_for_selected", mMarkersOnlyForSelectedCheckBox->isChecked() );
 
@@ -1279,6 +1314,14 @@ void QgsOptions::saveOptions()
     myPaths += mListGlobalScales->item( i )->text();
   }
   settings.setValue( "Map/scales", myPaths );
+
+  //
+  // Color palette
+  //
+  if ( mTreeCustomColors->isDirty() )
+  {
+    mTreeCustomColors->saveColorsToScheme();
+  }
 
   //
   // Composer settings
@@ -1409,49 +1452,14 @@ void QgsOptions::on_mBoldGroupBoxTitleChkBx_clicked( bool chkd )
   mStyleSheetBuilder->buildStyleSheet( mStyleSheetNewOpts );
 }
 
-void QgsOptions::on_pbnSelectProjection_clicked()
+void QgsOptions::on_leProjectGlobalCrs_crsChanged( QgsCoordinateReferenceSystem crs )
 {
-  QSettings settings;
-  QgsGenericProjectionSelector * mySelector = new QgsGenericProjectionSelector( this );
-
-  //find out crs id of current proj4 string
-  mySelector->setSelectedCrsId( mLayerDefaultCrs.srsid() );
-
-  if ( mySelector->exec() )
-  {
-    mLayerDefaultCrs.createFromOgcWmsCrs( mySelector->selectedAuthId() );
-    QgsDebugMsg( QString( "Setting default project CRS to : %1" ).arg( mySelector->selectedAuthId() ) );
-    leLayerGlobalCrs->setText( mLayerDefaultCrs.authid() + " - " + mLayerDefaultCrs.description() );
-    QgsDebugMsg( QString( "------ Global Layer Default Projection Selection set to ----------\n%1" ).arg( leLayerGlobalCrs->text() ) );
-  }
-  else
-  {
-    QgsDebugMsg( "------ Global Layer Default Projection Selection change cancelled ----------" );
-    QApplication::restoreOverrideCursor();
-  }
-
+  mDefaultCrs = crs;
 }
 
-void QgsOptions::on_pbnSelectOtfProjection_clicked()
+void QgsOptions::on_leLayerGlobalCrs_crsChanged( QgsCoordinateReferenceSystem crs )
 {
-  QSettings settings;
-  QgsGenericProjectionSelector * mySelector = new QgsGenericProjectionSelector( this );
-
-  //find out crs id of current proj4 string
-  mySelector->setSelectedCrsId( mDefaultCrs.srsid() );
-
-  if ( mySelector->exec() )
-  {
-    mDefaultCrs.createFromOgcWmsCrs( mySelector->selectedAuthId() );
-    QgsDebugMsg( QString( "Setting default project CRS to : %1" ).arg( mySelector->selectedAuthId() ) );
-    leProjectGlobalCrs->setText( mDefaultCrs.authid() + " - " + mDefaultCrs.description() );
-    QgsDebugMsg( QString( "------ Global OTF Projection Selection set to ----------\n%1" ).arg( leProjectGlobalCrs->text() ) );
-  }
-  else
-  {
-    QgsDebugMsg( "------ Global OTF Projection Selection change cancelled ----------" );
-    QApplication::restoreOverrideCursor();
-  }
+  mLayerDefaultCrs = crs;
 }
 
 void QgsOptions::on_lstGdalDrivers_itemDoubleClicked( QTreeWidgetItem * item, int column )
@@ -1734,7 +1742,7 @@ void QgsOptions::loadGdalDriverList()
   mLoadedGdalDriverList = true;
 
   // allow to retrieve metadata from all drivers, they will be skipped again when saving
-  CPLSetConfigOption( "GDAL_SKIP",  "" );
+  CPLSetConfigOption( "GDAL_SKIP", "" );
   GDALAllRegister();
 
   int myGdalDriverCount = GDALGetDriverCount();
@@ -2029,14 +2037,85 @@ void QgsOptions::saveDefaultDatumTransformations()
     int srcDatumTransform = item->text( 2 ).toInt( &conversionOk );
     if ( conversionOk )
     {
-      s.setValue( srcAuthId + "//" + destAuthId + "_srcTransform" , srcDatumTransform );
+      s.setValue( srcAuthId + "//" + destAuthId + "_srcTransform", srcDatumTransform );
     }
     int destDatumTransform = item->text( 3 ).toInt( &conversionOk );
     if ( conversionOk )
     {
-      s.setValue( srcAuthId + "//" + destAuthId + "_destTransform" , destDatumTransform );
+      s.setValue( srcAuthId + "//" + destAuthId + "_destTransform", destDatumTransform );
     }
   }
 
   s.endGroup();
+}
+
+
+void QgsOptions::on_mButtonAddColor_clicked()
+{
+  QColor newColor = QgsColorDialogV2::getColor( QColor(), this->parentWidget(), tr( "Select color" ), true );
+  if ( !newColor.isValid() )
+  {
+    return;
+  }
+  activateWindow();
+
+  mTreeCustomColors->addColor( newColor, QgsSymbolLayerV2Utils::colorToName( newColor ) );
+}
+
+void QgsOptions::on_mButtonImportColors_clicked()
+{
+  QSettings s;
+  QString lastDir = s.value( "/UI/lastGplPaletteDir", "" ).toString();
+  QString filePath = QFileDialog::getOpenFileName( this, tr( "Select palette file" ), lastDir, "GPL (*.gpl);;All files (*.*)" );
+  activateWindow();
+  if ( filePath.isEmpty() )
+  {
+    return;
+  }
+
+  //check if file exists
+  QFileInfo fileInfo( filePath );
+  if ( !fileInfo.exists() || !fileInfo.isReadable() )
+  {
+    QMessageBox::critical( 0, tr( "Invalid file" ), tr( "Error, file does not exist or is not readable" ) );
+    return;
+  }
+
+  s.setValue( "/UI/lastGplPaletteDir", fileInfo.absolutePath() );
+  QFile file( filePath );
+  bool importOk = mTreeCustomColors->importColorsFromGpl( file );
+  if ( !importOk )
+  {
+    QMessageBox::critical( 0, tr( "Invalid file" ), tr( "Error, no colors found in palette file" ) );
+    return;
+  }
+}
+
+void QgsOptions::on_mButtonExportColors_clicked()
+{
+  QSettings s;
+  QString lastDir = s.value( "/UI/lastGplPaletteDir", "" ).toString();
+  QString fileName = QFileDialog::getSaveFileName( this, tr( "Palette file" ), lastDir, "GPL (*.gpl)" );
+  activateWindow();
+  if ( fileName.isEmpty() )
+  {
+    return;
+  }
+
+  // ensure filename contains extension
+  if ( !fileName.toLower().endsWith( ".gpl" ) )
+  {
+    fileName += ".gpl";
+  }
+
+  QFileInfo fileInfo( fileName );
+  s.setValue( "/UI/lastGplPaletteDir", fileInfo.absolutePath() );
+
+  QFile file( fileName );
+  bool exportOk = mTreeCustomColors->exportColorsToGpl( file );
+  if ( !exportOk )
+  {
+    QMessageBox::critical( 0, tr( "Error exporting" ), tr( "Error writing palette file" ) );
+    return;
+  }
 }

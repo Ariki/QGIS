@@ -28,11 +28,10 @@ __revision__ = '$Format:%H$'
 import os
 
 from osgeo import gdal, osr
-from PyQt4.QtGui import *
 
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterBoolean import ParameterBoolean
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterBoolean
 
 
 class ExtractProjection(GdalAlgorithm):
@@ -43,9 +42,9 @@ class ExtractProjection(GdalAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Extract projection'
         self.group = '[GDAL] Projections'
-        self.addParameter(ParameterRaster(self.INPUT, 'Input file'))
+        self.addParameter(ParameterRaster(self.INPUT, self.tr('Input file')))
         self.addParameter(ParameterBoolean(self.PRJ_FILE,
-                          'Create also .prj file', False))
+            self.tr('Create also .prj file'), False))
 
     def processAlgorithm(self, progress):
         rasterPath = self.getParameterValue(self.INPUT)

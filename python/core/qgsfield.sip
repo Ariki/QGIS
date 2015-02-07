@@ -49,7 +49,7 @@ public:
     /**
       Gets the field type. Field types vary depending on the data source. Examples
       are char, int, double, blob, geometry, etc. The type is stored exactly as
-      the data store reports it, with no attenpt to standardize the value.
+      the data store reports it, with no attempt to standardize the value.
       @return QString containing the field type
      */
     const QString & typeName() const;
@@ -108,8 +108,66 @@ public:
       */
     void setComment( const QString & comment );
 
-    /**Formats string for display*/
+    /** Formats string for display*/
     QString displayString( const QVariant& v ) const;
+
+    /**
+     * Converts the provided variant to a compatible format
+     *
+     * @param v  The value to convert
+     *
+     * @return   True if the conversion was successful
+     */
+    QVariant convertCompatible( QVariant& v ) const;
+%MethodCode
+    PyObject *sipParseErr = NULL;
+
+    {
+      QVariant * a0;
+      int a0State = 0;
+      const QgsField *sipCpp;
+
+      if (sipParseArgs(&sipParseErr, sipArgs, "BJ1", &sipSelf, sipType_QgsField, &sipCpp, sipType_QVariant,&a0, &a0State))
+      {
+        bool sipRes;
+
+        Py_BEGIN_ALLOW_THREADS
+        try
+        {
+          QgsDebugMsg( a0->toString() );
+          sipRes = sipCpp->convertCompatible(*a0);
+          QgsDebugMsg( a0->toString() );
+        }
+        catch (...)
+        {
+          Py_BLOCK_THREADS
+
+          sipReleaseType(a0,sipType_QVariant,a0State);
+            sipRaiseUnknownException();
+            return NULL;
+        }
+
+        Py_END_ALLOW_THREADS
+
+        PyObject* res = sipConvertFromType( a0, sipType_QVariant, NULL );
+        sipReleaseType(a0,sipType_QVariant,a0State);
+
+        if ( !sipRes )
+        {
+          PyErr_SetString(PyExc_ValueError,
+            QString( "Value %1 (%2) could not be converted to field type %3." ).arg( a0->toString() ).arg ( a0->typeName() ).arg( sipCpp->type() ).toUtf8().constData() );
+            sipError = sipErrorFail;
+        }
+
+        return res;
+      }
+    }
+
+    /* Raise an exception if the arguments couldn't be parsed. */
+    sipNoMethod(sipParseErr, sipName_QgsField, sipName_convertCompatible, doc_QgsField_convertCompatible);
+
+    return NULL;
+%End
 }; // class QgsField
 
 
@@ -126,7 +184,8 @@ class QgsFields
       OriginUnknown,   //!< it has not been specified where the field comes from
       OriginProvider,  //!< field comes from the underlying data provider of the vector layer  (originIndex = index in provider's fields)
       OriginJoin,      //!< field comes from a joined layer   (originIndex / 1000 = index of the join, originIndex % 1000 = index within the join)
-      OriginEdit       //!< field has been temporarily added in editing mode (originIndex = index in the list of added attributes)
+      OriginEdit,      //!< field has been temporarily added in editing mode (originIndex = index in the list of added attributes)
+      OriginExpression //!< field is calculated from an expression
     };
 
     //! Remove all fields
@@ -192,6 +251,11 @@ class QgsFields
 
     //! Utility function to return a list of QgsField instances
     QList<QgsField> toList() const;
+
+    //! @note added in 2.6
+    bool operator==( const QgsFields& other ) const;
+    //! @note added in 2.6
+    bool operator!=( const QgsFields& other ) const;
 
 /*  SIP_PYOBJECT __getitem__(int key);
 %MethodCode

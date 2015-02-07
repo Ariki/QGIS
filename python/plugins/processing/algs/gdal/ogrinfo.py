@@ -26,12 +26,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
-
-from processing.parameters.ParameterVector import ParameterVector
-from processing.outputs.OutputHTML import OutputHTML
+from processing.core.parameters import ParameterVector
+from processing.core.outputs import OutputHTML
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 from processing.algs.gdal.OgrAlgorithm import OgrAlgorithm
@@ -46,10 +42,10 @@ class OgrInfo(OgrAlgorithm):
         self.name = 'Information'
         self.group = '[OGR] Miscellaneous'
 
-        self.addParameter(ParameterVector(self.INPUT, 'Input layer',
+        self.addParameter(ParameterVector(self.INPUT, self.tr('Input layer'),
                           [ParameterVector.VECTOR_TYPE_ANY], False))
 
-        self.addOutput(OutputHTML(self.OUTPUT, 'Layer information'))
+        self.addOutput(OutputHTML(self.OUTPUT, self.tr('Layer information')))
 
     def processAlgorithm(self, progress):
         arguments = []

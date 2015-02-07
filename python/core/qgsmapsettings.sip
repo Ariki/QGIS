@@ -24,6 +24,15 @@ class QgsMapSettings
     //! Set the size of the resulting map image
     void setOutputSize( const QSize& size );
 
+    //! Return the rotation of the resulting map image
+    //! Units are clockwise degrees
+    //! @note added in 2.8
+    double rotation() const;
+    //! Set the rotation of the resulting map image
+    //! Units are clockwise degrees
+    //! @note added in 2.8
+    void setRotation( double degrees );
+
     //! Return DPI used for conversion between real world units (e.g. mm) and pixels
     //! Default value is 96
     int outputDpi() const;
@@ -36,6 +45,13 @@ class QgsMapSettings
     //! Set list of layer IDs for map rendering. The layers must be registered in QgsMapLayerRegistry.
     //! The layers are stored in the reverse order of how they are rendered (layer with index 0 will be on top)
     void setLayers( const QStringList& layers );
+
+    //! Get map of map layer style overrides (key: layer ID, value: style name) where a different style should be used instead of the current one
+    //! @note added in 2.8
+    QMap<QString, QString> layerStyleOverrides() const;
+    //! Set map of map layer style overrides (key: layer ID, value: style name) where a different style should be used instead of the current one
+    //! @note added in 2.8
+    void setLayerStyleOverrides( const QMap<QString, QString>& overrides );
 
     //! sets whether to use projections for this layer set
     void setCrsTransformEnabled( bool enabled );
@@ -152,7 +168,7 @@ class QgsMapSettings
      * @param layer
      * @return transform - may be null if the transform is not needed
      */
-    const QgsCoordinateTransform* layerTransfrom( QgsMapLayer *layer ) const;
+    const QgsCoordinateTransform* layerTransform( QgsMapLayer *layer ) const;
 
     //! returns current extent of layer set
     QgsRectangle fullExtent() const;

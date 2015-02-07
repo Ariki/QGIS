@@ -26,22 +26,19 @@ __copyright__ = '(C) 2012, Alexander Bruy'
 __revision__ = '$Format:%H$'
 
 import os
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from PyQt4.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.GeoAlgorithmExecutionException import \
     GeoAlgorithmExecutionException
-from processing.parameters.ParameterFactory import ParameterFactory
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterVector import ParameterVector
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterString import ParameterString
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.outputs.OutputFactory import OutputFactory
-from processing.tools.system import *
+from processing.core.parameters import getParameterFromString
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterVector
+from processing.core.parameters import ParameterBoolean
+from processing.core.parameters import ParameterString
+from processing.core.parameters import ParameterNumber
+from processing.core.outputs import getOutputFromString
 from TauDEMUtils import TauDEMUtils
 
 
@@ -68,19 +65,20 @@ class TauDEMAlgorithm(GeoAlgorithm):
         self.cmdName = line
         line = lines.readline().strip('\n').strip()
         self.group = line
+
+        line = lines.readline().strip('\n').strip()
         while line != '':
             try:
                 line = line.strip('\n').strip()
                 if line.startswith('Parameter'):
-                    param = ParameterFactory.getFromString(line)
+                    param = getParameterFromString(line)
                     self.addParameter(param)
                 else:
-                    self.addOutput(OutputFactory.getFromString(line))
+                    self.addOutput(getOutputFromString(line))
                 line = lines.readline().strip('\n').strip()
             except Exception, e:
                 ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                       'Could not load TauDEM algorithm: '
-                                       + self.descriptionFile + '\n' + line)
+                    self.tr('Could not load TauDEM algorithm: %s\n%s' % (self.descriptionFile, line)))
                 raise e
         lines.close()
 
@@ -88,12 +86,11 @@ class TauDEMAlgorithm(GeoAlgorithm):
         commands = []
         commands.append(os.path.join(TauDEMUtils.mpiexecPath(), 'mpiexec'))
 
-        processNum = ProcessingConfig.getSetting(TauDEMUtils.MPI_PROCESSES)
+        processNum = int(ProcessingConfig.getSetting(TauDEMUtils.MPI_PROCESSES))
         if processNum <= 0:
-            raise GeoAlgorithmExecutionException('Wrong number of MPI \
-                processes used.\nPlease set correct number before running \
-                TauDEM algorithms.'
-                )
+            raise GeoAlgorithmExecutionException(
+                self.tr('Wrong number of MPI processes used. Please set '
+                        'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
         commands.append(str(processNum))
@@ -119,9 +116,4 @@ class TauDEMAlgorithm(GeoAlgorithm):
             commands.append(out.name)
             commands.append(out.value)
 
-        loglines = []
-        loglines.append('TauDEM execution command')
-        for line in commands:
-            loglines.append(line)
-        ProcessingLog.addToLog(ProcessingLog.LOG_INFO, loglines)
         TauDEMUtils.executeTauDEM(commands, progress)

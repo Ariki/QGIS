@@ -34,7 +34,7 @@
 
 
 QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource* source, bool ownSource, const QgsFeatureRequest& request )
-    : QgsAbstractFeatureIteratorFromSource( source, ownSource, request )
+    : QgsAbstractFeatureIteratorFromSource<QgsOgrFeatureSource>( source, ownSource, request )
     , ogrDataSource( 0 )
     , ogrLayer( 0 )
     , mSubsetStringSet( false )
@@ -59,10 +59,17 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource* source, bool 
     mSubsetStringSet = true;
   }
 
-  // make sure we fetch just relevant fields
   mFetchGeometry = ( mRequest.filterType() == QgsFeatureRequest::FilterRect ) || !( mRequest.flags() & QgsFeatureRequest::NoGeometry );
   QgsAttributeList attrs = ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes ) ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList();
-  QgsOgrUtils::setRelevantFields( ogrLayer, mSource->mFields.count(), mFetchGeometry, attrs );
+
+  // make sure we fetch just relevant fields
+  // unless it's a VRT data source filtered by geometry as we don't know which
+  // attributes make up the geometry and OGR won't fetch them to evaluate the
+  // filter if we choose to ignore them (fixes #11223)
+  if (( mSource->mDriverName != "VRT" && mSource->mDriverName != "OGR_VRT" ) || mRequest.filterType() != QgsFeatureRequest::FilterRect )
+  {
+    QgsOgrUtils::setRelevantFields( ogrLayer, mSource->mFields.count(), mFetchGeometry, attrs );
+  }
 
   // spatial query to select features
   if ( mRequest.filterType() == QgsFeatureRequest::FilterRect )
@@ -337,7 +344,8 @@ QgsOgrFeatureSource::QgsOgrFeatureSource( const QgsOgrProvider* p )
   mSubsetString = p->mSubsetString;
   mEncoding = p->mEncoding; // no copying - this is a borrowed pointer from Qt
   mFields = p->mAttributeFields;
-  mOgrGeometryTypeFilter = p->mOgrGeometryTypeFilter;
+  mDriverName = p->ogrDriverName;
+  mOgrGeometryTypeFilter = wkbFlatten( p->mOgrGeometryTypeFilter );
 }
 
 QgsFeatureIterator QgsOgrFeatureSource::getFeatures( const QgsFeatureRequest& request )

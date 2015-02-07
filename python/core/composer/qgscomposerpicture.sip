@@ -33,42 +33,64 @@ class QgsComposerPicture: QgsComposerItem
     QgsComposerPicture( QgsComposition *composition /TransferThis/);
     ~QgsComposerPicture();
 
-    /** return correct graphics item type. Added in v1.7 */
+    /** return correct graphics item type. */
     virtual int type() const;
 
     /**Reimplementation of QCanvasItem::paint*/
     void paint( QPainter* painter, const QStyleOptionGraphicsItem* itemStyle, QWidget* pWidget );
 
-    /**Sets the source file of the image (may be svg or a raster format). This is only used if
-     * usePictureExpression() is false.
+    /**Sets the source file of the image (may be svg or a raster format). Data defined
+     * picture source may override this value.
      * @param path full path to the source image
      * @see usePictureExpression
      * @see pictureFile
+     * @deprecated use setPicturePath instead
     */
-    void setPictureFile( const QString& path );
+    void setPictureFile( const QString& path ) /Deprecated/;
 
-    /**Returns the path of the source image file. This is only used if
-     * usePictureExpression() is false.
+    /**Returns the path of the source image file. Data defined picture source may override
+     * this value.
      * @returns path to the source image
      * @see usePictureExpression
      * @see setPictureFile
+     * @deprecated use picturePath instead
     */
-    QString pictureFile() const;
+    QString pictureFile() const /Deprecated/;
+
+    /**Sets the source path of the image (may be svg or a raster format). Data defined
+     * picture source may override this value. The path can either be a local path
+     * or a remote (http) path.
+     * @param path path for the source image
+     * @see usePictureExpression
+     * @see picturePath
+     * @note added in QGIS 2.5
+    */
+    void setPicturePath( const QString& path );
+
+    /**Returns the path of the source image. Data defined picture source may override
+     * this value. The path can either be a local path or a remote (http) path.
+     * @returns path for the source image
+     * @see usePictureExpression
+     * @see setPicturePath
+     * @note added in QGIS 2.5
+    */
+    QString picturePath() const;
 
     /**Sets this items bound in scene coordinates such that 1 item size units
-       corresponds to 1 scene size unit and resizes the svg symbol / image*/
+     * corresponds to 1 scene size unit and resizes the svg symbol / image
+    */
     void setSceneRect( const QRectF& rectangle );
 
-    /** stores state in Dom element
-       * @param elem is Dom element corresponding to 'Composer' tag
-       * @param doc is Dom document
-       */
+    /**Stores state in Dom element
+     * @param elem is Dom element corresponding to 'Composer' tag
+     * @param doc is Dom document
+     */
     bool writeXML( QDomElement& elem, QDomDocument & doc ) const;
 
-    /** sets state from Dom document
-      * @param itemElem is Dom node corresponding to item tag
-      * @param doc is Dom document
-      */
+    /**Sets state from Dom document
+     * @param itemElem is Dom node corresponding to item tag
+     * @param doc is Dom document
+     */
     bool readXML( const QDomElement& itemElem, const QDomDocument& doc );
 
     /**Returns the rotation used for drawing the picture within the composer item
@@ -141,8 +163,9 @@ class QgsComposerPicture: QgsComposerItem
      * @see setUsePictureExpression
      * @see pictureFile
      * @see pictureExpression
+     * @deprecated use QgsComposerObject::dataDefinedProperty( QgsComposerObject::PictureSource ) instead
      */
-    bool usePictureExpression() const;
+    bool usePictureExpression() const /Deprecated/;
 
     /**Returns the expression the item is using for the picture source. This is only
      * used if usePictureExpression() is true.
@@ -150,19 +173,22 @@ class QgsComposerPicture: QgsComposerItem
      * @note added in 2.3
      * @see setPictureExpression
      * @see usePictureExpression
+     * @deprecated use QgsComposerObject::dataDefinedProperty( QgsComposerObject::PictureSource ) instead
      */
-    QString pictureExpression() const;
+    QString pictureExpression() const /Deprecated/;
 
     /**Calculates width and hight of the picture (in mm) such that it fits into the item frame with the given rotation
      * @deprecated Use bool QgsComposerItem::imageSizeConsideringRotation( double& width, double& height, double rotation )
      * instead
      */
     bool imageSizeConsideringRotation( double& width, double& height ) const /Deprecated/;
+
     /**Calculates corner point after rotation and scaling
      * @deprecated Use QgsComposerItem::cornerPointOnRotatedAndScaledRect( double& x, double& y, double width, double height, double rotation )
      * instead
      */
     bool cornerPointOnRotatedAndScaledRect( double& x, double& y, double width, double height ) const /Deprecated/;
+
     /**Calculates width / height of the bounding box of a rotated rectangle
      * @deprecated Use QgsComposerItem::sizeChangedByRotation( double& width, double& height, double rotation )
      * instead
@@ -204,8 +230,9 @@ class QgsComposerPicture: QgsComposerItem
      * @see usePictureExpression
      * @see setPictureFile
      * @see setPictureExpression
+     * @deprecated use QgsComposerObject::dataDefinedProperty( QgsComposerObject::PictureSource ) instead
      */
-    virtual void setUsePictureExpression( bool useExpression );
+    virtual void setUsePictureExpression( bool useExpression ) /Deprecated/;
 
     /**Sets an expression to use for the picture source. This expression is only
      * used if usePictureExpression() is true.
@@ -213,8 +240,9 @@ class QgsComposerPicture: QgsComposerItem
      * @note added in 2.3
      * @see setUsePictureExpression
      * @see pictureExpression
+     * @deprecated use QgsComposerObject::dataDefinedProperty( QgsComposerObject::PictureSource ) instead
      */
-    virtual void setPictureExpression( QString expression );
+    virtual void setPictureExpression( QString expression ) /Deprecated/;
 
     /**Recalculates the source image (if using an expression for picture's source)
      * and reloads and redraws the picture.
@@ -225,13 +253,16 @@ class QgsComposerPicture: QgsComposerItem
     /**Prepares the picture's source expression after it is altered or the compositions
      * atlas coverage layer changes.
      * @note added in 2.3
+     * @deprecated no longer required
      */
-    void updatePictureExpression();
+    void updatePictureExpression() /Deprecated/;
 
     /**Forces a recalculation of the picture's frame size
      * @note added in 2.3
      */
     void recalculateSize();
+
+    virtual void refreshDataDefinedProperty( const QgsComposerObject::DataDefinedProperty property = QgsComposerObject::AllProperties );
 
   signals:
     /**Is emitted on picture rotation change*/

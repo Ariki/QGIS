@@ -26,15 +26,11 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os.path
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon
 from processing.core.AlgorithmProvider import AlgorithmProvider
-from processing.modeler.CalculatorModelerAlgorithm import \
-        CalculatorModelerAlgorithm
-from processing.modeler.RasterLayerBoundsAlgorithm import \
-        RasterLayerBoundsAlgorithm
-from processing.modeler.VectorLayerBoundsAlgorithm import \
-        VectorLayerBoundsAlgorithm
+from processing.modeler.CalculatorModelerAlgorithm import CalculatorModelerAlgorithm
+from processing.modeler.RasterLayerBoundsAlgorithm import RasterLayerBoundsAlgorithm
+from processing.modeler.VectorLayerBoundsAlgorithm import VectorLayerBoundsAlgorithm
 
 
 class ModelerOnlyAlgorithmProvider(AlgorithmProvider):
@@ -46,7 +42,7 @@ class ModelerOnlyAlgorithmProvider(AlgorithmProvider):
         return 'modelertools'
 
     def getDescription(self):
-        return 'Modeler-only tools'
+        return self.tr('Modeler-only tools', 'ModelerOnlyAlgorithmProvider')
 
     def getIcon(self):
         return QIcon(os.path.dirname(__file__) + '/../images/model.png')

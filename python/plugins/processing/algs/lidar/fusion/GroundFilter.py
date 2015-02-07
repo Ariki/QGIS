@@ -27,9 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 import subprocess
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterNumber
+from processing.core.outputs import OutputFile
 from FusionUtils import FusionUtils
 from FusionAlgorithm import FusionAlgorithm
 
@@ -43,10 +43,12 @@ class GroundFilter(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Ground Filter'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input las layer'))
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input las layer')))
         self.addParameter(ParameterNumber(self.CELLSIZE,
-                          'Cellsize for intermediate surfaces', 0, None, 10))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output ground las file'))
+            self.tr('Cellsize for intermediate surfaces'), 0, None, 10))
+        self.addOutput(OutputFile(
+            self.OUTPUT, self.tr('Output ground las file')))
         self.addAdvancedModifiers()
 
     def processAlgorithm(self, progress):

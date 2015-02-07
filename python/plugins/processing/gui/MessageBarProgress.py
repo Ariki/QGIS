@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-    SilentProgress.py
+    MessageBarProgress.py
     ---------------------
     Date                 : April 2013
     Copyright            : (C) 2013 by Victor Olaya
@@ -25,18 +25,18 @@ __copyright__ = '(C) 2013, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from PyQt4 import QtGui
+from PyQt4.QtCore import Qt, QCoreApplication
+from PyQt4.QtGui import QProgressBar
 from qgis.utils import iface
-from qgis.gui import *
+from qgis.gui import QgsMessageBar
 
 
 class MessageBarProgress:
 
     def __init__(self):
         self.progressMessageBar = \
-            iface.messageBar().createMessage('Executing algorithm')
-        self.progress = QtGui.QProgressBar()
+            iface.messageBar().createMessage(self.tr('Executing algorithm'))
+        self.progress = QProgressBar()
         self.progress.setMaximum(100)
         self.progress.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.progressMessageBar.layout().addWidget(self.progress)
@@ -45,9 +45,8 @@ class MessageBarProgress:
 
     def error(self, msg):
         iface.messageBar().clearWidgets()
-        iface.messageBar().pushMessage("Error", msg,
-                                                  level = QgsMessageBar.CRITICAL,
-                                                  duration = 3)
+        iface.messageBar().pushMessage(self.tr('Error'),
+            msg, level=QgsMessageBar.CRITICAL, duration=3)
 
     def setText(self, text):
         pass
@@ -69,3 +68,8 @@ class MessageBarProgress:
 
     def close(self):
         iface.messageBar().clearWidgets()
+
+    def tr(self, string, context=''):
+        if context == '':
+            context = 'MessageBarProgress'
+        return QCoreApplication.translate(context, string)

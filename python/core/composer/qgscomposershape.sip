@@ -47,7 +47,7 @@ class QgsComposerShape: QgsComposerItem
     /**Sets the QgsFillSymbolV2 used to draw the shape. Must also call setUseSymbolV2( true ) to
      * enable drawing with a symbol.
      * Note: added in version 2.1*/
-    void setShapeStyleSymbol( QgsFillSymbolV2* symbol );
+    void setShapeStyleSymbol( QgsFillSymbolV2* symbol /Transfer/ );
     /**Returns the QgsFillSymbolV2 used to draw the shape.
      * Note: added in version 2.1*/
     QgsFillSymbolV2* shapeStyleSymbol();
@@ -64,6 +64,9 @@ class QgsComposerShape: QgsComposerItem
      * QgsComposerItem as it needs to call updateBoundingRect after the shape's size changes
     */
     void setSceneRect( const QRectF& rectangle );
+
+    //Overriden to return shape type
+    virtual QString displayName() const;
 
   protected:
     /* reimplement drawFrame, since it's not a rect, but a custom shape */

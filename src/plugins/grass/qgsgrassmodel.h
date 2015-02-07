@@ -47,13 +47,13 @@ class QgsGrassModel: public QAbstractItemModel
     void refresh();
 
     // Refresh item
-    void refreshItem( QgsGrassModelItem *item ) ;
+    void refreshItem( QgsGrassModelItem *item );
 
     // Remove items missing in the list
-    void removeItems( QgsGrassModelItem *item, QStringList list ) ;
+    void removeItems( QgsGrassModelItem *item, QStringList list );
 
     // Add items missing in children
-    void addItems( QgsGrassModelItem *item, QStringList list, int type ) ;
+    void addItems( QgsGrassModelItem *item, QStringList list, int type );
 
     //! Item type
     int itemType( const QModelIndex &index ) const;
@@ -62,7 +62,7 @@ class QgsGrassModel: public QAbstractItemModel
     QString uri( const QModelIndex &index ) const;
 
     // Index
-    QModelIndex index( QgsGrassModelItem *item ) ;
+    QModelIndex index( QgsGrassModelItem *item );
 
     // Name
     QString itemName( const QModelIndex &index );
@@ -78,19 +78,19 @@ class QgsGrassModel: public QAbstractItemModel
 
     // Reimplemented QAbstractItemModel methods
     QModelIndex index( int row, int column,
-                       const QModelIndex & parent = QModelIndex() ) const;
+                       const QModelIndex & parent = QModelIndex() ) const override;
 
-    QModelIndex parent( const QModelIndex & index ) const;
+    QModelIndex parent( const QModelIndex & index ) const override;
 
-    int rowCount( const QModelIndex & parent ) const;
+    int rowCount( const QModelIndex & parent ) const override;
 
-    int columnCount( const QModelIndex & parent ) const;
+    int columnCount( const QModelIndex & parent ) const override;
 
-    QVariant data( const QModelIndex &index, int role = Qt::DisplayRole ) const;
+    QVariant data( const QModelIndex &index, int role = Qt::DisplayRole ) const override;
 
     QVariant headerData( int section, Qt::Orientation orientation,
-                         int role = Qt::DisplayRole ) const;
-    Qt::ItemFlags flags( const QModelIndex &index ) const;
+                         int role = Qt::DisplayRole ) const override;
+    Qt::ItemFlags flags( const QModelIndex &index ) const override;
 
   private:
     //! Current GISBASE

@@ -64,6 +64,16 @@ QgsLabelingGui::QgsLabelingGui( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, 
   mLineDistanceUnitWidget->setUnits( QStringList() << tr( "mm" ) << tr( "map units" ), 1 );
   mRepeatDistanceUnitWidget->setUnits( QStringList() << tr( "mm" ) << tr( "map units" ), 1 );
 
+  mFontLineHeightSpinBox->setClearValue( 1.0 );
+  mShapeRotationDblSpnBx->setClearValue( 0.0 );
+  mShapeOffsetXSpnBx->setClearValue( 0.0 );
+  mShapeOffsetYSpnBx->setClearValue( 0.0 );
+  mPointOffsetXSpinBox->setClearValue( 0.0 );
+  mPointOffsetYSpinBox->setClearValue( 0.0 );
+  mPointAngleSpinBox->setClearValue( 0.0 );
+  mFontLetterSpacingSpinBox->setClearValue( 0.0 );
+  mFontWordSpacingSpinBox->setClearValue( 0.0 );
+
   mCharDlg = new QgsCharacterSelectorDialog( this );
 
   mRefFont = lblFontPreview->font();
@@ -140,6 +150,23 @@ QgsLabelingGui::QgsLabelingGui( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, 
   mFieldExpressionWidget->setGeomCalculator( myDa );
 
   populateFontCapitalsComboBox();
+
+  // color buttons
+  mPreviewBackgroundBtn->setColorDialogTitle( tr( "Select fill color" ) );
+  mPreviewBackgroundBtn->setContext( "labelling" );
+  btnTextColor->setColorDialogTitle( tr( "Select text color" ) );
+  btnTextColor->setContext( "labelling" );
+  btnTextColor->setDefaultColor( Qt::black );
+  btnBufferColor->setColorDialogTitle( tr( "Select buffer color" ) );
+  btnBufferColor->setContext( "labelling" );
+  btnBufferColor->setDefaultColor( Qt::white );
+  mShapeBorderColorBtn->setColorDialogTitle( tr( "Select border color" ) );
+  mShapeBorderColorBtn->setContext( "labelling" );
+  mShapeFillColorBtn->setColorDialogTitle( tr( "Select fill color" ) );
+  mShapeFillColorBtn->setContext( "labelling" );
+  mShadowColorBtn->setColorDialogTitle( tr( "Select shadow color" ) );
+  mShadowColorBtn->setContext( "labelling" );
+  mShadowColorBtn->setDefaultColor( Qt::black );
 
   // set up quadrant offset button group
   mQuadrantBtnGrp = new QButtonGroup( this );
@@ -344,6 +371,7 @@ void QgsLabelingGui::init()
   chkPreserveRotation->setChecked( lyr.preserveRotation );
 
   mPreviewBackgroundBtn->setColor( lyr.previewBkgrdColor );
+  mPreviewBackgroundBtn->setDefaultColor( lyr.previewBkgrdColor );
   setPreviewBackground( lyr.previewBkgrdColor );
 
   mScaleBasedVisibilityChkBx->setChecked( lyr.scaleVisibility );
@@ -1468,9 +1496,9 @@ void QgsLabelingGui::on_mShapeTypeCmbBx_currentIndexChanged( int index )
   mShapeSizeXLabel->setText( tr( "Size%1" ).arg( !isSVG ? tr( " X" ) : "" ) );
 
   // SVG parameter setting doesn't support color's alpha component yet
-  mShapeFillColorBtn->setColorDialogOptions( isSVG ? QColorDialog::ColorDialogOptions( 0 ) : QColorDialog::ShowAlphaChannel );
+  mShapeFillColorBtn->setAllowAlpha( !isSVG );
   mShapeFillColorBtn->setButtonBackground();
-  mShapeBorderColorBtn->setColorDialogOptions( isSVG ? QColorDialog::ColorDialogOptions( 0 ) : QColorDialog::ShowAlphaChannel );
+  mShapeBorderColorBtn->setAllowAlpha( !isSVG );
   mShapeBorderColorBtn->setButtonBackground();
 
   // configure SVG parameter widgets

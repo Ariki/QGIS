@@ -1,3 +1,25 @@
+
+/** \ingroup MapComposer
+ * Item model implementation based on layer tree model for composer legend.
+ * Overrides some functionality of QgsLayerTreeModel to better fit the needs of composer legend.
+ *
+ * @note added in 2.6
+ */
+class QgsLegendModelV2 : QgsLayerTreeModel
+{
+%TypeHeaderCode
+#include <qgscomposerlegend.h>
+%End
+
+  public:
+    QgsLegendModelV2( QgsLayerTreeGroup* rootNode, QObject *parent /TransferThis/ = 0 );
+
+    QVariant data( const QModelIndex& index,  int role ) const;
+
+    Qt::ItemFlags flags( const QModelIndex &index ) const;
+};
+
+
 /** \ingroup MapComposer
  * A legend that can be placed onto a map composition
  */
@@ -25,7 +47,23 @@ class QgsComposerLegend : QgsComposerItem
     void adjustBoxSize();
 
     /**Returns pointer to the legend model*/
-    QgsLegendModel* model();
+    //! @note deprecated in 2.6 - use modelV2()
+    QgsLegendModel* model() /Deprecated/;
+
+    //! @note added in 2.6
+    QgsLegendModelV2* modelV2();
+
+    //! @note added in 2.6
+    void setAutoUpdateModel( bool autoUpdate );
+    //! @note added in 2.6
+    bool autoUpdateModel() const;
+
+    //! Set whether legend items should be filtered to show just the ones visible in the associated map
+    //! @note added in 2.6
+    void setLegendFilterByMapEnabled( bool enabled );
+    //! Find out whether legend items are filtered to show just the ones visible in the associated map
+    //! @note added in 2.6
+    bool legendFilterByMapEnabled() const;
 
     //setters and getters
     void setTitle( const QString& t );

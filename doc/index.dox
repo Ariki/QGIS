@@ -24,10 +24,13 @@ the the documentation for offline use.
 
 \section index_APIStability Earlier versions of the API
 
+See \ref api_break for information about incompatible changes to API between releases.
+
 Earlier versions of the documentation are also available on the QGIS
 website:
 
 <ul>
+<li><a href="http://qgis.org/api/2.6">2.6</a>
 <li><a href="http://qgis.org/api/2.4">2.4</a>
 <li><a href="http://qgis.org/api/2.2">2.2</a>
 <li><a href="http://qgis.org/api/2.0">2.0</a>

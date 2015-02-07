@@ -53,6 +53,12 @@ namespace pal
 
 
   PointSet::PointSet()
+      : holeOf( NULL )
+      , parent( NULL )
+      , xmin( DBL_MAX )
+      , xmax( -DBL_MAX )
+      , ymin( DBL_MAX )
+      , ymax( -DBL_MAX )
   {
     nbPoints = cHullSize =  0;
     x = NULL;
@@ -62,6 +68,13 @@ namespace pal
   }
 
   PointSet::PointSet( int nbPoints, double *x, double *y )
+      : cHullSize( 0 )
+      , holeOf( NULL )
+      , parent( NULL )
+      , xmin( DBL_MAX )
+      , xmax( -DBL_MAX )
+      , ymin( DBL_MAX )
+      , ymax( -DBL_MAX )
   {
     this->nbPoints = nbPoints;
     this->x = new double[nbPoints];
@@ -93,13 +106,17 @@ namespace pal
   }
 
   PointSet::PointSet( PointSet &ps )
+      : parent( 0 )
+      , xmin( DBL_MAX )
+      , xmax( -DBL_MAX )
+      , ymin( DBL_MAX )
+      , ymax( -DBL_MAX )
   {
     int i;
 
     nbPoints = ps.nbPoints;
     x = new double[nbPoints];
     y = new double[nbPoints];
-
 
     for ( i = 0; i < nbPoints; i++ )
     {
@@ -110,6 +127,7 @@ namespace pal
     if ( ps.cHull )
     {
       cHullSize = ps.cHullSize;
+      cHull = new int[cHullSize];
       for ( i = 0; i < cHullSize; i++ )
       {
         cHull[i] = ps.cHull[i];
@@ -195,7 +213,7 @@ namespace pal
 
   void PointSet::splitPolygons( LinkedList<PointSet*> *shapes_toProcess,
                                 LinkedList<PointSet*> *shapes_final,
-                                double xrm, double yrm , char *uid )
+                                double xrm, double yrm, char *uid )
   {
 #ifdef _DEBUG_
     std::cout << "splitPolygons: " << uid << std::endl;
@@ -364,7 +382,7 @@ namespace pal
 
 
         // iterate on all shape points except points which are in the hole
-        double isValid;
+        bool isValid;
         int k, l;
         for ( i = ( cHull[holeE] + 1 ) % nbp; i != ( cHull[holeS] - 1 + nbp ) % nbp; i = j )
         {
@@ -404,7 +422,7 @@ namespace pal
           }
           else   // point fronting i->j => compute pependicular distance  => create a new point
           {
-            b = cross_product( x[i], y[i], x[j], y[j],  x[retainedPt], y[retainedPt] ) / seg_length;
+            b = cross_product( x[i], y[i], x[j], y[j], x[retainedPt], y[retainedPt] ) / seg_length;
             b *= b;
             ps = i;
             pe = j;
@@ -988,29 +1006,30 @@ namespace pal
     // check if centroid inside in polygon
     if ( forceInside && !isPointInPolygon( nbPoints, x, y, px, py ) )
     {
-      GEOSCoordSequence *coord = GEOSCoordSeq_create( nbPoints, 2 );
+      GEOSContextHandle_t geosctxt = geosContext();
+      GEOSCoordSequence *coord = GEOSCoordSeq_create_r( geosctxt, nbPoints, 2 );
 
       for ( int i = 0; i < nbPoints; ++i )
       {
-        GEOSCoordSeq_setX( coord, i, x[i] );
-        GEOSCoordSeq_setY( coord, i, y[i] );
+        GEOSCoordSeq_setX_r( geosctxt, coord, i, x[i] );
+        GEOSCoordSeq_setY_r( geosctxt, coord, i, y[i] );
       }
 
-      GEOSGeometry *geom = GEOSGeom_createPolygon( GEOSGeom_createLinearRing( coord ), 0, 0 );
+      GEOSGeometry *geom = GEOSGeom_createPolygon_r( geosctxt, GEOSGeom_createLinearRing_r( geosctxt, coord ), 0, 0 );
 
       if ( geom )
       {
-        GEOSGeometry *pointGeom = GEOSPointOnSurface( geom );
+        GEOSGeometry *pointGeom = GEOSPointOnSurface_r( geosctxt, geom );
 
         if ( pointGeom )
         {
-          const GEOSCoordSequence *coordSeq = GEOSGeom_getCoordSeq( pointGeom );
-          GEOSCoordSeq_getX( coordSeq, 0, &px );
-          GEOSCoordSeq_getY( coordSeq, 0, &py );
+          const GEOSCoordSequence *coordSeq = GEOSGeom_getCoordSeq_r( geosctxt, pointGeom );
+          GEOSCoordSeq_getX_r( geosctxt, coordSeq, 0, &px );
+          GEOSCoordSeq_getY_r( geosctxt, coordSeq, 0, &py );
 
-          GEOSGeom_destroy( pointGeom );
+          GEOSGeom_destroy_r( geosctxt, pointGeom );
         }
-        GEOSGeom_destroy( geom );
+        GEOSGeom_destroy_r( geosctxt, geom );
       }
     }
   }

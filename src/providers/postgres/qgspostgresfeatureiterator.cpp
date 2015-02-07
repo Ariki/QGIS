@@ -15,6 +15,7 @@
 #include "qgspostgresfeatureiterator.h"
 #include "qgspostgresprovider.h"
 #include "qgspostgresconnpool.h"
+#include "qgspostgrestransaction.h"
 #include "qgsgeometry.h"
 
 #include "qgslogger.h"
@@ -27,10 +28,20 @@ const int QgsPostgresFeatureIterator::sFeatureQueueSize = 2000;
 
 
 QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource* source, bool ownSource, const QgsFeatureRequest& request )
-    : QgsAbstractFeatureIteratorFromSource( source, ownSource, request )
+    : QgsAbstractFeatureIteratorFromSource<QgsPostgresFeatureSource>( source, ownSource, request )
     , mFeatureQueueSize( sFeatureQueueSize )
 {
-  mConn = QgsPostgresConnPool::instance()->acquireConnection( mSource->mConnInfo );
+  if ( !source->mTransactionConnection )
+  {
+    mConn = QgsPostgresConnPool::instance()->acquireConnection( mSource->mConnInfo );
+    mIsTransactionConnection = false;
+  }
+  else
+  {
+    mConn = source->mTransactionConnection;
+    mConn->lock();
+    mIsTransactionConnection = true;
+  }
 
   if ( !mConn )
   {
@@ -199,7 +210,14 @@ bool QgsPostgresFeatureIterator::close()
 
   mConn->closeCursor( mCursorName );
 
-  QgsPostgresConnPool::instance()->releaseConnection( mConn );
+  if ( !mIsTransactionConnection )
+  {
+    QgsPostgresConnPool::instance()->releaseConnection( mConn );
+  }
+  else
+  {
+    mConn->unlock();
+  }
   mConn = 0;
 
   while ( !mFeatureQueue.empty() )
@@ -330,7 +348,7 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString& whereClause )
   }
 
   switch ( mSource->mPrimaryKeyType )
-  {
+{
     case pktOid:
       query += delim + "oid";
       delim = ",";
@@ -557,6 +575,23 @@ QgsPostgresFeatureSource::QgsPostgresFeatureSource( const QgsPostgresProvider* p
     , mQuery( p->mQuery )
     , mShared( p->mShared )
 {
+  if ( p->mTransaction )
+  {
+    mTransactionConnection = p->mTransaction->connection();
+    mTransactionConnection->ref();
+  }
+  else
+  {
+    mTransactionConnection = 0;
+  }
+}
+
+QgsPostgresFeatureSource::~QgsPostgresFeatureSource()
+{
+  if ( mTransactionConnection )
+  {
+    mTransactionConnection->unref();
+  }
 }
 
 QgsFeatureIterator QgsPostgresFeatureSource::getFeatures( const QgsFeatureRequest& request )

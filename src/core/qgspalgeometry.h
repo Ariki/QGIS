@@ -1,6 +1,7 @@
 #ifndef QGSPALGEOMETRY_H
 #define QGSPALGEOMETRY_H
 
+#include "qgsgeometry.h"
 #include <pal/feature.h>
 #include <pal/palgeometry.h>
 
@@ -29,18 +30,18 @@ class QgsPalGeometry : public PalGeometry
     ~QgsPalGeometry()
     {
       if ( mG )
-        GEOSGeom_destroy( mG );
+        GEOSGeom_destroy_r( QgsGeometry::getGEOSHandler(), mG );
       delete mInfo;
       delete mFontMetrics;
     }
 
     // getGeosGeometry + releaseGeosGeometry is called twice: once when adding, second time when labeling
 
-    const GEOSGeometry* getGeosGeometry()
+    const GEOSGeometry* getGeosGeometry() override
     {
       return mG;
     }
-    void releaseGeosGeometry( const GEOSGeometry* /*geom*/ )
+    void releaseGeosGeometry( const GEOSGeometry* /*geom*/ ) override
     {
       // nothing here - we'll delete the geometry in destructor
     }
@@ -66,14 +67,14 @@ class QgsPalGeometry : public PalGeometry
         maxoutangle = -95.0;
 
       // create label info!
-      QgsPoint ptZero = xform->toMapCoordinates( 0, 0 );
-      QgsPoint ptSize = xform->toMapCoordinatesF( 0.0, -fm->height() / fontScale );
+      double mapScale = xform->mapUnitsPerPixel();
+      double labelHeight = mapScale * fm->height() / fontScale;
 
       // mLetterSpacing/mWordSpacing = 0.0 is default for non-curved labels
       // (non-curved spacings handled by Qt in QgsPalLayerSettings/QgsPalLabeling)
       qreal charWidth;
       qreal wordSpaceFix;
-      mInfo = new pal::LabelInfo( mText.count(), ptSize.y() - ptZero.y(), maxinangle, maxoutangle );
+      mInfo = new pal::LabelInfo( mText.count(), labelHeight, maxinangle, maxoutangle );
       for ( int i = 0; i < mText.count(); i++ )
       {
         mInfo->char_info[i].chr = mText[i].unicode();
@@ -98,8 +99,8 @@ class QgsPalGeometry : public PalGeometry
           charWidth = fm->width( QString( mText[i] ) ) + wordSpaceFix;
         }
 
-        ptSize = xform->toMapCoordinatesF((( double ) charWidth ) / fontScale , 0.0 );
-        mInfo->char_info[i].width = ptSize.x() - ptZero.x();
+        double labelWidth = mapScale * charWidth / fontScale;
+        mInfo->char_info[i].width = labelWidth;
       }
       return mInfo;
     }
@@ -128,6 +129,9 @@ class QgsPalGeometry : public PalGeometry
       feature.setValid( true );
     }
 
+    void setDxfLayer( QString dxfLayer ) { mDxfLayer = dxfLayer; }
+    QString dxfLayer() const { return mDxfLayer; }
+
   protected:
     GEOSGeometry* mG;
     QString mText;
@@ -146,6 +150,8 @@ class QgsPalGeometry : public PalGeometry
 
     /**Stores attribute values for diagram rendering*/
     QgsAttributes mDiagramAttributes;
+
+    QString mDxfLayer;
 };
 
 #endif //QGSPALGEOMETRY_H

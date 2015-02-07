@@ -420,6 +420,26 @@ bool QgsMemoryProvider::changeGeometryValues( QgsGeometryMap & geometry_map )
   return true;
 }
 
+QString QgsMemoryProvider::subsetString()
+{
+  return mSubsetString;
+}
+
+bool QgsMemoryProvider::setSubsetString( QString theSQL, bool updateFeatureCount )
+{
+  Q_UNUSED( updateFeatureCount );
+
+  if ( !theSQL.isEmpty() )
+  {
+    QgsExpression tempExpression( theSQL );
+    if ( tempExpression.hasParserError() )
+      return false;
+  }
+
+  mSubsetString = theSQL;
+  return true;
+}
+
 bool QgsMemoryProvider::createSpatialIndex()
 {
   if ( !mSpatialIndex )
@@ -452,7 +472,7 @@ void QgsMemoryProvider::updateExtent()
   else
   {
     mExtent.setMinimal();
-    Q_FOREACH( const QgsFeature& feat, mFeatures )
+    Q_FOREACH ( const QgsFeature& feat, mFeatures )
     {
       if ( feat.geometry() )
         mExtent.unionRect( feat.geometry()->boundingBox() );

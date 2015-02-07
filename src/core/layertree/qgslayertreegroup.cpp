@@ -17,6 +17,8 @@
 
 #include "qgslayertree.h"
 #include "qgslayertreeutils.h"
+#include "qgsmaplayer.h"
+#include "qgsmaplayerregistry.h"
 
 #include <QDomElement>
 #include <QStringList>
@@ -57,6 +59,9 @@ QgsLayerTreeGroup* QgsLayerTreeGroup::addGroup( const QString &name )
 
 QgsLayerTreeLayer*QgsLayerTreeGroup::insertLayer( int index, QgsMapLayer* layer )
 {
+  if ( !layer || QgsMapLayerRegistry::instance()->mapLayer( layer->id() ) != layer )
+    return 0;
+
   QgsLayerTreeLayer* ll = new QgsLayerTreeLayer( layer );
   insertChildNode( index, ll );
   return ll;
@@ -64,6 +69,9 @@ QgsLayerTreeLayer*QgsLayerTreeGroup::insertLayer( int index, QgsMapLayer* layer 
 
 QgsLayerTreeLayer* QgsLayerTreeGroup::addLayer( QgsMapLayer* layer )
 {
+  if ( !layer || QgsMapLayerRegistry::instance()->mapLayer( layer->id() ) != layer )
+    return 0;
+
   QgsLayerTreeLayer* ll = new QgsLayerTreeLayer( layer );
   addChildNode( ll );
   return ll;
@@ -119,12 +127,28 @@ void QgsLayerTreeGroup::removeChildren( int from, int count )
   updateVisibilityFromChildren();
 }
 
+void QgsLayerTreeGroup::removeChildrenGroupWithoutLayers()
+{
+  // clean the layer tree by removing empty group
+  foreach ( QgsLayerTreeNode* treeNode, children() )
+  {
+    if ( treeNode->nodeType() == QgsLayerTreeNode::NodeGroup )
+    {
+      QgsLayerTreeGroup* treeGroup = qobject_cast<QgsLayerTreeGroup*>( treeNode );
+      if ( treeGroup->findLayerIds().count() == 0 )
+        removeChildNode( treeNode );
+      else
+        treeGroup->removeChildrenGroupWithoutLayers();
+    }
+  }
+}
+
 void QgsLayerTreeGroup::removeAllChildren()
 {
   removeChildren( 0, mChildren.count() );
 }
 
-QgsLayerTreeLayer *QgsLayerTreeGroup::findLayer( const QString& layerId )
+QgsLayerTreeLayer *QgsLayerTreeGroup::findLayer( const QString& layerId ) const
 {
   foreach ( QgsLayerTreeNode* child, mChildren )
   {

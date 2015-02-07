@@ -31,7 +31,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     Q_OBJECT
 
   public:
-    explicit QgsAttributeForm( QgsVectorLayer* vl, const QgsFeature feature = QgsFeature(), QgsAttributeEditorContext context = QgsAttributeEditorContext(), QWidget *parent = 0 );
+    explicit QgsAttributeForm( QgsVectorLayer* vl, const QgsFeature &feature = QgsFeature(), QgsAttributeEditorContext context = QgsAttributeEditorContext(), QWidget *parent = 0 );
     ~QgsAttributeForm();
 
     const QgsFeature& feature() { return mFeature; }
@@ -45,6 +45,12 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * Shows the button box (Ok/Cancel) and disables auto-commit
      */
     void showButtonBox();
+
+    /**
+     * Disconnects the button box (Ok/Cancel) from the accept/resetValues slots
+     * If this method is called, you have to create these connections from outside
+     */
+    void disconnectButtonBox();
 
     /**
      * Takes ownership
@@ -90,7 +96,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      *
      * @return         true if the event has been handled (key was ESC)
      */
-    bool eventFilter( QObject* object, QEvent* event );
+    bool eventFilter( QObject* object, QEvent* event ) override;
 
   signals:
     /**
@@ -173,6 +179,8 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     void initPython();
 
     QWidget* createWidgetFromDef( const QgsAttributeEditorElement* widgetDef, QWidget* parent, QgsVectorLayer* vl, QgsAttributeEditorContext& context, QString& labelText, bool& labelOnTop );
+
+    void addWidgetWrapper( QgsEditorWidgetWrapper* eww );
 
     /**
      * Creates widget wrappers for all suitable widgets found.

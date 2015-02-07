@@ -26,15 +26,12 @@ __copyright__ = '(C) 2013, Alexander Bruy'
 __revision__ = '$Format:%H$'
 
 
-from PyQt4.QtGui import *
-
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.outputs.OutputRaster import OutputRaster
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterBoolean
+from processing.core.parameters import ParameterNumber
+from processing.core.outputs import OutputRaster
 from processing.algs.gdal.GdalUtils import GdalUtils
-from processing.tools.system import *
 
 
 class aspect(GdalAlgorithm):
@@ -54,26 +51,29 @@ class aspect(GdalAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Aspect'
         self.group = '[GDAL] Analysis'
-        self.addParameter(ParameterRaster(self.INPUT, 'Input layer'))
-        self.addParameter(ParameterNumber(self.BAND, 'Band number', 1, 99, 1))
-        self.addParameter(ParameterBoolean(self.COMPUTE_EDGES, 'Compute edges',
-                          False))
+        self.addParameter(ParameterRaster(self.INPUT, self.tr('Input layer')))
+        self.addParameter(ParameterNumber(
+            self.BAND, self.tr('Band number'), 1, 99, 1))
+        self.addParameter(ParameterBoolean(
+            self.COMPUTE_EDGES, self.tr('Compute edges'), False))
         self.addParameter(ParameterBoolean(self.ZEVENBERGEN,
-                "Use Zevenbergen&Thorne formula (instead of the Horn's one)",
-                False))
+            self.tr("Use Zevenbergen&Thorne formula (instead of the Horn's one)"),
+            False))
         self.addParameter(ParameterBoolean(self.TRIG_ANGLE,
-                          'Return trigonometric angle (instead of azimuth)',
-                          False))
+            self.tr('Return trigonometric angle (instead of azimuth)'), False))
         self.addParameter(ParameterBoolean(self.ZERO_FLAT,
-                          'Return o for flat (instead of -9999)',
-                          False))
+            self.tr('Return 0 for flat (instead of -9999)'), False))
 
         self.addOutput(OutputRaster(self.OUTPUT, 'Output file'))
 
     def processAlgorithm(self, progress):
         arguments = ['aspect']
         arguments.append(unicode(self.getParameterValue(self.INPUT)))
-        arguments.append(unicode(self.getOutputValue(self.OUTPUT)))
+        output = unicode(self.getOutputValue(self.OUTPUT))
+        arguments.append(output)
+
+        arguments.append('-of')
+        arguments.append(GdalUtils.getFormatShortNameFromFilename(output))
 
         arguments.append('-b')
         arguments.append(str(self.getParameterValue(self.BAND)))

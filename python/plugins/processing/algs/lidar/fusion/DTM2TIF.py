@@ -26,8 +26,8 @@ __copyright__ = "(C) 2014 by Niccolo' Marchi"
 __revision__ = '$Format:%H$'
 
 import os
-from processing.parameters.ParameterFile import ParameterFile
-from processing.outputs.OutputRaster import OutputRaster
+from processing.core.parameters import ParameterFile
+from processing.core.outputs import OutputRaster
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -42,8 +42,9 @@ class DTM2TIF(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = "DTM to TIF"
         self.group = "Conversion"
-        self.addParameter(ParameterFile(self.INPUT, "Input .dtm layer"))
-        self.addOutput(OutputRaster(self.OUTPUT, 'Output file name'))
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr("Input .dtm layer")))
+        self.addOutput(OutputRaster(self.OUTPUT, self.tr('Output file name')))
         self.addAdvancedModifiers()
 
     def processAlgorithm(self, progress):

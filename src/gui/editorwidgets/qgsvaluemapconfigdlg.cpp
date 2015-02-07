@@ -135,7 +135,7 @@ void QgsValueMapConfigDlg::updateMap( const QMap<QString, QVariant> &map, bool i
     ++row;
   }
 
-  for ( QMap<QString, QVariant>::const_iterator mit = map.begin(); mit != map.end(); mit++, row++ )
+  for ( QMap<QString, QVariant>::const_iterator mit = map.begin(); mit != map.end(); ++mit, ++row )
   {
     tableWidget->insertRow( row );
     if ( mit.value().isNull() )
@@ -161,7 +161,7 @@ void QgsValueMapConfigDlg::loadFromLayerButtonPushed()
 
 void QgsValueMapConfigDlg::loadFromCSVButtonPushed()
 {
-  QString fileName = QFileDialog::getOpenFileName( 0 , tr( "Select a file" ) );
+  QString fileName = QFileDialog::getOpenFileName( 0, tr( "Select a file" ) );
   if ( fileName.isNull() )
     return;
 

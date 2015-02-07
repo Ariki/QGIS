@@ -101,6 +101,13 @@ double QgsSymbolLayerV2::dxfWidth( const QgsDxfExport& e, const QgsSymbolV2Rende
   return 1.0;
 }
 
+double QgsSymbolLayerV2::dxfOffset( const QgsDxfExport& e, const QgsSymbolV2RenderContext& context ) const
+{
+  Q_UNUSED( e );
+  Q_UNUSED( context );
+  return 0.0;
+}
+
 QColor QgsSymbolLayerV2::dxfColor( const QgsSymbolV2RenderContext& context ) const
 {
   Q_UNUSED( context );
@@ -116,6 +123,17 @@ QVector<qreal> QgsSymbolLayerV2::dxfCustomDashPattern( QgsSymbolV2::OutputUnit& 
 Qt::PenStyle QgsSymbolLayerV2::dxfPenStyle() const
 {
   return Qt::SolidLine;
+}
+
+QColor QgsSymbolLayerV2::dxfBrushColor( const QgsSymbolV2RenderContext& context ) const
+{
+  Q_UNUSED( context );
+  return color();
+}
+
+Qt::BrushStyle QgsSymbolLayerV2::dxfBrushStyle() const
+{
+  return Qt::NoBrush;
 }
 
 void QgsSymbolLayerV2::prepareExpressions( const QgsFields* fields, double scale )
@@ -193,8 +211,11 @@ void QgsSymbolLayerV2::copyDataDefinedProperties( QgsSymbolLayerV2* destLayer ) 
 
 
 QgsMarkerSymbolLayerV2::QgsMarkerSymbolLayerV2( bool locked )
-    : QgsSymbolLayerV2( QgsSymbolV2::Marker, locked ), mSizeUnit( QgsSymbolV2::MM ),  mOffsetUnit( QgsSymbolV2::MM ),
-    mHorizontalAnchorPoint( HCenter ), mVerticalAnchorPoint( VCenter )
+    : QgsSymbolLayerV2( QgsSymbolV2::Marker, locked )
+    , mSizeUnit( QgsSymbolV2::MM )
+    , mOffsetUnit( QgsSymbolV2::MM )
+    , mHorizontalAnchorPoint( HCenter )
+    , mVerticalAnchorPoint( VCenter )
 {
   mOffsetExpression = NULL;
   mHorizontalAnchorExpression = NULL;
@@ -202,12 +223,14 @@ QgsMarkerSymbolLayerV2::QgsMarkerSymbolLayerV2( bool locked )
 }
 
 QgsLineSymbolLayerV2::QgsLineSymbolLayerV2( bool locked )
-    : QgsSymbolLayerV2( QgsSymbolV2::Line, locked ), mWidthUnit( QgsSymbolV2::MM )
+    : QgsSymbolLayerV2( QgsSymbolV2::Line, locked )
+    , mWidthUnit( QgsSymbolV2::MM )
 {
 }
 
 QgsFillSymbolLayerV2::QgsFillSymbolLayerV2( bool locked )
-    : QgsSymbolLayerV2( QgsSymbolV2::Fill, locked ), mAngle( 0.0 )
+    : QgsSymbolLayerV2( QgsSymbolV2::Fill, locked )
+    , mAngle( 0.0 )
 {
 }
 
@@ -387,7 +410,7 @@ void QgsLineSymbolLayerV2::drawPreviewIcon( QgsSymbolV2RenderContext& context, Q
   QPolygonF points;
   // we're adding 0.5 to get rid of blurred preview:
   // drawing antialiased lines of width 1 at (x,0)-(x,100) creates 2px line
-  points << QPointF( 0, size.height() / 2 + 0.5 ) << QPointF( size.width(), size.height() / 2 + 0.5 );
+  points << QPointF( 0, int( size.height() / 2 ) + 0.5 ) << QPointF( size.width(), int( size.height() / 2 ) + 0.5 );
 
   startRender( context );
   renderPolyline( points, context );
@@ -407,7 +430,7 @@ void QgsLineSymbolLayerV2::renderPolygonOutline( const QPolygonF& points, QList<
 double QgsLineSymbolLayerV2::dxfWidth( const QgsDxfExport& e, const QgsSymbolV2RenderContext& context ) const
 {
   Q_UNUSED( context );
-  return ( width() * e.mapUnitScaleFactor( e.symbologyScaleDenominator(), widthUnit(), e.mapUnits() ) );
+  return width() * e.mapUnitScaleFactor( e.symbologyScaleDenominator(), widthUnit(), e.mapUnits() );
 }
 
 
@@ -427,7 +450,10 @@ void QgsFillSymbolLayerV2::_renderPolygon( QPainter* p, const QPolygonF& points,
   }
 
   // Disable 'Antialiasing' if the geometry was generalized in the current RenderContext (We known that it must have least #5 points).
-  if ( points.size() <= 5 && ( context.renderContext().vectorSimplifyMethod().simplifyHints() & QgsVectorSimplifyMethod::AntialiasingSimplification ) && QgsAbstractGeometrySimplifier::canbeGeneralizedByDeviceBoundingBox( points, context.renderContext().vectorSimplifyMethod().threshold() ) && ( p->renderHints() & QPainter::Antialiasing ) )
+  if ( points.size() <= 5 &&
+       ( context.renderContext().vectorSimplifyMethod().simplifyHints() & QgsVectorSimplifyMethod::AntialiasingSimplification ) &&
+       QgsAbstractGeometrySimplifier::isGeneralizableByDeviceBoundingBox( points, context.renderContext().vectorSimplifyMethod().threshold() ) &&
+       ( p->renderHints() & QPainter::Antialiasing ) )
   {
     p->setRenderHint( QPainter::Antialiasing, false );
     p->drawRect( points.boundingRect() );

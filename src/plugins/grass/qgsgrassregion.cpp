@@ -193,7 +193,7 @@ void QgsGrassRegionEdit::setSrcRegion( const QgsRectangle &rect )
 
 QgsGrassRegion::QgsGrassRegion( QgsGrassPlugin *plugin,  QgisInterface *iface,
                                 QWidget * parent, Qt::WindowFlags f )
-    : QDialog( parent, f ), QgsGrassRegionBase( )
+    : QDialog( parent, f ), QgsGrassRegionBase()
 {
   QgsDebugMsg( "QgsGrassRegion()" );
 
@@ -270,6 +270,8 @@ QgsGrassRegion::QgsGrassRegion( QgsGrassPlugin *plugin,  QgisInterface *iface,
 
   // Symbology
   QPen pen = mPlugin->regionPen();
+  mColorButton->setContext( "gui" );
+  mColorButton->setColorDialogTitle( tr( "Select color" ) );
   mColorButton->setColor( pen.color() );
   connect( mColorButton, SIGNAL( colorChanged( const QColor& ) ), this, SLOT( changeColor( const QColor& ) ) );
 

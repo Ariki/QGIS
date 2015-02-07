@@ -30,12 +30,13 @@ class QgsMemoryFeatureSource : public QgsAbstractFeatureSource
     QgsMemoryFeatureSource( const QgsMemoryProvider* p );
     ~QgsMemoryFeatureSource();
 
-    virtual QgsFeatureIterator getFeatures( const QgsFeatureRequest& request );
+    virtual QgsFeatureIterator getFeatures( const QgsFeatureRequest& request ) override;
 
   protected:
     QgsFields mFields;
     QgsFeatureMap mFeatures;
     QgsSpatialIndex* mSpatialIndex;
+    QString mSubsetString;
 
     friend class QgsMemoryFeatureIterator;
 };
@@ -49,15 +50,15 @@ class QgsMemoryFeatureIterator : public QgsAbstractFeatureIteratorFromSource<Qgs
     ~QgsMemoryFeatureIterator();
 
     //! reset the iterator to the starting position
-    virtual bool rewind();
+    virtual bool rewind() override;
 
     //! end of iterating: free the resources / lock
-    virtual bool close();
+    virtual bool close() override;
 
   protected:
 
     //! fetch next feature, return true on success
-    virtual bool fetchFeature( QgsFeature& feature );
+    virtual bool fetchFeature( QgsFeature& feature ) override;
 
     bool nextFeatureUsingList( QgsFeature& feature );
     bool nextFeatureTraverseAll( QgsFeature& feature );
@@ -67,6 +68,7 @@ class QgsMemoryFeatureIterator : public QgsAbstractFeatureIteratorFromSource<Qgs
     bool mUsingFeatureIdList;
     QList<QgsFeatureId> mFeatureIdList;
     QList<QgsFeatureId>::const_iterator mFeatureIdListIterator;
+    QgsExpression* mSubsetExpression;
 
 };
 

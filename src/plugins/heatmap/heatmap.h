@@ -71,7 +71,7 @@ class Heatmap: public QObject, public QgisPlugin
     virtual ~Heatmap();
 
     // Kernel shape type
-    enum kernelShape
+    enum KernelShape
     {
       Quartic,
       Triangular,
@@ -80,15 +80,22 @@ class Heatmap: public QObject, public QgisPlugin
       Epanechnikov
     };
 
+    // Output values type
+    enum OutputValues
+    {
+      Raw,
+      Scaled
+    };
+
     QMap<QString, QVariant> mSessionSettings;
 
   public slots:
     //! init the gui
-    virtual void initGui();
+    virtual void initGui() override;
     //! Show the dialog box
     void run();
     //! unload the plugin
-    void unload();
+    void unload() override;
     //! show the help document
     void help();
 
@@ -100,17 +107,17 @@ class Heatmap: public QObject, public QgisPlugin
     //! Worker to calculate buffer size in pixels
     int bufferSize( double radius, double cellsize );
     //! Calculate the value given to a point width a given distance for a specified kernel shape
-    double calculateKernelValue( double distance, int bandwidth, int kernelShape );
+    double calculateKernelValue( const double distance, const int bandwidth, const KernelShape shape, const OutputValues outputType );
     //! Uniform kernel function
-    double uniformKernel( double distance, int bandwidth );
+    double uniformKernel( const double distance, const int bandwidth, const OutputValues outputType ) const;
     //! Quartic kernel function
-    double quarticKernel( double distance, int bandwidth );
+    double quarticKernel( const double distance, const int bandwidth, const OutputValues outputType ) const;
     //! Triweight kernel function
-    double triweightKernel( double distance, int bandwidth );
+    double triweightKernel( const double distance, const int bandwidth, const OutputValues outputType ) const;
     //! Epanechnikov kernel function
-    double epanechnikovKernel( double distance, int bandwidth );
+    double epanechnikovKernel( const double distance, const int bandwidth, const OutputValues outputType ) const;
     //! Triangular kernel function
-    double triangularKernel( double distance, int bandwidth );
+    double triangularKernel( const double distance, const int bandwidth, const OutputValues outputType ) const;
 
     // MANDATORY PLUGIN PROPERTY DECLARATIONS  .....
 

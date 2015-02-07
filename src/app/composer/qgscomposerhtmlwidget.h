@@ -20,7 +20,8 @@
 
 class QgsComposerHtml;
 class QgsComposerFrame;
-class QsciScintilla;
+class QgsCodeEditorHTML;
+class QgsCodeEditorCSS;
 
 class QgsComposerHtmlWidget: public QgsComposerItemBaseWidget, private Ui::QgsComposerHtmlWidgetBase
 {
@@ -37,15 +38,28 @@ class QgsComposerHtmlWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
     void on_mUseSmartBreaksCheckBox_toggled( bool checked );
     void on_mMaxDistanceSpinBox_valueChanged( double val );
     void htmlEditorChanged();
+    void stylesheetEditorChanged();
+    void on_mUserStylesheetCheckBox_toggled( bool checked );
     void on_mRadioManualSource_clicked( bool checked );
     void on_mRadioUrlSource_clicked( bool checked );
     void on_mInsertExpressionButton_clicked();
 
     void on_mReloadPushButton_clicked();
+    void on_mReloadPushButton2_clicked();
     void on_mAddFramePushButton_clicked();
+    void on_mEmptyFrameCheckBox_toggled( bool checked );
+    void on_mHideEmptyBgCheckBox_toggled( bool checked );
 
     /**Sets the GUI elements to the values of mHtmlItem*/
     void setGuiElementValues();
+
+  protected:
+
+    QgsComposerItem::DataDefinedProperty ddPropertyForWidget( QgsDataDefinedButton *widget ) override;
+
+  protected slots:
+    /**Initializes data defined buttons to current atlas coverage layer*/
+    void populateDataDefinedButtons();
 
   private:
     QgsComposerHtmlWidget();
@@ -53,7 +67,8 @@ class QgsComposerHtmlWidget: public QgsComposerItemBaseWidget, private Ui::QgsCo
 
     QgsComposerHtml* mHtml;
     QgsComposerFrame* mFrame;
-    QsciScintilla *mHtmlEditor;
+    QgsCodeEditorHTML *mHtmlEditor;
+    QgsCodeEditorCSS *mStylesheetEditor;
 };
 
 #endif // QGSCOMPOSERHTMLWIDGET_H

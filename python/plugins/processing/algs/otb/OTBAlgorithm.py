@@ -31,24 +31,23 @@ __revision__ = '$Format:%H$'
 
 import os
 import re
-import PyQt4.QtGui
+from PyQt4.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.parameters.ParameterMultipleInput import ParameterMultipleInput
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterVector import ParameterVector
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterSelection import ParameterSelection
+from processing.core.parameters import ParameterMultipleInput
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterVector
+from processing.core.parameters import ParameterBoolean
+from processing.core.parameters import ParameterSelection
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.ProcessingLog import ProcessingLog
-from processing.core.WrongHelpFileException import WrongHelpFileException
-from processing.parameters.ParameterFactory import ParameterFactory
-from processing.outputs.OutputFactory import OutputFactory
+from processing.core.parameters import getParameterFromString
+from processing.core.outputs import getOutputFromString
 from OTBUtils import OTBUtils
-from processing.parameters.ParameterExtent import ParameterExtent
-from processing.tools.system import *
+from processing.core.parameters import ParameterExtent
+from processing.tools.system import getTempFilename
 import xml.etree.ElementTree as ET
 import traceback
-import inspect
+#import inspect
 
 class OTBAlgorithm(GeoAlgorithm):
 
@@ -60,7 +59,7 @@ class OTBAlgorithm(GeoAlgorithm):
         self.descriptionFile = descriptionfile
         self.defineCharacteristicsFromFile()
         self.numExportedLayers = 0
-        self.hasROI = None;
+        self.hasROI = None
 
 
     def __str__(self):
@@ -72,7 +71,7 @@ class OTBAlgorithm(GeoAlgorithm):
         return newone
 
     def getIcon(self):
-        return  PyQt4.QtGui.QIcon(os.path.dirname(__file__) + "/../../images/otb.png")
+        return QIcon(os.path.dirname(__file__) + "/../../images/otb.png")
 
     def help(self):
         folder = os.path.join( OTBUtils.otbDescriptionPath(), 'doc' )
@@ -80,7 +79,7 @@ class OTBAlgorithm(GeoAlgorithm):
         if os.path.exists(helpfile):
             return False, helpfile
         else:
-            raise WrongHelpFileException("Could not find help file for this algorithm. \nIf you have it put it in: \n"+str(folder))
+            raise (False, None)
 
 
     def adapt_list_to_string(self, c_list):
@@ -94,10 +93,12 @@ class OTBAlgorithm(GeoAlgorithm):
                 a_list[3] = -1
 
         a_list[1] = "-%s" % a_list[1]
+
         def mystr(par):
-            if type(par) == type([]):
+            if isinstance(par, list):
                 return ";".join(par)
             return str(par)
+
         b_list = map(mystr, a_list)
         res = "|".join(b_list)
         return res
@@ -115,7 +116,7 @@ class OTBAlgorithm(GeoAlgorithm):
             rebuild.append(key)
             rebuild.append(name)
             for each in parameter[4:]:
-                if not each.tag in ["hidden"]:
+                if each.tag not in ["hidden"]:
                     if len(list(each)) == 0:
                         rebuild.append(each.text)
                     else:
@@ -133,8 +134,6 @@ class OTBAlgorithm(GeoAlgorithm):
         self.name = dom_model.find('longname').text
         self.group = dom_model.find('group').text
 
-        #ProcessingLog.addToLog(ProcessingLog.LOG_INFO, "Reading parameters for %s" % self.appkey)
-
         rebu = None
         the_result = None
 
@@ -142,33 +141,33 @@ class OTBAlgorithm(GeoAlgorithm):
             rebu = self.get_list_from_node(dom_model)
             the_result = map(self.adapt_list_to_string,rebu)
         except Exception, e:
-            ProcessingLog.addToLog(ProcessingLog.LOG_ERROR, "Could not open OTB algorithm: " + self.descriptionFile + "\n" + traceback.format_exc())
+            ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
+                self.tr('Could not open OTB algorithm: %s\n%s' % (self.descriptionFile, traceback.format_exc())))
             raise e
 
         for line in the_result:
             try:
-                if line.startswith("Parameter"):
-                    param = ParameterFactory.getFromString(line)
+                if line.startswith("Parameter") or line.startswith("*Parameter"):
+                    if line.startswith("*Parameter"):
+                        param = getParameterFromString(line[1:])
+                        param.isAdvanced = True
+                    else:
+                        param = getParameterFromString(line)
                     # Hack for initializing the elevation parameters from Processing configuration
                     if param.name == "-elev.dem.path" or param.name == "-elev.dem" or "elev.dem" in param.name:
                         param.default = OTBUtils.otbSRTMPath()
                     elif param.name == "-elev.dem.geoid" or param.name == "-elev.geoid" or "elev.geoid" in param.name:
                         param.default = OTBUtils.otbGeoidPath()
                     self.addParameter(param)
-                elif line.startswith("*Parameter"):
-                    param = ParameterFactory.getFromString(line[1:])
-                    param.isAdvanced = True
-                    self.addParameter(param)
                 elif line.startswith("Extent"):
                     self.addParameter(ParameterExtent(self.REGION_OF_INTEREST, "Region of interest", "0,1,0,1"))
                     self.hasROI = True
                 else:
-                    self.addOutput(OutputFactory.getFromString(line))
+                    self.addOutput(getOutputFromString(line))
             except Exception,e:
-                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR, "Could not open OTB algorithm: " + self.descriptionFile + "\n" + line)
+                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
+                    self.tr('Could not open OTB algorithm: %s\n%s' % (self.descriptionFile, line)))
                 raise e
-
-
 
     def processAlgorithm(self, progress):
         currentOs = os.name
@@ -176,7 +175,9 @@ class OTBAlgorithm(GeoAlgorithm):
         path = OTBUtils.otbPath()
         libpath = OTBUtils.otbLibPath()
         if path == "" or libpath == "":
-            raise GeoAlgorithmExecutionException("OTB folder is not configured.\nPlease configure it before running OTB algorithms.")
+            raise GeoAlgorithmExecutionException(
+                self.tr('OTB folder is not configured. Please configure it '
+                        'before running OTB algorithms.'))
 
         commands = []
         commands.append(path + os.sep + self.cliName)
@@ -247,7 +248,7 @@ class OTBAlgorithm(GeoAlgorithm):
                     newparams = newparams[:-1]
                 param.value = newparams
 
-            if param.value == None or param.value == "":
+            if param.value is None or param.value == "":
                 continue
             if isinstance(param, ParameterVector):
                 commands.append(param.name)
@@ -292,13 +293,14 @@ class OTBAlgorithm(GeoAlgorithm):
             sizeX = float(self.roiValues[2]) - startX
             sizeY = float(self.roiValues[3]) - startY
             helperCommands = [
-                    "otbcli_ExtractROI",
-                    "-in",       roiInput,
-                    "-out",      roiFile,
-                    "-startx",   str(startX),
-                    "-starty",   str(startY),
-                    "-sizex",    str(sizeX),
-                    "-sizey",    str(sizeY)]
+                "otbcli_ExtractROI",
+                "-in",       roiInput,
+                "-out",      roiFile,
+                "-startx",   str(startX),
+                "-starty",   str(startY),
+                "-sizex",    str(sizeX),
+                "-sizey",    str(sizeY)
+            ]
             ProcessingLog.addToLog(ProcessingLog.LOG_INFO, helperCommands)
             progress.setCommand(helperCommands)
             OTBUtils.executeOtb(helperCommands, progress)
@@ -307,17 +309,17 @@ class OTBAlgorithm(GeoAlgorithm):
             supportRaster = self.roiRasters.itervalues().next()
             for roiInput, roiFile in self.roiVectors.items():
                 helperCommands = [
-                        "otbcli_VectorDataExtractROIApplication",
-                        "-vd.in",           roiInput,
-                        "-io.in",           supportRaster,
-                        "-io.out",          roiFile,
-                        "-elev.dem.path",   OTBUtils.otbSRTMPath()]
+                    "otbcli_VectorDataExtractROIApplication",
+                    "-vd.in",           roiInput,
+                    "-io.in",           supportRaster,
+                    "-io.out",          roiFile,
+                    "-elev.dem.path",   OTBUtils.otbSRTMPath()]
                 ProcessingLog.addToLog(ProcessingLog.LOG_INFO, helperCommands)
                 progress.setCommand(helperCommands)
                 OTBUtils.executeOtb(helperCommands, progress)
 
         loglines = []
-        loglines.append("OTB execution command")
+        loglines.append(self.tr('OTB execution command'))
         for line in commands:
             loglines.append(line)
             progress.setCommand(line)
@@ -339,11 +341,12 @@ class OTBAlgorithm(GeoAlgorithm):
                     commands = getattr(module, base_key)(commands)
 
         if not found:
-            ProcessingLog.addToLog(ProcessingLog.LOG_INFO, "Adapter for %s not found" % the_key)
+            ProcessingLog.addToLog(ProcessingLog.LOG_INFO,
+                self.tr("Adapter for %s not found" % the_key))
 
-        frames = inspect.getouterframes(inspect.currentframe())[1:]
-        for a_frame in frames:
-            frame,filename,line_number,function_name,lines,index = a_frame
-            ProcessingLog.addToLog(ProcessingLog.LOG_INFO, "%s %s %s %s %s %s" % (frame,filename,line_number,function_name,lines,index))
+        #frames = inspect.getouterframes(inspect.currentframe())[1:]
+        #for a_frame in frames:
+        #    frame,filename,line_number,function_name,lines,index = a_frame
+        #    ProcessingLog.addToLog(ProcessingLog.LOG_INFO, "%s %s %s %s %s %s" % (frame,filename,line_number,function_name,lines,index))
 
         OTBUtils.executeOtb(commands, progress)

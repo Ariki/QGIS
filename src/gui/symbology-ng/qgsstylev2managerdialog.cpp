@@ -45,7 +45,7 @@ QgsStyleV2ManagerDialog::QgsStyleV2ManagerDialog( QgsStyleV2* style, QWidget* pa
     : QDialog( parent ), mStyle( style ), mModified( false )
 {
   setupUi( this );
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
   setWindowModality( Qt::WindowModal );
 #endif
 
@@ -242,7 +242,7 @@ void QgsStyleV2ManagerDialog::populateSymbols( QStringList symbolNames, bool che
   {
     QString name = symbolNames[i];
     QgsSymbolV2* symbol = mStyle->symbol( name );
-    if ( symbol->type() == type )
+    if ( symbol && symbol->type() == type )
     {
       QStandardItem* item = new QStandardItem( name );
       QIcon icon = QgsSymbolLayerV2Utils::symbolPreviewIcon( symbol, listItems->iconSize() );
@@ -540,7 +540,7 @@ bool QgsStyleV2ManagerDialog::addColorRamp()
 bool QgsStyleV2ManagerDialog::addColorRamp( QAction* action )
 {
   // pass the action text, which is the color ramp type
-  QString rampName = addColorRampStatic( this , mStyle,
+  QString rampName = addColorRampStatic( this, mStyle,
                                          action ? action->text() : QString() );
   if ( !rampName.isEmpty() )
   {
@@ -581,7 +581,7 @@ bool QgsStyleV2ManagerDialog::editSymbol()
   QgsSymbolV2* symbol = mStyle->symbol( symbolName );
 
   // let the user edit the symbol and update list when done
-  QgsSymbolV2SelectorDialog dlg( symbol, mStyle, NULL , this );
+  QgsSymbolV2SelectorDialog dlg( symbol, mStyle, NULL, this );
   if ( dlg.exec() == 0 )
   {
     delete symbol;
@@ -726,7 +726,12 @@ void QgsStyleV2ManagerDialog::itemChanged( QStandardItem* item )
     populateList();
     mModified = true;
   }
-
+  else
+  {
+    QMessageBox::critical( this, tr( "Cannot rename item" ),
+                           tr( "Name is already taken by another item. Choose a different name." ) );
+    item->setText( oldName );
+  }
 }
 
 void QgsStyleV2ManagerDialog::exportItems()

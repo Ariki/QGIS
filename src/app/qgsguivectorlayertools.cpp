@@ -32,7 +32,7 @@ QgsGuiVectorLayerTools::QgsGuiVectorLayerTools()
     : QObject( NULL )
 {}
 
-bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer* layer, QgsAttributeMap defaultValues, const QgsGeometry& defaultGeometry )
+bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer* layer, QgsAttributeMap defaultValues, const QgsGeometry& defaultGeometry ) const
 {
   QgsFeature f;
   f.setGeometry( defaultGeometry );
@@ -40,7 +40,7 @@ bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer* layer, QgsAttributeMap 
   return a.addFeature( defaultValues );
 }
 
-bool QgsGuiVectorLayerTools::startEditing( QgsVectorLayer* layer )
+bool QgsGuiVectorLayerTools::startEditing( QgsVectorLayer* layer ) const
 {
   if ( !layer )
   {
@@ -65,7 +65,31 @@ bool QgsGuiVectorLayerTools::startEditing( QgsVectorLayer* layer )
   return res;
 }
 
-bool QgsGuiVectorLayerTools::stopEditing( QgsVectorLayer* layer, bool allowCancel )
+bool QgsGuiVectorLayerTools::saveEdits( QgsVectorLayer* layer ) const
+{
+  bool res = true;
+
+  if ( layer->isModified() )
+  {
+    if ( !layer->commitChanges() )
+    {
+      commitError( layer );
+      // Leave the in-memory editing state alone,
+      // to give the user a chance to enter different values
+      // and try the commit again later
+      res = false;
+    }
+    layer->startEditing();
+  }
+  else //layer not modified
+  {
+    res = true;
+  }
+  return res;
+}
+
+
+bool QgsGuiVectorLayerTools::stopEditing( QgsVectorLayer* layer, bool allowCancel ) const
 {
   bool res = true;
 
@@ -127,7 +151,7 @@ bool QgsGuiVectorLayerTools::stopEditing( QgsVectorLayer* layer, bool allowCance
   return res;
 }
 
-void QgsGuiVectorLayerTools::commitError( QgsVectorLayer* vlayer )
+void QgsGuiVectorLayerTools::commitError( QgsVectorLayer* vlayer ) const
 {
   QgsMessageViewer *mv = new QgsMessageViewer();
   mv->setWindowTitle( tr( "Commit errors" ) );

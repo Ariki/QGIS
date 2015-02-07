@@ -21,6 +21,7 @@
 #include "qgsrulebasedrendererv2.h"
 #include "qgspointdisplacementrenderer.h"
 #include "qgsinvertedpolygonrenderer.h"
+#include "qgsheatmaprenderer.h"
 
 QgsRendererV2Registry::QgsRendererV2Registry()
 {
@@ -33,6 +34,7 @@ QgsRendererV2Registry::QgsRendererV2Registry()
   addRenderer( new QgsRendererV2Metadata( "categorizedSymbol",
                                           QObject::tr( "Categorized" ),
                                           QgsCategorizedSymbolRendererV2::create ) );
+
   addRenderer( new QgsRendererV2Metadata( "graduatedSymbol",
                                           QObject::tr( "Graduated" ),
                                           QgsGraduatedSymbolRendererV2::create ) );
@@ -49,6 +51,10 @@ QgsRendererV2Registry::QgsRendererV2Registry()
   addRenderer( new QgsRendererV2Metadata( "invertedPolygonRenderer",
                                           QObject::tr( "Inverted polygons" ),
                                           QgsInvertedPolygonRenderer::create ) );
+
+  addRenderer( new QgsRendererV2Metadata( "heatmapRenderer",
+                                          QObject::tr( "Heatmap" ),
+                                          QgsHeatmapRenderer::create ) );
 }
 
 QgsRendererV2Registry::~QgsRendererV2Registry()

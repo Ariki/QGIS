@@ -23,6 +23,7 @@
 #include <QString>
 #include <QDomElement>
 #include <QDomDocument>
+#include <QStringList>
 
 class QgsComposerMap;
 class QgsComposition;
@@ -183,7 +184,7 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
      * @see setPredefinedScales
      * @see QgsComposerMap::atlasScalingMode
     */
-    const QVector<double>& predefinedScales() const { return mPredefinedScales; }
+    const QVector<qreal>& predefinedScales() const { return mPredefinedScales; }
 
     /**Sets the list of predefined scales for the atlas. This is used
      * for maps which are set to the predefined atlas scaling mode.
@@ -191,7 +192,7 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
      * @see predefinedScales
      * @see QgsComposerMap::atlasScalingMode
      */
-    void setPredefinedScales( const QVector<double>& scales );
+    void setPredefinedScales( const QVector<qreal>& scales );
 
     /** Begins the rendering. Returns true if successful, false if no matching atlas
       features found.*/
@@ -203,14 +204,16 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
     int numFeatures() const;
 
     /**Prepare the atlas map for the given feature. Sets the extent and context variables
+     * @param i feature number
+     * @param updateMaps set to true to redraw maps and recalculate their extent
      * @returns true if feature was successfully prepared
     */
-    bool prepareForFeature( int i );
+    bool prepareForFeature( const int i, const bool updateMaps = true );
 
     /**Prepare the atlas map for the given feature. Sets the extent and context variables
      * @returns true if feature was successfully prepared
     */
-    bool prepareForFeature( QgsFeature * feat );
+    bool prepareForFeature( const QgsFeature *feat );
 
     /** Returns the current filename. Must be called after prepareForFeature( i ) */
     const QString& currentFilename() const;
@@ -240,16 +243,23 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
       number of matching features. Must be called after prepareForFeature( i ) */
     int updateFeatures();
 
-    void nextFeature();
-    void prevFeature();
-    void lastFeature();
-    void firstFeature();
-
     /** Returns the current atlas feature. Must be called after prepareForFeature( i ). */
     QgsFeature* currentFeature() { return &mCurrentFeature; }
 
     /** Recalculates the bounds of an atlas driven map */
     void prepareMap( QgsComposerMap* map );
+
+  public slots:
+
+    /**Refreshes the current atlas feature, by refetching its attributes from the vector layer provider
+     * @note added in QGIS 2.5
+    */
+    void refreshFeature();
+
+    void nextFeature();
+    void prevFeature();
+    void lastFeature();
+    void firstFeature();
 
   signals:
     /** emitted when one of the parameters changes */
@@ -305,6 +315,9 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
   public:
     typedef QMap< QgsFeatureId, QVariant > SorterKeys;
 
+  private slots:
+    void removeLayers( QStringList layers );
+
   private:
     // value of field that is used for ordering of features
     SorterKeys mFeatureKeys;
@@ -321,7 +334,7 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
 
     QgsFeature mCurrentFeature;
 
-    std::auto_ptr<QgsExpression> mFilenameExpr;
+    QScopedPointer<QgsExpression> mFilenameExpr;
 
     // bounding box of the current feature transformed into map crs
     QgsRectangle mTransformedFeatureBounds;
@@ -336,7 +349,7 @@ class CORE_EXPORT QgsAtlasComposition : public QObject
     void computeExtent( QgsComposerMap *map );
 
     //list of predefined scales
-    QVector<double> mPredefinedScales;
+    QVector<qreal> mPredefinedScales;
 };
 
 #endif

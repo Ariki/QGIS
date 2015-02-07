@@ -17,8 +17,7 @@
 
 #include <Qt>
 #include <QPair>
-
-class QStringList;
+#include <QStringList>
 
 /** \ingroup gui
  * /namespace QgisGui
@@ -67,8 +66,6 @@ namespace QgisGui
     with the current filter name.
 
     This method returns true if cancel all was clicked, otherwise false
-
-    @note added in 1.4
   */
 
   bool GUI_EXPORT openFilesRememberingFilter( QString const &filterName,
@@ -82,22 +79,27 @@ namespace QgisGui
    * @param defaultFilename default file name (empty by default)
    * @return QPair<QString, QString> where first is the file name and second is
    * the file type
-   * @note added in 1.6
    */
   QPair<QString, QString> GUI_EXPORT getSaveAsImageName( QWidget * theParent, QString theMessage, QString defaultFilename = QString::null );
 
   /**
-
     Convenience function for readily creating file filters.
 
     Given a long name for a file filter and a regular expression, return
     a file filter string suitable for use in a QFileDialog::OpenFiles()
     call.  The regular express, glob, will have both all lower and upper
     case versions added.
-   * @note added in 1.6
-
   */
-  QString createFileFilter_( QString const &longName, QString const &glob );
+  QString GUI_EXPORT createFileFilter_( QString const &longName, QString const &glob );
+
+  /**
+   * Create file filters suitable for use with QFileDialog
+   *
+   * @param format extension e.g. "png"
+   * @return QString e.g. "PNG format (*.png, *.PNG)"
+   */
+  QString GUI_EXPORT createFileFilter_( QString const &format );
+
 }
 
 #endif

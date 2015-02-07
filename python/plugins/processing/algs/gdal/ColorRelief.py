@@ -25,18 +25,14 @@ __copyright__ = '(C) 2013, Alexander Bruy'
 
 __revision__ = '$Format:%H$'
 
-
-from PyQt4.QtGui import *
-
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterBoolean import ParameterBoolean
-from processing.parameters.ParameterNumber import ParameterNumber
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterSelection import ParameterSelection
-from processing.outputs.OutputRaster import OutputRaster
+from processing.core.parameters import ParameterRaster
+from processing.core.parameters import ParameterBoolean
+from processing.core.parameters import ParameterNumber
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterSelection
+from processing.core.outputs import OutputRaster
 from processing.algs.gdal.GdalUtils import GdalUtils
-from processing.tools.system import *
 
 
 class ColorRelief(GdalAlgorithm):
@@ -57,16 +53,17 @@ class ColorRelief(GdalAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Color relief'
         self.group = '[GDAL] Analysis'
-        self.addParameter(ParameterRaster(self.INPUT, 'Input layer'))
-        self.addParameter(ParameterNumber(self.BAND, 'Band number', 1, 99, 1))
-        self.addParameter(ParameterBoolean(self.COMPUTE_EDGES, 'Compute edges',
-                          False))
+        self.addParameter(ParameterRaster(self.INPUT, self.tr('Input layer')))
+        self.addParameter(ParameterNumber(
+            self.BAND, self.tr('Band number'), 1, 99, 1))
+        self.addParameter(ParameterBoolean(self.COMPUTE_EDGES,
+            self.tr('Compute edges'), False))
         self.addParameter(ParameterFile(self.COLOR_TABLE,
-                          'Color configuration file', optional=False))
+            self.tr('Color configuration file'), optional=False))
         self.addParameter(ParameterSelection(self.MATCH_MODE,
-                          'Matching mode', self.MATCHING_MODES, 0))
+            self.tr('Matching mode'), self.MATCHING_MODES, 0))
 
-        self.addOutput(OutputRaster(self.OUTPUT, 'Output file'))
+        self.addOutput(OutputRaster(self.OUTPUT, self.tr('Output file')))
 
     def processAlgorithm(self, progress):
         arguments = ['color-relief']

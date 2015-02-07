@@ -17,7 +17,6 @@
 
 #include <QtDebug>
 #include <QDomDocument>
-#include <QSettings>
 #include <QDate>
 #include <QRegExp>
 #include <QColor>
@@ -30,6 +29,7 @@
 #include "qgsfeature.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
+#include "qgsmaplayerregistry.h"
 #include "qgsogcutils.h"
 #include "qgsvectorlayer.h"
 #include "qgssymbollayerv2utils.h"
@@ -161,13 +161,20 @@ static QVariant tvl2variant( TVL v )
 inline bool isIntSafe( const QVariant& v )
 {
   if ( v.type() == QVariant::Int ) return true;
+  if ( v.type() == QVariant::UInt ) return true;
+  if ( v.type() == QVariant::LongLong ) return true;
+  if ( v.type() == QVariant::ULongLong ) return true;
   if ( v.type() == QVariant::Double ) return false;
   if ( v.type() == QVariant::String ) { bool ok; v.toString().toInt( &ok ); return ok; }
   return false;
 }
 inline bool isDoubleSafe( const QVariant& v )
 {
-  if ( v.type() == QVariant::Double || v.type() == QVariant::Int ) return true;
+  if ( v.type() == QVariant::Double ) return true;
+  if ( v.type() == QVariant::Int ) return true;
+  if ( v.type() == QVariant::UInt ) return true;
+  if ( v.type() == QVariant::LongLong ) return true;
+  if ( v.type() == QVariant::ULongLong ) return true;
   if ( v.type() == QVariant::String ) { bool ok; v.toString().toDouble( &ok ); return ok; }
   return false;
 }
@@ -205,14 +212,16 @@ inline bool isNull( const QVariant& v ) { return v.isNull(); }
 
 const char* QgsExpression::BinaryOperatorText[] =
 {
+  // this must correspond (number and order of element) to the declaration of the enum BinaryOperator
   "OR", "AND",
   "=", "<>", "<=", ">=", "<", ">", "~", "LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE", "IS", "IS NOT",
-  "+", "-", "*", "/", "%", "^",
+  "+", "-", "*", "/", "//", "%", "^",
   "||"
 };
 
 const char* QgsExpression::UnaryOperatorText[] =
 {
+  // this must correspond (number and order of element) to the declaration of the enum UnaryOperator
   "NOT", "-"
 };
 
@@ -329,6 +338,15 @@ static QgsFeature getFeature( const QVariant& value, QgsExpression* parent )
   return 0;
 }
 
+static QgsExpression::Node* getNode( const QVariant& value, QgsExpression* parent )
+{
+  if ( value.canConvert<QgsExpression::Node*>() )
+    return value.value<QgsExpression::Node*>();
+
+  parent->setEvalErrorString( "Cannot convert to Node" );
+  return 0;
+}
+
 // this handles also NULL values
 static TVL getTVLValue( const QVariant& value, QgsExpression* parent )
 {
@@ -363,62 +381,62 @@ static QVariant fcnAbs( const QVariantList& values, const QgsFeature*, QgsExpres
   return QVariant( fabs( val ) );
 }
 
-static QVariant fcnSin( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnSin( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( sin( x ) );
 }
-static QVariant fcnCos( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnCos( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( cos( x ) );
 }
-static QVariant fcnTan( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnTan( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( tan( x ) );
 }
-static QVariant fcnAsin( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnAsin( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( asin( x ) );
 }
-static QVariant fcnAcos( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnAcos( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( acos( x ) );
 }
-static QVariant fcnAtan( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnAtan( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( atan( x ) );
 }
-static QVariant fcnAtan2( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnAtan2( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double y = getDoubleValue( values.at( 0 ), parent );
   double x = getDoubleValue( values.at( 1 ), parent );
   return QVariant( atan2( y, x ) );
 }
-static QVariant fcnExp( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnExp( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( exp( x ) );
 }
-static QVariant fcnLn( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLn( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   if ( x <= 0 )
     return QVariant();
   return QVariant( log( x ) );
 }
-static QVariant fcnLog10( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLog10( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   if ( x <= 0 )
     return QVariant();
   return QVariant( log10( x ) );
 }
-static QVariant fcnLog( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLog( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double b = getDoubleValue( values.at( 0 ), parent );
   double x = getDoubleValue( values.at( 1 ), parent );
@@ -426,7 +444,7 @@ static QVariant fcnLog( const QVariantList& values, const QgsFeature* , QgsExpre
     return QVariant();
   return QVariant( log( x ) / log( b ) );
 }
-static QVariant fcnRndF( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRndF( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double min = getDoubleValue( values.at( 0 ), parent );
   double max = getDoubleValue( values.at( 1 ), parent );
@@ -435,9 +453,9 @@ static QVariant fcnRndF( const QVariantList& values, const QgsFeature* , QgsExpr
 
   // Return a random double in the range [min, max] (inclusive)
   double f = ( double )rand() / RAND_MAX;
-  return QVariant( min + f * ( max - min ) ) ;
+  return QVariant( min + f * ( max - min ) );
 }
-static QVariant fcnRnd( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRnd( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   int min = getIntValue( values.at( 0 ), parent );
   int max = getIntValue( values.at( 1 ), parent );
@@ -448,7 +466,7 @@ static QVariant fcnRnd( const QVariantList& values, const QgsFeature* , QgsExpre
   return QVariant( min + ( rand() % ( int )( max - min + 1 ) ) );
 }
 
-static QVariant fcnLinearScale( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLinearScale( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double val = getDoubleValue( values.at( 0 ), parent );
   double domainMin = getDoubleValue( values.at( 1 ), parent );
@@ -480,7 +498,7 @@ static QVariant fcnLinearScale( const QVariantList& values, const QgsFeature* , 
   return QVariant( m * val + c );
 }
 
-static QVariant fcnExpScale( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnExpScale( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double val = getDoubleValue( values.at( 0 ), parent );
   double domainMin = getDoubleValue( values.at( 1 ), parent );
@@ -514,7 +532,7 @@ static QVariant fcnExpScale( const QVariantList& values, const QgsFeature* , Qgs
   return QVariant((( rangeMax - rangeMin ) / pow( domainMax - domainMin, exponent ) ) * pow( val - domainMin, exponent ) + rangeMin );
 }
 
-static QVariant fcnMax( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnMax( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   //initially set max as first value
   double maxVal = getDoubleValue( values.at( 0 ), parent );
@@ -532,7 +550,7 @@ static QVariant fcnMax( const QVariantList& values, const QgsFeature* , QgsExpre
   return QVariant( maxVal );
 }
 
-static QVariant fcnMin( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnMin( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   //initially set min as first value
   double minVal = getDoubleValue( values.at( 0 ), parent );
@@ -550,7 +568,7 @@ static QVariant fcnMin( const QVariantList& values, const QgsFeature* , QgsExpre
   return QVariant( minVal );
 }
 
-static QVariant fcnClamp( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnClamp( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double minValue = getDoubleValue( values.at( 0 ), parent );
   double testValue = getDoubleValue( values.at( 1 ), parent );
@@ -571,37 +589,37 @@ static QVariant fcnClamp( const QVariantList& values, const QgsFeature* , QgsExp
   }
 }
 
-static QVariant fcnFloor( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnFloor( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( floor( x ) );
 }
 
-static QVariant fcnCeil( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnCeil( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
   return QVariant( ceil( x ) );
 }
 
-static QVariant fcnToInt( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnToInt( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   return QVariant( getIntValue( values.at( 0 ), parent ) );
 }
-static QVariant fcnToReal( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnToReal( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   return QVariant( getDoubleValue( values.at( 0 ), parent ) );
 }
-static QVariant fcnToString( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnToString( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   return QVariant( getStringValue( values.at( 0 ), parent ) );
 }
 
-static QVariant fcnToDateTime( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnToDateTime( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   return QVariant( getDateTimeValue( values.at( 0 ), parent ) );
 }
 
-static QVariant fcnCoalesce( const QVariantList& values, const QgsFeature* , QgsExpression* )
+static QVariant fcnCoalesce( const QVariantList& values, const QgsFeature*, QgsExpression* )
 {
   foreach ( const QVariant &value, values )
   {
@@ -611,17 +629,17 @@ static QVariant fcnCoalesce( const QVariantList& values, const QgsFeature* , Qgs
   }
   return QVariant();
 }
-static QVariant fcnLower( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLower( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   return QVariant( str.toLower() );
 }
-static QVariant fcnUpper( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnUpper( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   return QVariant( str.toUpper() );
 }
-static QVariant fcnTitle( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnTitle( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   QStringList elems = str.split( " " );
@@ -633,13 +651,13 @@ static QVariant fcnTitle( const QVariantList& values, const QgsFeature* , QgsExp
   return QVariant( elems.join( " " ) );
 }
 
-static QVariant fcnTrim( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnTrim( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   return QVariant( str.trimmed() );
 }
 
-static QVariant fcnWordwrap( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnWordwrap( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   if ( values.length() == 2 || values.length() == 3 )
   {
@@ -685,7 +703,7 @@ static QVariant fcnWordwrap( const QVariantList& values, const QgsFeature* , Qgs
           }
           if ( strhit > -1 )
           {
-            newstr.append( lines[i].midRef( strcurrent , strhit - strcurrent ) );
+            newstr.append( lines[i].midRef( strcurrent, strhit - strcurrent ) );
             newstr.append( "\n" );
             strcurrent = strhit + delimiterlength;
           }
@@ -705,19 +723,19 @@ static QVariant fcnWordwrap( const QVariantList& values, const QgsFeature* , Qgs
   return QVariant();
 }
 
-static QVariant fcnLength( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnLength( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   return QVariant( str.length() );
 }
-static QVariant fcnReplace( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnReplace( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   QString before = getStringValue( values.at( 1 ), parent );
   QString after = getStringValue( values.at( 2 ), parent );
   return QVariant( str.replace( before, after ) );
 }
-static QVariant fcnRegexpReplace( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRegexpReplace( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   QString regexp = getStringValue( values.at( 1 ), parent );
@@ -732,7 +750,7 @@ static QVariant fcnRegexpReplace( const QVariantList& values, const QgsFeature* 
   return QVariant( str.replace( re, after ) );
 }
 
-static QVariant fcnRegexpMatch( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRegexpMatch( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   QString regexp = getStringValue( values.at( 1 ), parent );
@@ -746,7 +764,7 @@ static QVariant fcnRegexpMatch( const QVariantList& values, const QgsFeature* , 
   return QVariant( str.contains( re ) ? 1 : 0 );
 }
 
-static QVariant fcnRegexpSubstr( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRegexpSubstr( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   QString regexp = getStringValue( values.at( 1 ), parent );
@@ -771,12 +789,12 @@ static QVariant fcnRegexpSubstr( const QVariantList& values, const QgsFeature* ,
   }
 }
 
-static QVariant fcnUuid( const QVariantList&, const QgsFeature* , QgsExpression* )
+static QVariant fcnUuid( const QVariantList&, const QgsFeature*, QgsExpression* )
 {
   return QUuid::createUuid().toString();
 }
 
-static QVariant fcnSubstr( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnSubstr( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QString str = getStringValue( values.at( 0 ), parent );
   int from = getIntValue( values.at( 1 ), parent );
@@ -784,18 +802,18 @@ static QVariant fcnSubstr( const QVariantList& values, const QgsFeature* , QgsEx
   return QVariant( str.mid( from -1, len ) );
 }
 
-static QVariant fcnRowNumber( const QVariantList& , const QgsFeature* , QgsExpression* parent )
+static QVariant fcnRowNumber( const QVariantList&, const QgsFeature*, QgsExpression* parent )
 {
   return QVariant( parent->currentRowNumber() );
 }
 
-static QVariant fcnFeatureId( const QVariantList& , const QgsFeature* f, QgsExpression* )
+static QVariant fcnFeatureId( const QVariantList&, const QgsFeature* f, QgsExpression* )
 {
   // TODO: handling of 64-bit feature ids?
   return f ? QVariant(( int )f->id() ) : QVariant();
 }
 
-static QVariant fcnFeature( const QVariantList& , const QgsFeature* f, QgsExpression* )
+static QVariant fcnFeature( const QVariantList&, const QgsFeature* f, QgsExpression* )
 {
   return f ? QVariant::fromValue( *f ) : QVariant();
 }
@@ -806,7 +824,7 @@ static QVariant fcnAttribute( const QVariantList& values, const QgsFeature*, Qgs
 
   return feat.attribute( attr );
 }
-static QVariant fcnConcat( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnConcat( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString concat;
   foreach ( const QVariant &value, values )
@@ -816,27 +834,27 @@ static QVariant fcnConcat( const QVariantList& values, const QgsFeature* , QgsEx
   return concat;
 }
 
-static QVariant fcnStrpos( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnStrpos( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   return string.indexOf( QRegExp( getStringValue( values.at( 1 ), parent ) ) );
 }
 
-static QVariant fcnRight( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnRight( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   int pos = getIntValue( values.at( 1 ), parent );
   return string.right( pos );
 }
 
-static QVariant fcnLeft( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnLeft( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   int pos = getIntValue( values.at( 1 ), parent );
   return string.left( pos );
 }
 
-static QVariant fcnRPad( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnRPad( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   int length = getIntValue( values.at( 1 ), parent );
@@ -844,7 +862,7 @@ static QVariant fcnRPad( const QVariantList& values, const QgsFeature* , QgsExpr
   return string.leftJustified( length, fill.at( 0 ), true );
 }
 
-static QVariant fcnLPad( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnLPad( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   int length = getIntValue( values.at( 1 ), parent );
@@ -852,7 +870,7 @@ static QVariant fcnLPad( const QVariantList& values, const QgsFeature* , QgsExpr
   return string.rightJustified( length, fill.at( 0 ), true );
 }
 
-static QVariant fcnFormatString( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnFormatString( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QString string = getStringValue( values.at( 0 ), parent );
   for ( int n = 1; n < values.length(); n++ )
@@ -863,27 +881,27 @@ static QVariant fcnFormatString( const QVariantList& values, const QgsFeature* ,
 }
 
 
-static QVariant fcnNow( const QVariantList&, const QgsFeature* , QgsExpression * )
+static QVariant fcnNow( const QVariantList&, const QgsFeature*, QgsExpression * )
 {
   return QVariant( QDateTime::currentDateTime() );
 }
 
-static QVariant fcnToDate( const QVariantList& values, const QgsFeature* , QgsExpression * parent )
+static QVariant fcnToDate( const QVariantList& values, const QgsFeature*, QgsExpression * parent )
 {
   return QVariant( getDateValue( values.at( 0 ), parent ) );
 }
 
-static QVariant fcnToTime( const QVariantList& values, const QgsFeature* , QgsExpression * parent )
+static QVariant fcnToTime( const QVariantList& values, const QgsFeature*, QgsExpression * parent )
 {
   return QVariant( getTimeValue( values.at( 0 ), parent ) );
 }
 
-static QVariant fcnToInterval( const QVariantList& values, const QgsFeature* , QgsExpression * parent )
+static QVariant fcnToInterval( const QVariantList& values, const QgsFeature*, QgsExpression * parent )
 {
   return QVariant::fromValue( getInterval( values.at( 0 ), parent ) );
 }
 
-static QVariant fcnAge( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnAge( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QDateTime d1 = getDateTimeValue( values.at( 0 ), parent );
   QDateTime d2 = getDateTimeValue( values.at( 1 ), parent );
@@ -891,7 +909,7 @@ static QVariant fcnAge( const QVariantList& values, const QgsFeature* , QgsExpre
   return QVariant::fromValue( QgsExpression::Interval( seconds ) );
 }
 
-static QVariant fcnDay( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnDay( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -906,7 +924,7 @@ static QVariant fcnDay( const QVariantList& values, const QgsFeature* , QgsExpre
   }
 }
 
-static QVariant fcnYear( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnYear( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -921,7 +939,7 @@ static QVariant fcnYear( const QVariantList& values, const QgsFeature* , QgsExpr
   }
 }
 
-static QVariant fcnMonth( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnMonth( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -936,7 +954,7 @@ static QVariant fcnMonth( const QVariantList& values, const QgsFeature* , QgsExp
   }
 }
 
-static QVariant fcnWeek( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnWeek( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -951,7 +969,7 @@ static QVariant fcnWeek( const QVariantList& values, const QgsFeature* , QgsExpr
   }
 }
 
-static QVariant fcnHour( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnHour( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -966,7 +984,7 @@ static QVariant fcnHour( const QVariantList& values, const QgsFeature* , QgsExpr
   }
 }
 
-static QVariant fcnMinute( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnMinute( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -981,7 +999,7 @@ static QVariant fcnMinute( const QVariantList& values, const QgsFeature* , QgsEx
   }
 }
 
-static QVariant fcnSeconds( const QVariantList& values, const QgsFeature* , QgsExpression *parent )
+static QVariant fcnSeconds( const QVariantList& values, const QgsFeature*, QgsExpression *parent )
 {
   QVariant value = values.at( 0 );
   QgsExpression::Interval inter = getInterval( value, parent, false );
@@ -1002,7 +1020,7 @@ static QVariant fcnSeconds( const QVariantList& values, const QgsFeature* , QgsE
   if (!g || g->type() != geomtype) return QVariant();
 
 
-static QVariant fcnX( const QVariantList& , const QgsFeature* f, QgsExpression* )
+static QVariant fcnX( const QVariantList&, const QgsFeature* f, QgsExpression* )
 {
   ENSURE_GEOM_TYPE( f, g, QGis::Point );
   if ( g->isMultipart() )
@@ -1014,7 +1032,7 @@ static QVariant fcnX( const QVariantList& , const QgsFeature* f, QgsExpression* 
     return g->asPoint().x();
   }
 }
-static QVariant fcnY( const QVariantList& , const QgsFeature* f, QgsExpression* )
+static QVariant fcnY( const QVariantList&, const QgsFeature* f, QgsExpression* )
 {
   ENSURE_GEOM_TYPE( f, g, QGis::Point );
   if ( g->isMultipart() )
@@ -1059,7 +1077,7 @@ static QVariant fcnYat( const QVariantList& values, const QgsFeature* f, QgsExpr
   else
     return QVariant();
 }
-static QVariant fcnGeometry( const QVariantList& , const QgsFeature* f, QgsExpression* )
+static QVariant fcnGeometry( const QVariantList&, const QgsFeature* f, QgsExpression* )
 {
   QgsGeometry* geom = f ? f->geometry() : 0;
   if ( geom )
@@ -1087,26 +1105,26 @@ static QVariant fcnGeomFromGML( const QVariantList& values, const QgsFeature*, Q
     return QVariant();
 }
 
-static QVariant fcnGeomArea( const QVariantList& , const QgsFeature* f, QgsExpression* parent )
+static QVariant fcnGeomArea( const QVariantList&, const QgsFeature* f, QgsExpression* parent )
 {
   ENSURE_GEOM_TYPE( f, g, QGis::Polygon );
   QgsDistanceArea* calc = parent->geomCalculator();
   return QVariant( calc->measure( f->geometry() ) );
 }
-static QVariant fcnGeomLength( const QVariantList& , const QgsFeature* f, QgsExpression* parent )
+static QVariant fcnGeomLength( const QVariantList&, const QgsFeature* f, QgsExpression* parent )
 {
   ENSURE_GEOM_TYPE( f, g, QGis::Line );
   QgsDistanceArea* calc = parent->geomCalculator();
   return QVariant( calc->measure( f->geometry() ) );
 }
-static QVariant fcnGeomPerimeter( const QVariantList& , const QgsFeature* f, QgsExpression* parent )
+static QVariant fcnGeomPerimeter( const QVariantList&, const QgsFeature* f, QgsExpression* parent )
 {
   ENSURE_GEOM_TYPE( f, g, QGis::Polygon );
   QgsDistanceArea* calc = parent->geomCalculator();
   return QVariant( calc->measurePerimeter( f->geometry() ) );
 }
 
-static QVariant fcnBounds( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnBounds( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   QgsGeometry* geomBounds = QgsGeometry::fromRect( geom.boundingBox() );
@@ -1120,85 +1138,85 @@ static QVariant fcnBounds( const QVariantList& values, const QgsFeature* , QgsEx
   }
 }
 
-static QVariant fcnBoundsWidth( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnBoundsWidth( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().width() );
 }
 
-static QVariant fcnBoundsHeight( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnBoundsHeight( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().height() );
 }
 
-static QVariant fcnXMin( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnXMin( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().xMinimum() );
 }
 
-static QVariant fcnXMax( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnXMax( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().xMaximum() );
 }
 
-static QVariant fcnYMin( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnYMin( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().yMinimum() );
 }
 
-static QVariant fcnYMax( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnYMax( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry geom = getGeometry( values.at( 0 ), parent );
   return QVariant::fromValue( geom.boundingBox().yMaximum() );
 }
 
-static QVariant fcnBbox( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnBbox( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.intersects( sGeom.boundingBox() ) ? TVL_True : TVL_False;
 }
-static QVariant fcnDisjoint( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnDisjoint( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.disjoint( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnIntersects( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnIntersects( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.intersects( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnTouches( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnTouches( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.touches( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnCrosses( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnCrosses( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.crosses( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnContains( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnContains( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.contains( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnOverlaps( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnOverlaps( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return fGeom.overlaps( &sGeom ) ? TVL_True : TVL_False;
 }
-static QVariant fcnWithin( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnWithin( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
@@ -1236,7 +1254,7 @@ static QVariant fcnConvexHull( const QVariantList& values, const QgsFeature*, Qg
     return QVariant::fromValue( *geom );
   return QVariant();
 }
-static QVariant fcnDifference( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnDifference( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
@@ -1245,13 +1263,13 @@ static QVariant fcnDifference( const QVariantList& values, const QgsFeature* , Q
     return QVariant::fromValue( *geom );
   return QVariant();
 }
-static QVariant fcnDistance( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnDistance( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
   return QVariant( fGeom.distance( sGeom ) );
 }
-static QVariant fcnIntersection( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnIntersection( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
@@ -1260,7 +1278,7 @@ static QVariant fcnIntersection( const QVariantList& values, const QgsFeature* ,
     return QVariant::fromValue( *geom );
   return QVariant();
 }
-static QVariant fcnSymDifference( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnSymDifference( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
@@ -1269,7 +1287,7 @@ static QVariant fcnSymDifference( const QVariantList& values, const QgsFeature* 
     return QVariant::fromValue( *geom );
   return QVariant();
 }
-static QVariant fcnCombine( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnCombine( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
   QgsGeometry sGeom = getGeometry( values.at( 1 ), parent );
@@ -1278,14 +1296,20 @@ static QVariant fcnCombine( const QVariantList& values, const QgsFeature* , QgsE
     return QVariant::fromValue( *geom );
   return QVariant();
 }
-static QVariant fcnGeomToWKT( const QVariantList& values, const QgsFeature* , QgsExpression* parent )
+static QVariant fcnGeomToWKT( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
 {
+  if ( values.length() < 1 || values.length() > 2 )
+    return QVariant();
+
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
-  QString wkt = fGeom.exportToWkt();
+  int prec = 8;
+  if ( values.length() == 2 )
+    prec = getIntValue( values.at( 1 ), parent );
+  QString wkt = fGeom.exportToWkt( prec );
   return QVariant( wkt );
 }
 
-static QVariant fcnRound( const QVariantList& values , const QgsFeature *f, QgsExpression* parent )
+static QVariant fcnRound( const QVariantList& values, const QgsFeature *f, QgsExpression* parent )
 {
   Q_UNUSED( f );
   if ( values.length() == 2 )
@@ -1304,7 +1328,7 @@ static QVariant fcnRound( const QVariantList& values , const QgsFeature *f, QgsE
   return QVariant();
 }
 
-static QVariant fcnPi( const QVariantList& values , const QgsFeature *f, QgsExpression* parent )
+static QVariant fcnPi( const QVariantList& values, const QgsFeature *f, QgsExpression* parent )
 {
   Q_UNUSED( values );
   Q_UNUSED( f );
@@ -1344,6 +1368,29 @@ static QVariant fcnColorRgb( const QVariantList &values, const QgsFeature *, Qgs
   }
 
   return QString( "%1,%2,%3" ).arg( color.red() ).arg( color.green() ).arg( color.blue() );
+}
+
+static QVariant fcnIf( const QVariantList &values, const QgsFeature *f, QgsExpression *parent )
+{
+  QgsExpression::Node* node = getNode( values.at( 0 ), parent );
+  ENSURE_NO_EVAL_ERROR;
+  QVariant value = node->eval( parent, f );
+  ENSURE_NO_EVAL_ERROR;
+  if ( value.toBool() )
+  {
+    node = getNode( values.at( 1 ), parent );
+    ENSURE_NO_EVAL_ERROR;
+    value = node->eval( parent, f );
+    ENSURE_NO_EVAL_ERROR;
+  }
+  else
+  {
+    node = getNode( values.at( 2 ), parent );
+    ENSURE_NO_EVAL_ERROR;
+    value = node->eval( parent, f );
+    ENSURE_NO_EVAL_ERROR;
+  }
+  return value;
 }
 
 static QVariant fncColorRgba( const QVariantList &values, const QgsFeature *, QgsExpression *parent )
@@ -1505,6 +1552,80 @@ static QVariant fcnSpecialColumn( const QVariantList& values, const QgsFeature* 
   return QgsExpression::specialColumn( varName );
 }
 
+static QVariant fcnGetGeometry( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
+{
+  QgsFeature feat = getFeature( values.at( 0 ), parent );
+  QgsGeometry* geom = feat.geometry();
+  if ( geom )
+    return QVariant::fromValue( *geom );
+  return QVariant();
+}
+
+static QVariant fcnTransformGeometry( const QVariantList& values, const QgsFeature*, QgsExpression* parent )
+{
+  QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
+  QString sAuthId = getStringValue( values.at( 1 ), parent );
+  QString dAuthId = getStringValue( values.at( 2 ), parent );
+
+  QgsCoordinateReferenceSystem s;
+  if ( ! s.createFromOgcWmsCrs( sAuthId ) )
+    return QVariant::fromValue( fGeom );
+  QgsCoordinateReferenceSystem d;
+  if ( ! d.createFromOgcWmsCrs( dAuthId ) )
+    return QVariant::fromValue( fGeom );
+
+  QgsCoordinateTransform t( s, d );
+  if ( fGeom.transform( t ) == 0 )
+    return QVariant::fromValue( fGeom );
+  return QVariant();
+}
+
+static QVariant fcnGetFeature( const QVariantList& values, const QgsFeature *, QgsExpression* parent )
+{
+  //arguments: 1. layer id / name, 2. key attribute, 3. eq value
+  QString layerString = getStringValue( values.at( 0 ), parent );
+  QgsVectorLayer* vl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( layerString ) ); //search by id first
+  if ( !vl )
+  {
+    QList<QgsMapLayer *> layersByName = QgsMapLayerRegistry::instance()->mapLayersByName( layerString );
+    if ( layersByName.size() > 0 )
+    {
+      vl = qobject_cast<QgsVectorLayer*>( layersByName.at( 0 ) );
+    }
+  }
+
+  //no layer found
+  if ( !vl )
+  {
+    return QVariant();
+  }
+
+  QString attribute = getStringValue( values.at( 1 ), parent );
+  int attributeId = vl->fieldNameIndex( attribute );
+  if ( attributeId == -1 )
+  {
+    return QVariant();
+  }
+
+  const QVariant& attVal = values.at( 2 );
+  QgsFeatureRequest req;
+  if ( !parent->needsGeometry() )
+  {
+    req.setFlags( QgsFeatureRequest::NoGeometry );
+  }
+  QgsFeatureIterator fIt = vl->getFeatures( req );
+
+  QgsFeature fet;
+  while ( fIt.nextFeature( fet ) )
+  {
+    if ( fet.attribute( attributeId ) == attVal )
+    {
+      return QVariant::fromValue( fet );
+    }
+  }
+  return QVariant();
+}
+
 bool QgsExpression::registerFunction( QgsExpression::Function* function )
 {
   int fnIdx = functionIndex( function->name() );
@@ -1605,6 +1726,7 @@ const QList<QgsExpression::Function*> &QgsExpression::Functions()
     << new StaticFunction( "totime", 1, fcnToTime, "Conversions" )
     << new StaticFunction( "tointerval", 1, fcnToInterval, "Conversions" )
     << new StaticFunction( "coalesce", -1, fcnCoalesce, "Conditionals" )
+    << new StaticFunction( "if", 3, fcnIf, "Conditionals", "", False, QStringList(), true )
     << new StaticFunction( "regexp_match", 2, fcnRegexpMatch, "Conditionals" )
     << new StaticFunction( "$now", 0, fcnNow, "Date and Time" )
     << new StaticFunction( "age", 2, fcnAge, "Date and Time" )
@@ -1643,46 +1765,49 @@ const QList<QgsExpression::Function*> &QgsExpression::Functions()
     << new StaticFunction( "color_hsva", 4, fncColorHsva, "Color" )
     << new StaticFunction( "color_cmyk", 4, fcnColorCmyk, "Color" )
     << new StaticFunction( "color_cmyka", 5, fncColorCmyka, "Color" )
-    << new StaticFunction( "$geometry", 0, fcnGeometry, "Geometry", "" , true )
-    << new StaticFunction( "$area", 0, fcnGeomArea, "Geometry", "", true )
-    << new StaticFunction( "$length", 0, fcnGeomLength, "Geometry", "", true )
-    << new StaticFunction( "$perimeter", 0, fcnGeomPerimeter, "Geometry", "", true )
-    << new StaticFunction( "$x", 0, fcnX, "Geometry", "", true )
-    << new StaticFunction( "$y", 0, fcnY, "Geometry", "" , true )
-    << new StaticFunction( "xat", 1, fcnXat, "Geometry", "", true )
-    << new StaticFunction( "yat", 1, fcnYat, "Geometry", "", true )
-    << new StaticFunction( "xmin", 1, fcnXMin, "Geometry", "", true )
-    << new StaticFunction( "xmax", 1, fcnXMax, "Geometry", "", true )
-    << new StaticFunction( "ymin", 1, fcnYMin, "Geometry", "", true )
-    << new StaticFunction( "ymax", 1, fcnYMax, "Geometry", "", true )
-    << new StaticFunction( "geomFromWKT", 1, fcnGeomFromWKT, "Geometry" )
-    << new StaticFunction( "geomFromGML", 1, fcnGeomFromGML, "Geometry" )
-    << new StaticFunction( "bbox", 2, fcnBbox, "Geometry" )
-    << new StaticFunction( "disjoint", 2, fcnDisjoint, "Geometry" )
-    << new StaticFunction( "intersects", 2, fcnIntersects, "Geometry" )
-    << new StaticFunction( "touches", 2, fcnTouches, "Geometry" )
-    << new StaticFunction( "crosses", 2, fcnCrosses, "Geometry" )
-    << new StaticFunction( "contains", 2, fcnContains, "Geometry" )
-    << new StaticFunction( "overlaps", 2, fcnOverlaps, "Geometry" )
-    << new StaticFunction( "within", 2, fcnWithin, "Geometry" )
-    << new StaticFunction( "buffer", -1, fcnBuffer, "Geometry" )
-    << new StaticFunction( "centroid", 1, fcnCentroid, "Geometry" )
-    << new StaticFunction( "bounds", 1, fcnBounds, "Geometry", "", true )
-    << new StaticFunction( "bounds_width", 1, fcnBoundsWidth, "Geometry", "", true )
-    << new StaticFunction( "bounds_height", 1, fcnBoundsHeight, "Geometry", "", true )
-    << new StaticFunction( "convexHull", 1, fcnConvexHull, "Geometry" )
-    << new StaticFunction( "difference", 2, fcnDifference, "Geometry" )
-    << new StaticFunction( "distance", 2, fcnDistance, "Geometry" )
-    << new StaticFunction( "intersection", 2, fcnIntersection, "Geometry" )
-    << new StaticFunction( "symDifference", 2, fcnSymDifference, "Geometry" )
-    << new StaticFunction( "combine", 2, fcnCombine, "Geometry" )
-    << new StaticFunction( "union", 2, fcnCombine, "Geometry" )
-    << new StaticFunction( "geomToWKT", 1, fcnGeomToWKT, "Geometry" )
+    << new StaticFunction( "$geometry", 0, fcnGeometry, "GeometryGroup", "", true )
+    << new StaticFunction( "$area", 0, fcnGeomArea, "GeometryGroup", "", true )
+    << new StaticFunction( "$length", 0, fcnGeomLength, "GeometryGroup", "", true )
+    << new StaticFunction( "$perimeter", 0, fcnGeomPerimeter, "GeometryGroup", "", true )
+    << new StaticFunction( "$x", 0, fcnX, "GeometryGroup", "", true )
+    << new StaticFunction( "$y", 0, fcnY, "GeometryGroup", "", true )
+    << new StaticFunction( "xat", 1, fcnXat, "GeometryGroup", "", true )
+    << new StaticFunction( "yat", 1, fcnYat, "GeometryGroup", "", true )
+    << new StaticFunction( "xmin", 1, fcnXMin, "GeometryGroup", "", true )
+    << new StaticFunction( "xmax", 1, fcnXMax, "GeometryGroup", "", true )
+    << new StaticFunction( "ymin", 1, fcnYMin, "GeometryGroup", "", true )
+    << new StaticFunction( "ymax", 1, fcnYMax, "GeometryGroup", "", true )
+    << new StaticFunction( "geomFromWKT", 1, fcnGeomFromWKT, "GeometryGroup" )
+    << new StaticFunction( "geomFromGML", 1, fcnGeomFromGML, "GeometryGroup" )
+    << new StaticFunction( "bbox", 2, fcnBbox, "GeometryGroup" )
+    << new StaticFunction( "disjoint", 2, fcnDisjoint, "GeometryGroup" )
+    << new StaticFunction( "intersects", 2, fcnIntersects, "GeometryGroup" )
+    << new StaticFunction( "touches", 2, fcnTouches, "GeometryGroup" )
+    << new StaticFunction( "crosses", 2, fcnCrosses, "GeometryGroup" )
+    << new StaticFunction( "contains", 2, fcnContains, "GeometryGroup" )
+    << new StaticFunction( "overlaps", 2, fcnOverlaps, "GeometryGroup" )
+    << new StaticFunction( "within", 2, fcnWithin, "GeometryGroup" )
+    << new StaticFunction( "buffer", -1, fcnBuffer, "GeometryGroup" )
+    << new StaticFunction( "centroid", 1, fcnCentroid, "GeometryGroup" )
+    << new StaticFunction( "bounds", 1, fcnBounds, "GeometryGroup", "", true )
+    << new StaticFunction( "bounds_width", 1, fcnBoundsWidth, "GeometryGroup", "", true )
+    << new StaticFunction( "bounds_height", 1, fcnBoundsHeight, "GeometryGroup", "", true )
+    << new StaticFunction( "convexHull", 1, fcnConvexHull, "GeometryGroup" )
+    << new StaticFunction( "difference", 2, fcnDifference, "GeometryGroup" )
+    << new StaticFunction( "distance", 2, fcnDistance, "GeometryGroup" )
+    << new StaticFunction( "intersection", 2, fcnIntersection, "GeometryGroup" )
+    << new StaticFunction( "symDifference", 2, fcnSymDifference, "GeometryGroup" )
+    << new StaticFunction( "combine", 2, fcnCombine, "GeometryGroup" )
+    << new StaticFunction( "union", 2, fcnCombine, "GeometryGroup" )
+    << new StaticFunction( "geomToWKT", -1, fcnGeomToWKT, "GeometryGroup" )
+    << new StaticFunction( "geometry", 1, fcnGetGeometry, "GeometryGroup" )
+    << new StaticFunction( "transform", 3, fcnTransformGeometry, "GeometryGroup" )
     << new StaticFunction( "$rownum", 0, fcnRowNumber, "Record" )
     << new StaticFunction( "$id", 0, fcnFeatureId, "Record" )
     << new StaticFunction( "$currentfeature", 0, fcnFeature, "Record" )
     << new StaticFunction( "$scale", 0, fcnScale, "Record" )
     << new StaticFunction( "$uuid", 0, fcnUuid, "Record" )
+    << new StaticFunction( "getFeature", 3, fcnGetFeature, "Record" )
 
     //return all attributes string for referencedColumns - this is caught by
     // QgsFeatureRequest::setSubsetOfAttributes and causes all attributes to be fetched by the
@@ -1843,7 +1968,7 @@ QgsExpression::~QgsExpression()
   delete mRootNode;
 }
 
-QStringList QgsExpression::referencedColumns()
+QStringList QgsExpression::referencedColumns() const
 {
   if ( !mRootNode )
     return QStringList();
@@ -1867,7 +1992,7 @@ QStringList QgsExpression::referencedColumns()
   return columns;
 }
 
-bool QgsExpression::needsGeometry()
+bool QgsExpression::needsGeometry() const
 {
   if ( !mRootNode )
     return false;
@@ -1941,7 +2066,7 @@ void QgsExpression::acceptVisitor( QgsExpression::Visitor& v ) const
 
 QString QgsExpression::replaceExpressionText( const QString &action, const QgsFeature *feat,
     QgsVectorLayer *layer,
-    const QMap<QString, QVariant> *substitutionMap )
+    const QMap<QString, QVariant> *substitutionMap, const QgsDistanceArea *distanceArea )
 {
   QString expr_action;
 
@@ -1982,6 +2107,12 @@ QString QgsExpression::replaceExpressionText( const QString &action, const QgsFe
       continue;
     }
 
+    if ( distanceArea )
+    {
+      //if QgsDistanceArea specified for area/distance conversion, use it
+      exp.setGeomCalculator( *distanceArea );
+    }
+
     QVariant result;
     if ( layer )
     {
@@ -2011,6 +2142,27 @@ QString QgsExpression::replaceExpressionText( const QString &action, const QgsFe
   }
 
   return expr_action;
+}
+
+double QgsExpression::evaluateToDouble( const QString &text, const double fallbackValue )
+{
+  bool ok;
+  //first test if text is directly convertible to double
+  double convertedValue = text.toDouble( &ok );
+  if ( ok )
+  {
+    return convertedValue;
+  }
+
+  //otherwise try to evalute as expression
+  QgsExpression expr( text );
+  QVariant result = expr.evaluate();
+  convertedValue = result.toDouble( &ok );
+  if ( expr.hasEvalError() || !ok )
+  {
+    return fallbackValue;
+  }
+  return convertedValue;
 }
 
 
@@ -2081,18 +2233,24 @@ QVariant QgsExpression::NodeBinaryOperator::eval( QgsExpression* parent, const Q
   switch ( mOp )
   {
     case boPlus:
+      if ( vL.type() == QVariant::String && vR.type() == QVariant::String )
+      {
+        QString sL = getStringValue( vL, parent ); ENSURE_NO_EVAL_ERROR;
+        QString sR = getStringValue( vR, parent ); ENSURE_NO_EVAL_ERROR;
+        return QVariant( sL + sR );
+      }
     case boMinus:
     case boMul:
     case boDiv:
     case boMod:
+    {
       if ( isNull( vL ) || isNull( vR ) )
         return QVariant();
-      else if ( isIntSafe( vL ) && isIntSafe( vR ) )
+      else if ( mOp != boDiv && isIntSafe( vL ) && isIntSafe( vR ) )
       {
         // both are integers - let's use integer arithmetics
         int iL = getIntValue( vL, parent ); ENSURE_NO_EVAL_ERROR;
         int iR = getIntValue( vR, parent ); ENSURE_NO_EVAL_ERROR;
-        if ( mOp == boDiv && iR == 0 ) return QVariant(); // silently handle division by zero and return NULL
         return QVariant( computeInt( iL, iR ) );
       }
       else if ( isDateTimeSafe( vL ) && isIntervalSafe( vR ) )
@@ -2115,7 +2273,16 @@ QVariant QgsExpression::NodeBinaryOperator::eval( QgsExpression* parent, const Q
           return QVariant(); // silently handle division by zero and return NULL
         return QVariant( computeDouble( fL, fR ) );
       }
-
+    }
+    case boIntDiv:
+    {
+      //integer division
+      double fL = getDoubleValue( vL, parent ); ENSURE_NO_EVAL_ERROR;
+      double fR = getDoubleValue( vR, parent ); ENSURE_NO_EVAL_ERROR;
+      if ( fR == 0 )
+        return QVariant(); // silently handle division by zero and return NULL
+      return QVariant( qFloor( fL / fR ) );
+    }
     case boPow:
       if ( isNull( vL ) || isNull( vR ) )
         return QVariant();
@@ -2333,6 +2500,7 @@ int QgsExpression::NodeBinaryOperator::precedence() const
 
     case boMul:
     case boDiv:
+    case boIntDiv:
     case boMod:
       return 5;
 
@@ -2354,7 +2522,7 @@ QString QgsExpression::NodeBinaryOperator::dump() const
   QString fmt;
   fmt += lOp && lOp->precedence() < precedence() ? "(%1)" : "%1";
   fmt += " %2 ";
-  fmt += rOp && rOp->precedence() < precedence() ? "(%3)" : "%3";
+  fmt += rOp && rOp->precedence() <= precedence() ? "(%3)" : "%3";
 
   return fmt.arg( mOpLeft->dump() ).arg( BinaryOperatorText[mOp] ).arg( mOpRight->dump() );
 }
@@ -2434,10 +2602,19 @@ QVariant QgsExpression::NodeFunction::eval( QgsExpression* parent, const QgsFeat
   {
     foreach ( Node* n, mArgs->list() )
     {
-      QVariant v = n->eval( parent, f );
-      ENSURE_NO_EVAL_ERROR;
-      if ( isNull( v ) && fd->name() != "coalesce" )
-        return QVariant(); // all "normal" functions return NULL, when any parameter is NULL (so coalesce is abnormal)
+      QVariant v;
+      if ( fd->lazyEval() )
+      {
+        // Pass in the node for the function to eval as it needs.
+        v = QVariant::fromValue( n );
+      }
+      else
+      {
+        v = n->eval( parent, f );
+        ENSURE_NO_EVAL_ERROR;
+        if ( isNull( v ) && fd->name() != "coalesce" )
+          return QVariant(); // all "normal" functions return NULL, when any parameter is NULL (so coalesce is abnormal)
+      }
       argValues.append( v );
     }
   }
@@ -2494,7 +2671,7 @@ QStringList QgsExpression::NodeFunction::referencedColumns() const
 
 //
 
-QVariant QgsExpression::NodeLiteral::eval( QgsExpression* , const QgsFeature* )
+QVariant QgsExpression::NodeLiteral::eval( QgsExpression*, const QgsFeature* )
 {
   return mValue;
 }
@@ -2659,7 +2836,7 @@ QString QgsExpression::group( QString name )
     gGroups.insert( "Date and Time", QObject::tr( "Date and Time" ) );
     gGroups.insert( "String", QObject::tr( "String" ) );
     gGroups.insert( "Color", QObject::tr( "Color" ) );
-    gGroups.insert( "Geometry", QObject::tr( "Geometry" ) );
+    gGroups.insert( "GeometryGroup", QObject::tr( "Geometry" ) );
     gGroups.insert( "Record", QObject::tr( "Record" ) );
   }
 

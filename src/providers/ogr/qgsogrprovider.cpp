@@ -126,13 +126,13 @@ bool QgsOgrProvider::convertField( QgsField &field, const QTextCodec &encoding )
 
 void QgsOgrProvider::repack()
 {
-  if ( ogrDriverName != "ESRI Shapefile" )
+  if ( ogrDriverName != "ESRI Shapefile" || ogrOrigLayer == 0 )
     return;
 
   QByteArray layerName = OGR_FD_GetName( OGR_L_GetLayerDefn( ogrOrigLayer ) );
 
   // run REPACK on shape files
-  if ( mDeletedFeatures )
+  if ( mDataModified )
   {
     QByteArray sql = QByteArray( "REPACK " ) + layerName;   // don't quote the layer name as it works with spaces in the name and won't work if the name is quoted
     QgsDebugMsg( QString( "SQL: %1" ).arg( FROM8( sql ) ) );
@@ -176,7 +176,7 @@ void QgsOgrProvider::repack()
       }
     }
 
-    mDeletedFeatures = false;
+    mDataModified = false;
   }
 }
 
@@ -267,7 +267,8 @@ QgsOgrProvider::QgsOgrProvider( QString const & uri )
     , ogrDriver( 0 )
     , valid( false )
     , featuresCounted( -1 )
-    , mDeletedFeatures( false )
+    , mDataModified( false )
+    , mWriteAccess( false )
 {
   QgsCPLErrorHandler handler;
 
@@ -368,7 +369,11 @@ QgsOgrProvider::QgsOgrProvider( QString const & uri )
   if ( !openReadOnly )
     ogrDataSource = OGROpen( TO8F( mFilePath ), true, &ogrDriver );
 
-  if ( !ogrDataSource )
+  if ( ogrDataSource )
+  {
+    mWriteAccess = true;
+  }
+  else
   {
     QgsDebugMsg( "OGR failed to opened in update mode, trying in read-only mode" );
 
@@ -447,7 +452,10 @@ QgsOgrProvider::~QgsOgrProvider()
 
   repack();
 
-  OGR_DS_Destroy( ogrDataSource );
+  if ( ogrDataSource )
+  {
+    OGR_DS_Destroy( ogrDataSource );
+  }
   ogrDataSource = 0;
 
   if ( extent_ )
@@ -548,7 +556,7 @@ QString QgsOgrProvider::subsetString()
 QString QgsOgrProvider::ogrWkbGeometryTypeName( OGRwkbGeometryType type ) const
 {
   QString geom;
-  switch ( type )
+  switch (( int )type )
   {
     case wkbUnknown:            geom = "Unknown"; break;
     case wkbPoint:              geom = "Point"; break;
@@ -559,12 +567,14 @@ QString QgsOgrProvider::ogrWkbGeometryTypeName( OGRwkbGeometryType type ) const
     case wkbMultiPolygon:       geom = "MultiPolygon"; break;
     case wkbGeometryCollection: geom = "GeometryCollection"; break;
     case wkbNone:               geom = "None"; break;
+    case wkbUnknown | wkb25DBit:geom = "Unknown25D"; break;
     case wkbPoint25D:           geom = "Point25D"; break;
     case wkbLineString25D:      geom = "LineString25D"; break;
     case wkbPolygon25D:         geom = "Polygon25D"; break;
     case wkbMultiPoint25D:      geom = "MultiPoint25D"; break;
     case wkbMultiLineString25D: geom = "MultiLineString25D"; break;
     case wkbMultiPolygon25D:    geom = "MultiPolygon25D"; break;
+    case wkbGeometryCollection25D: geom = "GeometryCollection25D"; break;
     default:                    geom = QString( "Unknown WKB: %1" ).arg( type );
   }
   return geom;
@@ -619,7 +629,7 @@ QStringList QgsOgrProvider::subLayers() const
 
     QgsDebugMsg( QString( "id = %1 name = %2 layerGeomType = %3" ).arg( i ).arg( theLayerName ).arg( layerGeomType ) );
 
-    if ( layerGeomType != wkbUnknown )
+    if ( wkbFlatten( layerGeomType ) != wkbUnknown )
     {
       int theLayerFeatureCount = OGR_L_GetFeatureCount( layer, 0 );
 
@@ -655,9 +665,10 @@ QStringList QgsOgrProvider::subLayers() const
       {
         fCount[wkbUnknown] = 0;
       }
+      bool bIs25D = (( layerGeomType & wkb25DBit ) != 0 );
       foreach ( OGRwkbGeometryType gType, fCount.keys() )
       {
-        QString geom = ogrWkbGeometryTypeName( gType );
+        QString geom = ogrWkbGeometryTypeName(( bIs25D ) ? ( OGRwkbGeometryType )( gType | wkb25DBit ) : gType );
 
         QString sl = QString( "%1:%2:%3:%4" ).arg( i ).arg( theLayerName ).arg( fCount.value( gType ) ).arg( geom );
         QgsDebugMsg( "sub layer: " + sl );
@@ -689,10 +700,10 @@ void QgsOgrProvider::setEncoding( const QString& e )
 }
 
 // This is reused by dataItem
-int QgsOgrProvider::getOgrGeomType( OGRLayerH ogrLayer )
+OGRwkbGeometryType QgsOgrProvider::getOgrGeomType( OGRLayerH ogrLayer )
 {
   OGRFeatureDefnH fdef = OGR_L_GetLayerDefn( ogrLayer );
-  int geomType = wkbUnknown;
+  OGRwkbGeometryType geomType = wkbUnknown;
   if ( fdef )
   {
     geomType = OGR_FD_GetGeomType( fdef );
@@ -804,7 +815,7 @@ void QgsOgrProvider::setRelevantFields( OGRLayerH ogrLayer, bool fetchGeometry, 
 }
 
 
-void QgsOgrUtils::setRelevantFields( OGRLayerH ogrLayer, int fieldCount,  bool fetchGeometry, const QgsAttributeList &fetchAttributes )
+void QgsOgrUtils::setRelevantFields( OGRLayerH ogrLayer, int fieldCount, bool fetchGeometry, const QgsAttributeList &fetchAttributes )
 {
 #if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 1800
   if ( OGR_L_TestCapability( ogrLayer, OLCIgnoreFields ) )
@@ -929,7 +940,7 @@ size_t QgsOgrProvider::layerCount() const
  */
 QGis::WkbType QgsOgrProvider::geometryType() const
 {
-  return ( QGis::WkbType ) geomType;
+  return static_cast<QGis::WkbType>( geomType );
 }
 
 /**
@@ -979,7 +990,7 @@ bool QgsOgrProvider::addFeature( QgsFeature& f )
 
   const QgsAttributes& attrs = f.attributes();
 
-  const char *oldlocale = setlocale( LC_NUMERIC, NULL );
+  char *oldlocale = setlocale( LC_NUMERIC, NULL );
   if ( oldlocale )
     oldlocale = strdup( oldlocale );
 
@@ -1061,6 +1072,8 @@ bool QgsOgrProvider::addFeature( QgsFeature& f )
   OGR_F_Destroy( feature );
 
   setlocale( LC_NUMERIC, oldlocale );
+  if ( oldlocale )
+    free( oldlocale );
 
   return returnValue;
 }
@@ -1163,7 +1176,7 @@ bool QgsOgrProvider::deleteAttributes( const QgsAttributeIds &attributes )
 }
 
 
-bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap & attr_map )
+bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap &attr_map )
 {
   if ( attr_map.isEmpty() )
     return true;
@@ -1182,17 +1195,18 @@ bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap & attr
       continue;
     }
 
-    OGRFeatureH of = OGR_L_GetFeature( ogrLayer, static_cast<long>( FID_TO_NUMBER( fid ) ) );
+    const QgsAttributeMap &attr = it.value();
+    if ( attr.isEmpty() )
+      continue;
 
+    OGRFeatureH of = OGR_L_GetFeature( ogrLayer, static_cast<long>( FID_TO_NUMBER( fid ) ) );
     if ( !of )
     {
       pushError( tr( "Feature %1 for attribute update not found." ).arg( fid ) );
       continue;
     }
 
-    const QgsAttributeMap& attr = it.value();
-
-    const char *oldlocale = setlocale( LC_NUMERIC, NULL );
+    char *oldlocale = setlocale( LC_NUMERIC, NULL );
     if ( oldlocale )
       oldlocale = strdup( oldlocale );
     setlocale( LC_NUMERIC, "C" );
@@ -1259,6 +1273,8 @@ bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap & attr
     }
 
     setlocale( LC_NUMERIC, oldlocale );
+    if ( oldlocale )
+      free( oldlocale );
   }
 
   if ( OGR_L_SyncToDisk( ogrLayer ) != OGRERR_NONE )
@@ -1372,11 +1388,7 @@ bool QgsOgrProvider::deleteFeatures( const QgsFeatureIds & id )
   bool returnvalue = true;
   for ( QgsFeatureIds::const_iterator it = id.begin(); it != id.end(); ++it )
   {
-    if ( deleteFeature( *it ) )
-    {
-      mDeletedFeatures = true;
-    }
-    else
+    if ( !deleteFeature( *it ) )
     {
       returnvalue = false;
     }
@@ -1440,19 +1452,19 @@ int QgsOgrProvider::capabilities() const
       ability |= QgsVectorDataProvider::SelectAtId | QgsVectorDataProvider::SelectGeometryAtId;
     }
 
-    if ( OGR_L_TestCapability( ogrLayer, "SequentialWrite" ) )
+    if ( mWriteAccess && OGR_L_TestCapability( ogrLayer, "SequentialWrite" ) )
       // true if the CreateFeature() method works for this layer.
     {
       ability |= QgsVectorDataProvider::AddFeatures;
     }
 
-    if ( OGR_L_TestCapability( ogrLayer, "DeleteFeature" ) )
+    if ( mWriteAccess && OGR_L_TestCapability( ogrLayer, "DeleteFeature" ) )
       // true if this layer can delete its features
     {
       ability |= DeleteFeatures;
     }
 
-    if ( OGR_L_TestCapability( ogrLayer, "RandomWrite" ) )
+    if ( mWriteAccess && OGR_L_TestCapability( ogrLayer, "RandomWrite" ) )
       // true if the SetFeature() method is operational on this layer.
     {
       // TODO According to http://shapelib.maptools.org/ (Shapefile C Library V1.2)
@@ -1500,12 +1512,12 @@ int QgsOgrProvider::capabilities() const
     }
 #endif
 
-    if ( OGR_L_TestCapability( ogrLayer, "CreateField" ) )
+    if ( mWriteAccess && OGR_L_TestCapability( ogrLayer, "CreateField" ) )
     {
       ability |= AddAttributes;
     }
 
-    if ( OGR_L_TestCapability( ogrLayer, "DeleteField" ) )
+    if ( mWriteAccess && OGR_L_TestCapability( ogrLayer, "DeleteField" ) )
     {
       ability |= DeleteAttributes;
     }
@@ -2340,7 +2352,8 @@ QVariant QgsOgrProvider::minimumValue( int index )
   }
   const QgsField& fld = mAttributeFields[index];
 
-  QByteArray sql = "SELECT MIN(" + quotedIdentifier( mEncoding->fromUnicode( fld.name() ) );
+  // Don't quote column name (see https://trac.osgeo.org/gdal/ticket/5799#comment:9)
+  QByteArray sql = "SELECT MIN(" + mEncoding->fromUnicode( fld.name() );
   sql += ") FROM " + quotedIdentifier( OGR_FD_GetName( OGR_L_GetLayerDefn( ogrLayer ) ) );
 
   if ( !mSubsetString.isEmpty() )
@@ -2378,7 +2391,8 @@ QVariant QgsOgrProvider::maximumValue( int index )
   }
   const QgsField& fld = mAttributeFields[index];
 
-  QByteArray sql = "SELECT MAX(" + quotedIdentifier( mEncoding->fromUnicode( fld.name() ) );
+  // Don't quote column name (see https://trac.osgeo.org/gdal/ticket/5799#comment:9)
+  QByteArray sql = "SELECT MAX(" + mEncoding->fromUnicode( fld.name() );
   sql += ") FROM " + quotedIdentifier( OGR_FD_GetName( OGR_L_GetLayerDefn( ogrLayer ) ) );
 
   if ( !mSubsetString.isEmpty() )
@@ -2457,6 +2471,8 @@ bool QgsOgrProvider::syncToDisc()
       }
     }
   }
+
+  mDataModified = true;
 
   return true;
 }

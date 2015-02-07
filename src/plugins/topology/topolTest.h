@@ -59,13 +59,20 @@ class TopologyRule
      * Constructor
      * initializes the test to use both layers and not to use the tolerance
      */
-    TopologyRule()
-    {
-      useSecondLayer = true;
-      useTolerance = false;
-
-      f = 0;
-    }
+    TopologyRule( testFunction f0 = 0,
+                  bool useSecondLayer0 = true,
+                  bool useTolerance0 = false,
+                  bool useSpatialIndex0 = false,
+                  QList<QGis::GeometryType> layer1SupportedTypes0 = QList<QGis::GeometryType>(),
+                  QList<QGis::GeometryType> layer2SupportedTypes0 = QList<QGis::GeometryType>()
+                )
+        : f( f0 )
+        , useSecondLayer( useSecondLayer0 )
+        , useTolerance( useTolerance0 )
+        , useSpatialIndex( useSpatialIndex0 )
+        , layer1SupportedTypes( layer1SupportedTypes0 )
+        , layer2SupportedTypes( layer2SupportedTypes0 )
+    {}
 };
 
 /**
@@ -119,7 +126,7 @@ class topolTest: public QObject
      * @param layer1 pointer to the first layer
      * @param layer2 pointer to the second layer
      */
-    ErrorList checkOverlapWithLayer( double tolerance, QgsVectorLayer* layer1, QgsVectorLayer* layer2 , bool isExtent );
+    ErrorList checkOverlapWithLayer( double tolerance, QgsVectorLayer* layer1, QgsVectorLayer* layer2, bool isExtent );
     /**
      * Checks for self-intersections in the layer
      * @param tolerance not used
@@ -147,7 +154,7 @@ class topolTest: public QObject
      * @param layer1 pointer to the first layer
      * @param layer2 not used
      */
-    ErrorList checkDanglingLines( double tolerance, QgsVectorLayer* layer1, QgsVectorLayer* layer2 , bool isExtent );
+    ErrorList checkDanglingLines( double tolerance, QgsVectorLayer* layer1, QgsVectorLayer* layer2, bool isExtent );
     /**
      * Checks for points not covered by any segment
      * @param tolerance not used

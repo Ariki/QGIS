@@ -25,10 +25,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon
 from processing.gui.ToolboxAction import ToolboxAction
 from processing.gui.ScriptEditorDialog import ScriptEditorDialog
-import processing.resources_rc
 
 class CreateNewScriptAction(ToolboxAction):
 
@@ -37,7 +36,7 @@ class CreateNewScriptAction(ToolboxAction):
 
     def __init__(self, actionName, scriptType):
         self.name = actionName
-        self.group = 'Tools'
+        self.group = self.tr('Tools', 'CreateNewScriptAction')
         self.scriptType = scriptType
 
     def getIcon(self):

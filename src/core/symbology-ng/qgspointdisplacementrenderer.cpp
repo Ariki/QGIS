@@ -22,6 +22,7 @@
 #include "qgssymbolv2.h"
 #include "qgssymbollayerv2utils.h"
 #include "qgsvectorlayer.h"
+#include "qgssinglesymbolrendererv2.h"
 
 #include <QDomElement>
 #include <QPainter>
@@ -37,6 +38,7 @@ QgsPointDisplacementRenderer::QgsPointDisplacementRenderer( const QString& label
     , mCircleColor( QColor( 125, 125, 125 ) )
     , mCircleRadiusAddition( 0 )
     , mMaxLabelScaleDenominator( -1 )
+    , mSpatialIndex( NULL )
 {
   mRenderer = QgsFeatureRendererV2::defaultRenderer( QGis::Point );
   mCenterSymbol = new QgsMarkerSymbolV2(); //the symbol for the center of a displacement group
@@ -49,7 +51,7 @@ QgsPointDisplacementRenderer::~QgsPointDisplacementRenderer()
   delete mRenderer;
 }
 
-QgsFeatureRendererV2* QgsPointDisplacementRenderer::clone()
+QgsFeatureRendererV2* QgsPointDisplacementRenderer::clone() const
 {
   QgsPointDisplacementRenderer* r = new QgsPointDisplacementRenderer( mLabelAttributeName );
   r->setEmbeddedRenderer( mRenderer->clone() );
@@ -195,11 +197,79 @@ void QgsPointDisplacementRenderer::setEmbeddedRenderer( QgsFeatureRendererV2* r 
   mRenderer = r;
 }
 
+QList<QString> QgsPointDisplacementRenderer::usedAttributes()
+{
+  QList<QString> attributeList;
+  if ( !mLabelAttributeName.isEmpty() )
+  {
+    attributeList.push_back( mLabelAttributeName );
+  }
+  if ( mRenderer )
+  {
+    attributeList += mRenderer->usedAttributes();
+  }
+  return attributeList;
+}
+
+int QgsPointDisplacementRenderer::capabilities()
+{
+  if ( !mRenderer )
+  {
+    return 0;
+  }
+  return mRenderer->capabilities();
+}
+
+QgsSymbolV2List QgsPointDisplacementRenderer::symbols()
+{
+  if ( !mRenderer )
+  {
+    return QgsSymbolV2List();
+  }
+  return mRenderer->symbols();
+}
+
 QgsSymbolV2* QgsPointDisplacementRenderer::symbolForFeature( QgsFeature& feature )
 {
-  Q_UNUSED( feature );
-  return 0; //not used any more
+  if ( !mRenderer )
+  {
+    return 0;
+  }
+  return mRenderer->symbolForFeature( feature );
 }
+
+QgsSymbolV2* QgsPointDisplacementRenderer::originalSymbolForFeature( QgsFeature& feat )
+{
+  if ( !mRenderer )
+    return 0;
+  return mRenderer->originalSymbolForFeature( feat );
+}
+
+QgsSymbolV2List QgsPointDisplacementRenderer::symbolsForFeature( QgsFeature& feature )
+{
+  if ( !mRenderer )
+  {
+    return QgsSymbolV2List();
+  }
+  return mRenderer->symbolsForFeature( feature );
+}
+
+QgsSymbolV2List QgsPointDisplacementRenderer::originalSymbolsForFeature( QgsFeature& feat )
+{
+  if ( !mRenderer )
+    return QgsSymbolV2List();
+  return mRenderer->originalSymbolsForFeature( feat );
+}
+
+bool QgsPointDisplacementRenderer::willRenderFeature( QgsFeature& feat )
+{
+  if ( !mRenderer )
+  {
+    return false;
+  }
+  return mRenderer->willRenderFeature( feat );
+}
+
 
 void QgsPointDisplacementRenderer::startRender( QgsRenderContext& context, const QgsFields& fields )
 {
@@ -256,32 +326,6 @@ void QgsPointDisplacementRenderer::stopRender( QgsRenderContext& context )
   }
 }
 
-QList<QString> QgsPointDisplacementRenderer::usedAttributes()
-{
-  QList<QString> attributeList;
-  if ( !mLabelAttributeName.isEmpty() )
-  {
-    attributeList.push_back( mLabelAttributeName );
-  }
-  if ( mRenderer )
-  {
-    attributeList += mRenderer->usedAttributes();
-  }
-  return attributeList;
-}
-
-QgsSymbolV2List QgsPointDisplacementRenderer::symbols()
-{
-  if ( mRenderer )
-  {
-    return mRenderer->symbols();
-  }
-  else
-  {
-    return QgsSymbolV2List();
-  }
-}
-
 QgsFeatureRendererV2* QgsPointDisplacementRenderer::create( QDomElement& symbologyElem )
 {
   QgsPointDisplacementRenderer* r = new QgsPointDisplacementRenderer();
@@ -307,7 +351,7 @@ QgsFeatureRendererV2* QgsPointDisplacementRenderer::create( QDomElement& symbolo
   QDomElement centerSymbolElem = symbologyElem.firstChildElement( "symbol" );
   if ( !centerSymbolElem.isNull() )
   {
-    r->setCenterSymbol( dynamic_cast<QgsMarkerSymbolV2*>( QgsSymbolLayerV2Utils::loadSymbol( centerSymbolElem ) ) );
+    r->setCenterSymbol( QgsSymbolLayerV2Utils::loadSymbol<QgsMarkerSymbolV2>( centerSymbolElem ) );
   }
   return r;
 }
@@ -517,4 +561,21 @@ QgsSymbolV2* QgsPointDisplacementRenderer::firstSymbolForFeature( QgsFeatureRend
   return symbolList.at( 0 );
 }
 
+QgsPointDisplacementRenderer* QgsPointDisplacementRenderer::convertFromRenderer( const QgsFeatureRendererV2* renderer )
+{
+  if ( renderer->type() == "pointDisplacement" )
+  {
+    return dynamic_cast<QgsPointDisplacementRenderer*>( renderer->clone() );
+  }
 
+  if ( renderer->type() == "singleSymbol" ||
+       renderer->type() == "categorizedSymbol" ||
+       renderer->type() == "graduatedSymbol" ||
+       renderer->type() == "RuleRenderer" )
+  {
+    QgsPointDisplacementRenderer* pointRenderer = new QgsPointDisplacementRenderer();
+    pointRenderer->setEmbeddedRenderer( renderer->clone() );
+    return pointRenderer;
+  }
+  return 0;
+}

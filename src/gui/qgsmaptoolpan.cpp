@@ -23,8 +23,10 @@
 
 
 QgsMapToolPan::QgsMapToolPan( QgsMapCanvas* canvas )
-    : QgsMapTool( canvas ), mDragging( false )
+    : QgsMapTool( canvas )
+    , mDragging( false )
 {
+  mToolName = tr( "Pan" );
   // set cursor
   QBitmap panBmp = QBitmap::fromData( QSize( 16, 16 ), pan_bits );
   QBitmap panBmpMask = QBitmap::fromData( QSize( 16, 16 ), pan_mask_bits );
@@ -55,7 +57,7 @@ void QgsMapToolPan::canvasReleaseEvent( QMouseEvent * e )
     {
       // transform the mouse pos to map coordinates
       QgsPoint center = mCanvas->getCoordinateTransform()->toMapPoint( e->x(), e->y() );
-      mCanvas->setExtent( QgsRectangle( center, center ) );
+      mCanvas->setCenter( center );
       mCanvas->refresh();
     }
   }

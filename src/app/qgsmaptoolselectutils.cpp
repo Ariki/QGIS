@@ -29,7 +29,6 @@ email                : jpalmer at linz dot govt dot nz
 
 #include <QMouseEvent>
 #include <QApplication>
-#include <QMessageBox>
 
 QgsVectorLayer* QgsMapToolSelectUtils::getCurrentVectorLayer( QgsMapCanvas* canvas )
 {
@@ -50,15 +49,17 @@ void QgsMapToolSelectUtils::setRubberBand( QgsMapCanvas* canvas, QRect& selectRe
 {
   const QgsMapToPixel* transform = canvas->getCoordinateTransform();
   QgsPoint ll = transform->toMapCoordinates( selectRect.left(), selectRect.bottom() );
+  QgsPoint lr = transform->toMapCoordinates( selectRect.right(), selectRect.bottom() );
+  QgsPoint ul = transform->toMapCoordinates( selectRect.left(), selectRect.top() );
   QgsPoint ur = transform->toMapCoordinates( selectRect.right(), selectRect.top() );
 
   if ( rubberBand )
   {
     rubberBand->reset( QGis::Polygon );
     rubberBand->addPoint( ll, false );
-    rubberBand->addPoint( QgsPoint( ur.x(), ll.y() ), false );
+    rubberBand->addPoint( lr, false );
     rubberBand->addPoint( ur, false );
-    rubberBand->addPoint( QgsPoint( ll.x(), ur.y() ), true );
+    rubberBand->addPoint( ul, true );
   }
 }
 
@@ -118,8 +119,11 @@ void QgsMapToolSelectUtils::setSelectFeatures( QgsMapCanvas* canvas,
       Q_UNUSED( cse );
       // catch exception for 'invalid' point and leave existing selection unchanged
       QgsLogger::warning( "Caught CRS exception " + QString( __FILE__ ) + ": " + QString::number( __LINE__ ) );
-      QMessageBox::warning( canvas, QObject::tr( "CRS Exception" ),
-                            QObject::tr( "Selection extends beyond layer's coordinate system." ) );
+      QgisApp::instance()->messageBar()->pushMessage(
+        QObject::tr( "CRS Exception" ),
+        QObject::tr( "Selection extends beyond layer's coordinate system" ),
+        QgsMessageBar::WARNING,
+        QgisApp::instance()->messageTimeout() );
       return;
     }
   }

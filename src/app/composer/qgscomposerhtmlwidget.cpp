@@ -19,24 +19,28 @@
 #include "qgscomposerhtml.h"
 #include "qgscomposition.h"
 #include "qgsexpressionbuilderdialog.h"
+#include "qgscodeeditorhtml.h"
+#include "qgscodeeditorcss.h"
 #include <QFileDialog>
 #include <QSettings>
-#include <Qsci/qsciscintilla.h>
-#include <Qsci/qscilexerhtml.h>
 
-QgsComposerHtmlWidget::QgsComposerHtmlWidget( QgsComposerHtml* html, QgsComposerFrame* frame ): QgsComposerItemBaseWidget( 0, html ), mHtml( html ), mFrame( frame )
+
+QgsComposerHtmlWidget::QgsComposerHtmlWidget( QgsComposerHtml* html, QgsComposerFrame* frame )
+    : QgsComposerItemBaseWidget( 0, html )
+    , mHtml( html )
+    , mFrame( frame )
 {
   setupUi( this );
 
   //setup html editor
-  mHtmlEditor = new QsciScintilla( this );
-  mHtmlEditor->setLexer( new QsciLexerHTML );
-  mHtmlEditor->setFolding( QsciScintilla::BoxedFoldStyle );
-  //hide the line numbers
-  mHtmlEditor->setMarginWidth( 1, 0 );
-
+  mHtmlEditor = new QgsCodeEditorHTML( this );
   connect( mHtmlEditor, SIGNAL( textChanged() ), this, SLOT( htmlEditorChanged() ) );
   htmlEditorLayout->addWidget( mHtmlEditor );
+
+  //setup stylesheet editor
+  mStylesheetEditor = new QgsCodeEditorCSS( this );
+  connect( mStylesheetEditor, SIGNAL( textChanged() ), this, SLOT( stylesheetEditorChanged() ) );
+  stylesheetEditorLayout->addWidget( mStylesheetEditor );
 
   blockSignals( true );
   mResizeModeComboBox->addItem( tr( "Use existing frames" ), QgsComposerMultiFrame::UseExistingFrames );
@@ -49,6 +53,15 @@ QgsComposerHtmlWidget::QgsComposerHtmlWidget( QgsComposerHtml* html, QgsComposer
   if ( mHtml )
   {
     QObject::connect( mHtml, SIGNAL( changed() ), this, SLOT( setGuiElementValues() ) );
+
+    QgsAtlasComposition* atlas = atlasComposition();
+    if ( atlas )
+    {
+      // repopulate data defined buttons if atlas layer changes
+      connect( atlas, SIGNAL( coverageLayerChanged( QgsVectorLayer* ) ),
+               this, SLOT( populateDataDefinedButtons() ) );
+      connect( atlas, SIGNAL( toggled( bool ) ), this, SLOT( populateDataDefinedButtons() ) );
+    }
   }
 
   //embed widget for general options
@@ -58,9 +71,20 @@ QgsComposerHtmlWidget::QgsComposerHtmlWidget( QgsComposerHtml* html, QgsComposer
     QgsComposerItemWidget* itemPropertiesWidget = new QgsComposerItemWidget( this, mFrame );
     mainLayout->addWidget( itemPropertiesWidget );
   }
+
+  //connections for data defined buttons
+  connect( mUrlDDBtn, SIGNAL( dataDefinedChanged( const QString& ) ), this, SLOT( updateDataDefinedProperty() ) );
+  connect( mUrlDDBtn, SIGNAL( dataDefinedActivated( bool ) ), this, SLOT( updateDataDefinedProperty() ) );
+  connect( mUrlDDBtn, SIGNAL( dataDefinedActivated( bool ) ), mUrlLineEdit, SLOT( setDisabled( bool ) ) );
+
 }
 
-QgsComposerHtmlWidget::QgsComposerHtmlWidget(): QgsComposerItemBaseWidget( 0, 0 )
+QgsComposerHtmlWidget::QgsComposerHtmlWidget()
+    : QgsComposerItemBaseWidget( 0, 0 )
+    , mHtml( NULL )
+    , mFrame( NULL )
+    , mHtmlEditor( NULL )
+    , mStylesheetEditor( NULL )
 {
 }
 
@@ -76,9 +100,13 @@ void QgsComposerHtmlWidget::blockSignals( bool block )
   mUseSmartBreaksCheckBox->blockSignals( block );
   mMaxDistanceSpinBox->blockSignals( block );
   mHtmlEditor->blockSignals( block );
+  mStylesheetEditor->blockSignals( block );
+  mUserStylesheetCheckBox->blockSignals( block );
   mRadioManualSource->blockSignals( block );
   mRadioUrlSource->blockSignals( block );
   mEvaluateExpressionsCheckbox->blockSignals( block );
+  mEmptyFrameCheckBox->blockSignals( block );
+  mHideEmptyBgCheckBox->blockSignals( block );
 }
 
 void QgsComposerHtmlWidget::on_mUrlLineEdit_editingFinished()
@@ -182,7 +210,7 @@ void QgsComposerHtmlWidget::on_mMaxDistanceSpinBox_valueChanged( double val )
   if ( composition )
   {
     blockSignals( true );
-    composition->beginMultiFrameCommand( mHtml, tr( "Page break distance changed" ) );
+    composition->beginMultiFrameCommand( mHtml, tr( "Page break distance changed" ), QgsComposerMultiFrameMergeCommand::HtmlBreakDistance );
     mHtml->setMaxBreakDistance( val );
     composition->endMultiFrameCommand();
     blockSignals( false );
@@ -200,12 +228,72 @@ void QgsComposerHtmlWidget::htmlEditorChanged()
   if ( composition )
   {
     blockSignals( true );
-    composition->beginMultiFrameCommand( mHtml, tr( "HTML changed" ) );
+    composition->beginMultiFrameCommand( mHtml, tr( "HTML changed" ), QgsComposerMultiFrameMergeCommand::HtmlSource );
     mHtml->setHtml( mHtmlEditor->text() );
     composition->endMultiFrameCommand();
     blockSignals( false );
   }
 
+}
+
+void QgsComposerHtmlWidget::stylesheetEditorChanged()
+{
+  if ( !mHtml )
+  {
+    return;
+  }
+
+  QgsComposition* composition = mHtml->composition();
+  if ( composition )
+  {
+    blockSignals( true );
+    composition->beginMultiFrameCommand( mHtml, tr( "User stylesheet changed" ), QgsComposerMultiFrameMergeCommand::HtmlStylesheet );
+    mHtml->setUserStylesheet( mStylesheetEditor->text() );
+    composition->endMultiFrameCommand();
+    blockSignals( false );
+  }
+}
+
+void QgsComposerHtmlWidget::on_mUserStylesheetCheckBox_toggled( bool checked )
+{
+  if ( !mHtml )
+  {
+    return;
+  }
+
+  QgsComposition* composition = mHtml->composition();
+  if ( composition )
+  {
+    blockSignals( true );
+    composition->beginMultiFrameCommand( mHtml, tr( "User stylesheet toggled" ) );
+    mHtml->setUserStylesheetEnabled( checked );
+    composition->endMultiFrameCommand();
+    blockSignals( false );
+  }
+}
+
+void QgsComposerHtmlWidget::on_mEmptyFrameCheckBox_toggled( bool checked )
+{
+  if ( !mFrame )
+  {
+    return;
+  }
+
+  mFrame->beginCommand( tr( "Empty frame mode toggled" ) );
+  mFrame->setHidePageIfEmpty( checked );
+  mFrame->endCommand();
+}
+
+void QgsComposerHtmlWidget::on_mHideEmptyBgCheckBox_toggled( bool checked )
+{
+  if ( !mFrame )
+  {
+    return;
+  }
+
+  mFrame->beginCommand( tr( "Hide background if empty toggled" ) );
+  mFrame->setHideBackgroundIfEmpty( checked );
+  mFrame->endCommand();
 }
 
 void QgsComposerHtmlWidget::on_mRadioManualSource_clicked( bool checked )
@@ -316,6 +404,16 @@ void QgsComposerHtmlWidget::on_mReloadPushButton_clicked()
   mHtml->loadHtml();
 }
 
+void QgsComposerHtmlWidget::on_mReloadPushButton2_clicked()
+{
+  if ( !mHtml )
+  {
+    return;
+  }
+
+  mHtml->loadHtml();
+}
+
 void QgsComposerHtmlWidget::on_mAddFramePushButton_clicked()
 {
   if ( !mHtml || !mFrame )
@@ -362,5 +460,41 @@ void QgsComposerHtmlWidget::setGuiElementValues()
   mRadioManualSource->setChecked( mHtml->contentMode() == QgsComposerHtml::ManualHtml );
   mHtmlEditor->setEnabled( mHtml->contentMode() == QgsComposerHtml::ManualHtml );
   mInsertExpressionButton->setEnabled( mHtml->contentMode() == QgsComposerHtml::ManualHtml );
+
+  mUserStylesheetCheckBox->setChecked( mHtml->userStylesheetEnabled() );
+  mStylesheetEditor->setText( mHtml->userStylesheet() );
+
+  mEmptyFrameCheckBox->setChecked( mFrame->hidePageIfEmpty() );
+  mHideEmptyBgCheckBox->setChecked( mFrame->hideBackgroundIfEmpty() );
+
+  populateDataDefinedButtons();
+
   blockSignals( false );
+}
+
+QgsComposerItem::DataDefinedProperty QgsComposerHtmlWidget::ddPropertyForWidget( QgsDataDefinedButton *widget )
+{
+  if ( widget == mUrlDDBtn )
+  {
+    return QgsComposerItem::SourceUrl;
+  }
+  return QgsComposerItem::NoProperty;
+}
+
+void QgsComposerHtmlWidget::populateDataDefinedButtons()
+{
+  QgsVectorLayer* vl = atlasCoverageLayer();
+
+  //block signals from data defined buttons
+  mUrlDDBtn->blockSignals( true );
+
+  //initialise buttons to use atlas coverage layer
+  mUrlDDBtn->init( vl, mHtml->dataDefinedProperty( QgsComposerItem::SourceUrl ),
+                   QgsDataDefinedButton::AnyType, tr( "url string" ) );
+
+  //initial state of controls - disable related controls when dd buttons are active
+  mUrlLineEdit->setEnabled( !mUrlDDBtn->isActive() );
+
+  //unblock signals from data defined buttons
+  mUrlDDBtn->blockSignals( false );
 }

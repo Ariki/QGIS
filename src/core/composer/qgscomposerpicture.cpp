@@ -24,23 +24,27 @@
 #include "qgsexpression.h"
 #include "qgsvectorlayer.h"
 #include "qgsmessagelog.h"
+#include "qgsdatadefined.h"
+#include "qgsnetworkcontentfetcher.h"
 #include <QDomDocument>
 #include <QDomElement>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QPainter>
 #include <QSvgRenderer>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QEventLoop>
+#include <QCoreApplication>
 
-
-QgsComposerPicture::QgsComposerPicture( QgsComposition *composition ) :
-    QgsComposerItem( composition ),
-    mMode( Unknown ),
-    mUseSourceExpression( false ),
-    mPictureRotation( 0 ),
-    mRotationMap( 0 ),
-    mResizeMode( QgsComposerPicture::Zoom ),
-    mPictureAnchor( UpperLeft ),
-    mPictureExpr( 0 )
+QgsComposerPicture::QgsComposerPicture( QgsComposition *composition )
+    : QgsComposerItem( composition )
+    , mMode( Unknown )
+    , mPictureRotation( 0 )
+    , mRotationMap( 0 )
+    , mResizeMode( QgsComposerPicture::Zoom )
+    , mPictureAnchor( UpperLeft )
+    , mHasExpressionError( false )
 {
   mPictureWidth = rect().width();
   init();
@@ -48,12 +52,11 @@ QgsComposerPicture::QgsComposerPicture( QgsComposition *composition ) :
 
 QgsComposerPicture::QgsComposerPicture() : QgsComposerItem( 0 ),
     mMode( Unknown ),
-    mUseSourceExpression( false ),
     mPictureRotation( 0 ),
     mRotationMap( 0 ),
     mResizeMode( QgsComposerPicture::Zoom ),
     mPictureAnchor( UpperLeft ),
-    mPictureExpr( 0 )
+    mHasExpressionError( false )
 {
   mPictureHeight = rect().height();
   init();
@@ -63,6 +66,13 @@ void QgsComposerPicture::init()
 {
   //default to no background
   setBackgroundEnabled( false );
+
+  //data defined strings
+  mDataDefinedNames.insert( QgsComposerObject::PictureSource, QString( "dataDefinedSource" ) );
+
+  //insert PictureSource data defined property (only required due to deprecated API elements,
+  //remove after 3.0
+  setDataDefinedProperty( QgsComposerObject::PictureSource, false, true, QString(), QString() );
 
   //connect some signals
 
@@ -84,6 +94,10 @@ void QgsComposerPicture::paint( QPainter* painter, const QStyleOptionGraphicsIte
   Q_UNUSED( itemStyle );
   Q_UNUSED( pWidget );
   if ( !painter )
+  {
+    return;
+  }
+  if ( !shouldDrawItem() )
   {
     return;
   }
@@ -116,7 +130,7 @@ void QgsComposerPicture::paint( QPainter* painter, const QStyleOptionGraphicsIte
       boundRectHeightMM = rect().height();
       int imageRectWidthPixels = mImage.width();
       int imageRectHeightPixels = mImage.height();
-      imageRect = clippedImageRect( boundRectWidthMM, boundRectHeightMM ,
+      imageRect = clippedImageRect( boundRectWidthMM, boundRectHeightMM,
                                     QSize( imageRectWidthPixels, imageRectHeightPixels ) );
     }
     else
@@ -188,14 +202,23 @@ void QgsComposerPicture::paint( QPainter* painter, const QStyleOptionGraphicsIte
         painter->translate( dX, dY );
       }
     }
+    else if ( mResizeMode == ZoomResizeFrame )
+    {
+      if ( mPictureRotation != 0 )
+      {
+        painter->translate( rect().width() / 2.0, rect().height() / 2.0 );
+        painter->rotate( mPictureRotation );
+        painter->translate( -boundRectWidthMM / 2.0, -boundRectHeightMM / 2.0 );
+      }
+    }
 
     if ( mMode == SVG )
     {
-      mSVG.render( painter, QRectF( 0, 0, boundRectWidthMM,  boundRectHeightMM ) );
+      mSVG.render( painter, QRectF( 0, 0, boundRectWidthMM, boundRectHeightMM ) );
     }
     else if ( mMode == RASTER )
     {
-      painter->drawImage( QRectF( 0, 0, boundRectWidthMM,  boundRectHeightMM ), mImage, imageRect );
+      painter->drawImage( QRectF( 0, 0, boundRectWidthMM, boundRectHeightMM ), mImage, imageRect );
     }
 
     painter->restore();
@@ -262,116 +285,85 @@ QRect QgsComposerPicture::clippedImageRect( double &boundRectWidthMM, double &bo
       break;
   }
 
-
   return QRect( leftClip, topClip, boundRectWidthPixels, boundRectHeightPixels );
-
 }
 
 void QgsComposerPicture::setPictureFile( const QString& path )
 {
-  mSourceFile.setFileName( path );
-  refreshPicture();
-}
-
-void QgsComposerPicture::updatePictureExpression()
-{
-  QgsVectorLayer * vl = 0;
-  if ( mComposition->atlasComposition().enabled() )
-  {
-    vl = mComposition->atlasComposition().coverageLayer();
-  }
-
-  if ( mSourceExpression.size() > 0 )
-  {
-    if ( mPictureExpr )
-    {
-      delete mPictureExpr;
-    }
-    mPictureExpr = new QgsExpression( mSourceExpression );
-    // expression used to evaluate picture source
-    // test for evaluation errors
-    if ( mPictureExpr->hasParserError() )
-    {
-      QgsMessageLog::logMessage( tr( "Picture expression parsing error: %1" ).arg( mPictureExpr->parserErrorString() ), tr( "Composer" ) );
-    }
-
-    if ( vl )
-    {
-      const QgsFields& fields = vl->pendingFields();
-      mPictureExpr->prepare( fields );
-    }
-  }
-}
-
-QString QgsComposerPicture::evalPictureExpression()
-{
-  //generate filename for picture
-  if ( mSourceExpression.size() > 0 && mUseSourceExpression )
-  {
-    if ( ! mPictureExpr )
-    {
-      return QString();
-    }
-
-    QVariant filenameRes;
-    QgsAtlasComposition* atlas = &( mComposition->atlasComposition() );
-    if ( atlas->enabled() )
-    {
-      //expression needs to be evaluated considering the current atlas feature
-      filenameRes = mPictureExpr->evaluate( atlas->currentFeature(),
-                                            atlas->coverageLayer()->pendingFields() );
-    }
-    else
-    {
-      filenameRes = mPictureExpr->evaluate();
-    }
-
-    if ( mPictureExpr->hasEvalError() )
-    {
-      QgsMessageLog::logMessage( tr( "Picture expression eval error: %1" ).arg( mPictureExpr->evalErrorString() ), tr( "Composer" ) );
-    }
-
-    return filenameRes.toString();
-  }
-  else
-  {
-    return QString();
-  }
+  setPicturePath( path );
 }
 
 void QgsComposerPicture::refreshPicture()
 {
-  if ( mUseSourceExpression )
-  {
-    //using expression for picture source file
+  QString source = mSourcePath;
 
-    //evaluate expression
-    QFile path;
-    path.setFileName( evalPictureExpression() );
-    loadPicture( path );
+  //data defined source set?
+  mHasExpressionError = false;
+  QVariant exprVal;
+  if ( dataDefinedProperty( QgsComposerObject::PictureSource )->isActive() )
+  {
+    if ( dataDefinedEvaluate( QgsComposerObject::PictureSource, exprVal ) )
+    {
+      source = exprVal.toString().trimmed();
+      QgsDebugMsg( QString( "exprVal PictureSource:%1" ).arg( source ) );
+    }
+    else
+    {
+      mHasExpressionError = true;
+      source = QString();
+      QgsMessageLog::logMessage( tr( "Picture expression eval error" ) );
+    }
+  }
+
+  loadPicture( source );
+}
+
+void QgsComposerPicture::loadRemotePicture( const QString &url )
+{
+  //remote location
+
+  QgsNetworkContentFetcher fetcher;
+  //pause until HTML fetch
+  mLoaded = false;
+  fetcher.fetchContent( QUrl( url ) );
+  connect( &fetcher, SIGNAL( finished() ), this, SLOT( remotePictureLoaded() ) );
+
+  while ( !mLoaded )
+  {
+    qApp->processEvents();
+  }
+
+  QNetworkReply* reply = fetcher.reply();
+  if ( reply )
+  {
+    QImageReader imageReader( reply );
+    mImage = imageReader.read();
+    mMode = RASTER;
+    reply->deleteLater();
   }
   else
   {
-    //using a static picture path
-    loadPicture( mSourceFile );
+    mMode = Unknown;
   }
 }
 
-void QgsComposerPicture::loadPicture( const QFile& file )
+void QgsComposerPicture::loadLocalPicture( const QString &path )
 {
-  if ( !file.exists()
-       || ( mUseSourceExpression && mPictureExpr->hasEvalError() ) )
+  QFile pic;
+  pic.setFileName( path );
+
+  if ( !pic.exists() )
   {
     mMode = Unknown;
   }
   else
   {
-    QFileInfo sourceFileInfo( file );
+    QFileInfo sourceFileInfo( pic );
     QString sourceFileSuffix = sourceFileInfo.suffix();
     if ( sourceFileSuffix.compare( "svg", Qt::CaseInsensitive ) == 0 )
     {
       //try to open svg
-      mSVG.load( file.fileName() );
+      mSVG.load( pic.fileName() );
       if ( mSVG.isValid() )
       {
         mMode = SVG;
@@ -387,7 +379,7 @@ void QgsComposerPicture::loadPicture( const QFile& file )
     else
     {
       //try to open raster with QImageReader
-      QImageReader imageReader( file.fileName() );
+      QImageReader imageReader( pic.fileName() );
       if ( imageReader.read( &mImage ) )
       {
         mMode = RASTER;
@@ -399,11 +391,30 @@ void QgsComposerPicture::loadPicture( const QFile& file )
     }
   }
 
+}
+
+void QgsComposerPicture::remotePictureLoaded()
+{
+  mLoaded = true;
+}
+
+void QgsComposerPicture::loadPicture( const QString &path )
+{
+  if ( path.startsWith( "http" ) )
+  {
+    //remote location
+    loadRemotePicture( path );
+  }
+  else
+  {
+    //local location
+    loadLocalPicture( path );
+  }
   if ( mMode != Unknown ) //make sure we start with a new QImage
   {
     recalculateSize();
   }
-  else if ( !( file.fileName().isEmpty() ) || ( mUseSourceExpression && mPictureExpr && mPictureExpr->hasEvalError() ) )
+  else if ( mHasExpressionError || !( path.isEmpty() ) )
   {
     //trying to load an invalid file or bad expression, show cross picture
     mMode = SVG;
@@ -508,16 +519,30 @@ void QgsComposerPicture::setSceneRect( const QRectF& rectangle )
 
   if ( mResizeMode == ZoomResizeFrame && !rect().isEmpty() && !( currentPictureSize.isEmpty() ) )
   {
-    //if width has changed less than height, then fix width and set height correspondingly
+    QSizeF targetImageSize;
+    if ( mPictureRotation == 0 )
+    {
+      targetImageSize = currentPictureSize;
+    }
+    else
+    {
+      //calculate aspect ratio of bounds of rotated image
+      QTransform tr;
+      tr.rotate( mPictureRotation );
+      QRectF rotatedBounds = tr.mapRect( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ) );
+      targetImageSize = QSizeF( rotatedBounds.width(), rotatedBounds.height() );
+    }
+
+    //if height has changed more than width, then fix width and set height correspondingly
     //else, do the opposite
     if ( qAbs( rect().width() - rectangle.width() ) <
          qAbs( rect().height() - rectangle.height() ) )
     {
-      newRect.setHeight( currentPictureSize.height() * newRect.width() / currentPictureSize.width() );
+      newRect.setHeight( targetImageSize.height() * newRect.width() / targetImageSize.width() );
     }
     else
     {
-      newRect.setWidth( currentPictureSize.width() * newRect.height() / currentPictureSize.height() );
+      newRect.setWidth( targetImageSize.width() * newRect.height() / targetImageSize.height() );
     }
   }
   else if ( mResizeMode == FrameToImageSize )
@@ -530,7 +555,7 @@ void QgsComposerPicture::setSceneRect( const QRectF& rectangle )
   }
 
   //find largest scaling of picture with this rotation which fits in item
-  if ( mResizeMode == Zoom )
+  if ( mResizeMode == Zoom || mResizeMode == ZoomResizeFrame )
   {
     QRectF rotatedImageRect = QgsComposerUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), newRect, mPictureRotation );
     mPictureWidth = rotatedImageRect.width();
@@ -554,6 +579,7 @@ void QgsComposerPicture::setRotation( double r )
 
 void QgsComposerPicture::setPictureRotation( double r )
 {
+  double oldRotation = mPictureRotation;
   mPictureRotation = r;
 
   if ( mResizeMode == Zoom )
@@ -564,6 +590,24 @@ void QgsComposerPicture::setPictureRotation( double r )
     mPictureWidth = rotatedImageRect.width();
     mPictureHeight = rotatedImageRect.height();
     update();
+  }
+  else if ( mResizeMode == ZoomResizeFrame )
+  {
+    QSizeF currentPictureSize = pictureSize();
+    QRectF oldRect = QRectF( pos().x(), pos().y(), rect().width(), rect().height() );
+
+    //calculate actual size of image inside frame
+    QRectF rotatedImageRect = QgsComposerUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), rect(), oldRotation );
+
+    //rotate image rect by new rotation and get bounding box
+    QTransform tr;
+    tr.rotate( mPictureRotation );
+    QRectF newRect = tr.mapRect( QRectF( 0, 0, rotatedImageRect.width(), rotatedImageRect.height() ) );
+
+    //keep the center in the same location
+    newRect.moveCenter( oldRect.center() );
+    QgsComposerItem::setSceneRect( newRect );
+    emit itemChanged();
   }
 
   emit pictureRotationChanged( mPictureRotation );
@@ -617,41 +661,42 @@ void QgsComposerPicture::recalculateSize()
   setSceneRect( QRectF( pos().x(), pos().y(), rect().width(), rect().height() ) );
 }
 
+void QgsComposerPicture::refreshDataDefinedProperty( const QgsComposerObject::DataDefinedProperty property )
+{
+  if ( property == QgsComposerObject::PictureSource || property == QgsComposerObject::AllProperties )
+  {
+    refreshPicture();
+  }
+
+  QgsComposerItem::refreshDataDefinedProperty( property );
+}
+
 void QgsComposerPicture::setUsePictureExpression( bool useExpression )
 {
-  if ( useExpression == mUseSourceExpression )
-  {
-    return;
-  }
-
-  mUseSourceExpression = useExpression;
-  if ( useExpression )
-  {
-    updatePictureExpression();
-  }
-
+  dataDefinedProperty( QgsComposerObject::PictureSource )->setActive( useExpression );
   refreshPicture();
 }
 
 void QgsComposerPicture::setPictureExpression( QString expression )
 {
-  if ( expression == mSourceExpression )
-  {
-    return;
-  }
-
-  mSourceExpression = expression;
-
-  if ( mUseSourceExpression )
-  {
-    updatePictureExpression();
-    refreshPicture();
-  }
+  dataDefinedProperty( QgsComposerObject::PictureSource )->setExpressionString( expression );
+  refreshPicture();
 }
 
 QString QgsComposerPicture::pictureFile() const
 {
-  return mSourceFile.fileName();
+  return picturePath();
+}
+
+void QgsComposerPicture::setPicturePath( const QString &path )
+{
+  mSourcePath = path;
+  refreshPicture();
+}
+
+QString QgsComposerPicture::picturePath() const
+{
+  return mSourcePath;
 }
 
 bool QgsComposerPicture::writeXML( QDomElement& elem, QDomDocument & doc ) const
@@ -661,24 +706,14 @@ bool QgsComposerPicture::writeXML( QDomElement& elem, QDomDocument & doc ) const
     return false;
   }
   QDomElement composerPictureElem = doc.createElement( "ComposerPicture" );
-  composerPictureElem.setAttribute( "file", QgsProject::instance()->writePath( mSourceFile.fileName() ) );
+  composerPictureElem.setAttribute( "file", QgsProject::instance()->writePath( mSourcePath ) );
   composerPictureElem.setAttribute( "pictureWidth", QString::number( mPictureWidth ) );
   composerPictureElem.setAttribute( "pictureHeight", QString::number( mPictureHeight ) );
   composerPictureElem.setAttribute( "resizeMode", QString::number(( int )mResizeMode ) );
   composerPictureElem.setAttribute( "anchorPoint", QString::number(( int )mPictureAnchor ) );
 
-  if ( mUseSourceExpression )
-  {
-    composerPictureElem.setAttribute( "useExpression", "true" );
-  }
-  else
-  {
-    composerPictureElem.setAttribute( "useExpression", "false" );
-  }
-  composerPictureElem.setAttribute( "sourceExpression", mSourceExpression );
-
   //rotation
-  composerPictureElem.setAttribute( "pictureRotation",  QString::number( mPictureRotation ) );
+  composerPictureElem.setAttribute( "pictureRotation", QString::number( mPictureRotation ) );
   if ( !mRotationMap )
   {
     composerPictureElem.setAttribute( "mapId", -1 );
@@ -722,21 +757,25 @@ bool QgsComposerPicture::readXML( const QDomElement& itemElem, const QDomDocumen
 
   mDefaultSvgSize = QSize( 0, 0 );
 
-
-  mSourceExpression = itemElem.attribute( "sourceExpression", "" );
-  QString useExpression = itemElem.attribute( "useExpression" );
-  if ( useExpression.compare( "true", Qt::CaseInsensitive ) == 0 )
+  if ( itemElem.hasAttribute( "sourceExpression" ) )
   {
-    mUseSourceExpression = true;
-    updatePictureExpression();
-  }
-  else
-  {
-    mUseSourceExpression = false;
+    //update pre 2.5 picture expression to use data defined expression
+    QString sourceExpression = itemElem.attribute( "sourceExpression", "" );
+    QString useExpression = itemElem.attribute( "useExpression" );
+    bool expressionActive;
+    if ( useExpression.compare( "true", Qt::CaseInsensitive ) == 0 )
+    {
+      expressionActive = true;
+    }
+    else
+    {
+      expressionActive = false;
+    }
+
+    setDataDefinedProperty( QgsComposerObject::PictureSource, expressionActive, true, sourceExpression, QString() );
   }
 
-  QString fileName = QgsProject::instance()->readPath( itemElem.attribute( "file" ) );
-  mSourceFile.setFileName( fileName );
+  mSourcePath = QgsProject::instance()->readPath( itemElem.attribute( "file" ) );
 
   //picture rotation
   if ( itemElem.attribute( "pictureRotation", "0" ).toDouble() != 0 )
@@ -783,6 +822,16 @@ void QgsComposerPicture::setPictureAnchor( QgsComposerItem::ItemPositionMode anc
 {
   mPictureAnchor = anchor;
   update();
+}
+
+bool QgsComposerPicture::usePictureExpression() const
+{
+  return dataDefinedProperty( QgsComposerObject::PictureSource )->isActive();
+}
+
+QString QgsComposerPicture::pictureExpression() const
+{
+  return dataDefinedProperty( QgsComposerObject::PictureSource )->expressionString();
 }
 
 bool QgsComposerPicture::imageSizeConsideringRotation( double& width, double& height ) const

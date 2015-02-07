@@ -32,7 +32,11 @@
 #include <QScrollArea>
 #include <QPushButton>
 #include <QBuffer>
+// TODO: Update to QNetworkAccessManager
+#if QT_VERSION < 0x050000
 #include <QHttp>
+#endif
+
 #include <QResizeEvent>
 
 /**
@@ -65,13 +69,13 @@ class eVisImageDisplayWidget : public QWidget
      * and end up getting not being able to zoom in or out
      */
     /** \brief Accessor for ZOOM_STEPS */
-    int getZoomSteps( ) { return ZOOM_STEPS; }
+    int getZoomSteps() { return ZOOM_STEPS; }
 
     /** \brief Mutator for ZOON_STEPS */
     void setZoomSteps( int steps ) { ZOOM_STEPS = steps; }
 
   protected:
-    void resizeEvent( QResizeEvent *event );
+    void resizeEvent( QResizeEvent *event ) override;
 
   private:
 
@@ -85,13 +89,16 @@ class eVisImageDisplayWidget : public QWidget
     QScrollArea* mDisplayArea;
 
     /** \brief Method that acually display the image in the widget */
-    void displayImage( );
+    void displayImage();
 
     /** \brief Pointer to the http buffer */
     QBuffer* mHttpBuffer;
 
+// TODO: Update to QNetworkAccessManager
+#if QT_VERSION < 0x050000
     /** \brief Pointer to the http connection if needed */
     QHttp* mHttpConnection;
+#endif
 
     /** \brief This is a point to the actual image being displayed */
     QPixmap* mImage;
@@ -127,17 +134,17 @@ class eVisImageDisplayWidget : public QWidget
     QPushButton* pbtnZoomFull;
 
     /** \brief Method called to compute the various scaling parameters */
-    void setScalers( );
+    void setScalers();
 
     /** \brief The number of steps between the scale to fit image and full resolution */
     int ZOOM_STEPS;
 
   private slots:
-    void on_pbtnZoomIn_clicked( );
+    void on_pbtnZoomIn_clicked();
 
-    void on_pbtnZoomOut_clicked( );
+    void on_pbtnZoomOut_clicked();
 
-    void on_pbtnZoomFull_clicked( );
+    void on_pbtnZoomFull_clicked();
 
     /** \brief Slot called when the http request is completed */
     void displayUrlImage( int, bool );

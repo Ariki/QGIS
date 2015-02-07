@@ -292,7 +292,7 @@ void QgsRubberBand::addGeometry( QgsGeometry* geom, QgsVectorLayer* layer )
         pt = geom->asPoint();
       }
       addPoint( pt, false, idx );
-      removeLastPoint( idx , false );
+      removeLastPoint( idx, false );
     }
     break;
 
@@ -306,12 +306,12 @@ void QgsRubberBand::addGeometry( QgsGeometry* geom, QgsVectorLayer* layer )
         if ( layer )
         {
           addPoint( ms.layerToMapCoordinates( layer, pt ), false, idx );
-          removeLastPoint( idx , false );
+          removeLastPoint( idx, false );
         }
         else
         {
           addPoint( pt, false, idx );
-          removeLastPoint( idx , false );
+          removeLastPoint( idx, false );
         }
       }
     }
@@ -425,13 +425,15 @@ void QgsRubberBand::setToCanvasRectangle( const QRect& rect )
 
   const QgsMapToPixel* transform = mMapCanvas->getCoordinateTransform();
   QgsPoint ll = transform->toMapCoordinates( rect.left(), rect.bottom() );
+  QgsPoint lr = transform->toMapCoordinates( rect.right(), rect.bottom() );
+  QgsPoint ul = transform->toMapCoordinates( rect.left(), rect.top() );
   QgsPoint ur = transform->toMapCoordinates( rect.right(), rect.top() );
 
   reset( QGis::Polygon );
   addPoint( ll, false );
-  addPoint( QgsPoint( ur.x(), ll.y() ), false );
+  addPoint( lr, false );
   addPoint( ur, false );
-  addPoint( QgsPoint( ll.x(), ur.y() ), true );
+  addPoint( ul, true );
 }
 
 /*!
@@ -444,10 +446,10 @@ void QgsRubberBand::paint( QPainter* p )
     p->setBrush( mBrush );
     p->setPen( mPen );
 
-    Q_FOREACH( const QList<QgsPoint>& line, mPoints )
+    Q_FOREACH ( const QList<QgsPoint>& line, mPoints )
     {
       QVector<QPointF> pts;
-      Q_FOREACH( const QgsPoint& pt, line )
+      Q_FOREACH ( const QgsPoint& pt, line )
       {
         const QPointF cur = toCanvasCoordinates( QgsPoint( pt.x() + mTranslationOffsetX, pt.y() + mTranslationOffsetY ) ) - pos();
         if ( pts.empty() || std::abs( pts.back().x() - cur.x() ) > 1 ||  std::abs( pts.back().y() - cur.y() ) > 1 )
@@ -464,12 +466,12 @@ void QgsRubberBand::paint( QPainter* p )
 
         case QGis::Point:
         {
-          Q_FOREACH( const QPointF& pt, pts )
+          Q_FOREACH ( const QPointF& pt, pts )
           {
             double x = pt.x();
             double y = pt.y();
 
-            qreal s = ( mIconSize - 1 ) / 2;
+            qreal s = ( mIconSize - 1 ) / 2.0;
 
             switch ( mIconType )
             {
@@ -518,39 +520,44 @@ void QgsRubberBand::paint( QPainter* p )
 
 void QgsRubberBand::updateRect()
 {
-  if ( mPoints.size() > 0 )
-  {
-    //initial point
-    QList<QgsPoint>::const_iterator it = mPoints.at( 0 ).constBegin();
-    if ( it == mPoints.at( 0 ).constEnd() )
-    {
-      return;
-    }
-
-    qreal scale = mMapCanvas->mapUnitsPerPixel();
-    qreal s = ( mIconSize - 1 ) / 2 * scale;
-    qreal p = mPen.width() * scale;
-
-    QgsRectangle r( it->x() + mTranslationOffsetX - s - p, it->y() + mTranslationOffsetY - s - p,
-                    it->x() + mTranslationOffsetX + s + p, it->y() + mTranslationOffsetY + s + p );
-
-    for ( int i = 0; i < mPoints.size(); ++i )
-    {
-      QList<QgsPoint>::const_iterator it = mPoints.at( i ).constBegin();
-      for ( ; it != mPoints.at( i ).constEnd(); ++it )
-      {
-        QgsRectangle rect = QgsRectangle( it->x() + mTranslationOffsetX - s - p, it->y() + mTranslationOffsetY - s - p,
-                                          it->x() + mTranslationOffsetX + s + p, it->y() + mTranslationOffsetY + s + p );
-        r.combineExtentWith( &rect );
-      }
-    }
-    setRect( r );
-  }
-  else
+  if ( mPoints.empty() )
   {
     setRect( QgsRectangle() );
+    setVisible( false );
+    return;
   }
-  setVisible( mPoints.size() > 0 );
+
+  const QgsMapToPixel& m2p = *( mMapCanvas->getCoordinateTransform() );
+
+  qreal w = ( mIconSize - 1 ) / 2 + mPen.width();
+
+  QgsRectangle r;
+  for ( int i = 0; i < mPoints.size(); ++i )
+  {
+    QList<QgsPoint>::const_iterator it = mPoints.at( i ).constBegin(),
+                                         itE = mPoints.at( i ).constEnd();
+    for ( ; it != itE; ++it )
+    {
+      QgsPoint p( it->x() + mTranslationOffsetX, it->y() + mTranslationOffsetY );
+      p = m2p.transform( p );
+      QgsRectangle rect( p.x() - w, p.y() - w, p.x() + w, p.y() + w );
+      r.combineExtentWith( &rect );
+    }
+  }
+
+  // This is an hack to pass QgsMapCanvasItem::setRect what it
+  // expects (encoding of position and size of the item)
+  QgsPoint topLeft = m2p.toMapPoint( r.xMinimum(), r.yMinimum() );
+  double res = m2p.mapUnitsPerPixel();
+  QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width()*res, topLeft.y() - r.height()*res );
+
+  setRect( rect );
+  setVisible( true );
+}
+
+void QgsRubberBand::updatePosition( )
+{
+  // nothing to do here...
 }
 
 void QgsRubberBand::setTranslationOffset( double dx, double dy )

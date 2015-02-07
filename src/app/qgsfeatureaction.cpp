@@ -64,11 +64,11 @@ QgsAttributeDialog *QgsFeatureAction::newDialog( bool cloneFeature )
 
   if ( mLayer->actions()->size() > 0 )
   {
-    dialog->dialog()->setContextMenuPolicy( Qt::ActionsContextMenu );
+    dialog->setContextMenuPolicy( Qt::ActionsContextMenu );
 
-    QAction *a = new QAction( tr( "Run actions" ), dialog->dialog() );
+    QAction *a = new QAction( tr( "Run actions" ), dialog );
     a->setEnabled( false );
-    dialog->dialog()->addAction( a );
+    dialog->addAction( a );
 
     for ( int i = 0; i < mLayer->actions()->size(); i++ )
     {
@@ -77,11 +77,12 @@ QgsAttributeDialog *QgsFeatureAction::newDialog( bool cloneFeature )
       if ( !action.runable() )
         continue;
 
-      QgsFeatureAction *a = new QgsFeatureAction( action.name(), *f, mLayer, i, -1, dialog->dialog() );
-      dialog->dialog()->addAction( a );
+      QgsFeature& feat = const_cast<QgsFeature&>( *dialog->feature() );
+      QgsFeatureAction *a = new QgsFeatureAction( action.name(), feat, mLayer, i, -1, dialog );
+      dialog->addAction( a );
       connect( a, SIGNAL( triggered() ), a, SLOT( execute() ) );
 
-      QAbstractButton *pb = dialog->dialog()->findChild<QAbstractButton *>( action.name() );
+      QAbstractButton *pb = dialog->findChild<QAbstractButton *>( action.name() );
       if ( pb )
         connect( pb, SIGNAL( clicked() ), a, SLOT( execute() ) );
     }
@@ -97,56 +98,38 @@ bool QgsFeatureAction::viewFeatureForm( QgsHighlight *h )
 
   QgsAttributeDialog *dialog = newDialog( true );
   dialog->setHighlight( h );
-  dialog->show();
+  dialog->show(); // will also delete the dialog on close (show() is overridden)
 
   return true;
 }
 
-bool QgsFeatureAction::editFeature()
+bool QgsFeatureAction::editFeature( bool showModal )
 {
-  bool res = false;
-
   if ( !mLayer )
-    return res;
+    return false;
 
   QgsAttributeDialog *dialog = newDialog( false );
 
-  if ( !mLayer->isEditable() )
+  if ( !mFeature.isValid() )
+    dialog->setIsAddDialog( true );
+
+  if ( showModal )
   {
-    res = dialog->exec();
+    dialog->setAttribute( Qt::WA_DeleteOnClose );
+    int rv = dialog->exec();
+
+    mFeature.setAttributes( dialog->feature()->attributes() );
+    return rv;
   }
   else
   {
-    QgsAttributes src = mFeature.attributes();
-    dialog->setIsAddDialog( true );
-
-    if ( dialog->exec() )
-    {
-      mLayer->beginEditCommand( text() );
-
-      const QgsAttributes &dst = mFeature.attributes();
-      for ( int i = 0; i < dst.count(); ++i )
-      {
-        if ( dst[i] != src[i] )
-        {
-          mLayer->changeAttributeValue( mFeature.id(), i, dst[i], src[i] );
-        }
-      }
-
-      mLayer->endEditCommand();
-      res = true;
-    }
-    else
-    {
-      res = false;
-    }
+    dialog->show(); // will also delete the dialog on close (show() is overridden)
   }
 
-  delete dialog;
-  return res;
+  return true;
 }
 
-bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes )
+bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes, bool showModal )
 {
   if ( !mLayer || !mLayer->isEditable() )
     return false;
@@ -210,8 +193,16 @@ bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes )
     dialog->setIsAddDialog( true );
     dialog->setEditCommandMessage( text() );
 
-    connect( dialog->attributeForm(), SIGNAL( featureSaved( QgsFeature ) ), this, SLOT( onFeatureSaved( QgsFeature ) ) );
+    connect( dialog->attributeForm(), SIGNAL( featureSaved( const QgsFeature & ) ), this, SLOT( onFeatureSaved( const QgsFeature & ) ) );
 
+    if ( !showModal )
+    {
+      setParent( dialog ); // keep dialog until the dialog is closed and destructed
+      dialog->show(); // will also delete the dialog on close (show() is overridden)
+      return true;
+    }
+
+    dialog->setAttribute( Qt::WA_DeleteOnClose );
     dialog->exec();
   }
 
@@ -222,6 +213,7 @@ bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes )
 void QgsFeatureAction::onFeatureSaved( const QgsFeature& feature )
 {
   QgsAttributeForm* form = qobject_cast<QgsAttributeForm*>( sender() );
+  Q_UNUSED( form ) // only used for Q_ASSERT
   Q_ASSERT( form );
 
   mFeatureSaved = true;

@@ -26,7 +26,7 @@ Build-Depends:
  pkg-config,
  pyqt4-dev-tools,
  python,
- python-central (>=0.5),
+ python-central (>=0.5) | python-all-dev,
  python-dev,
  python-qt4-dev (>= 4.1.0),
  python-sip-dev (>= 4.5.0) | python-sip4-dev (>= 4.5.0) | sip4 (>= 4.5),
@@ -257,17 +257,19 @@ Description: collection of data providers to QGIS - architecture-independent fil
  .
  This package contains architecture-independent files for the QGIS providers.
 
-Package: qgis-mapserver
+Package: qgis-server
 Architecture: any
+Provides: qgis-mapserver
+Replaces: qgis-mapserver
 Depends:
  qgis-providers (= ${binary:Version}),
  ${shlibs:Depends},
  ${misc:Depends}
-Description: QGIS mapserver
+Description: QGIS server providing various OGC services
  QGIS is a Geographic Information System (GIS) which manages, analyzes and
  display databases of geographic information.
  .
- This package contains the QGIS mapserver.
+ This package contains the QGIS server.
 
 Package: libqgis-customwidgets{QGIS_ABI}
 Architecture: any

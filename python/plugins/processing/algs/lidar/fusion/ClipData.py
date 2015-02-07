@@ -27,10 +27,10 @@ __revision__ = '$Format:%H$'
 
 import os
 import subprocess
-from processing.parameters.ParameterFile import ParameterFile
-from processing.parameters.ParameterExtent import ParameterExtent
-from processing.parameters.ParameterSelection import ParameterSelection
-from processing.outputs.OutputFile import OutputFile
+from processing.core.parameters import ParameterFile
+from processing.core.parameters import ParameterExtent
+from processing.core.parameters import ParameterSelection
+from processing.core.outputs import OutputFile
 from FusionAlgorithm import FusionAlgorithm
 from FusionUtils import FusionUtils
 
@@ -45,11 +45,13 @@ class ClipData(FusionAlgorithm):
     def defineCharacteristics(self):
         self.name = 'Clip Data'
         self.group = 'Points'
-        self.addParameter(ParameterFile(self.INPUT, 'Input las layer'))
-        self.addParameter(ParameterExtent(self.EXTENT, 'Extent'))
-        self.addParameter(ParameterSelection(self.SHAPE, 'Shape',
-                          ['Rectangle', 'Circle']))
-        self.addOutput(OutputFile(self.OUTPUT, 'Output clipped las file'))
+        self.addParameter(ParameterFile(
+            self.INPUT, self.tr('Input las layer')))
+        self.addParameter(ParameterExtent(self.EXTENT, self.tr('Extent')))
+        self.addParameter(ParameterSelection(
+            self.SHAPE, self.tr('Shape'), ['Rectangle', 'Circle']))
+        self.addOutput(OutputFile(
+            self.OUTPUT, self.tr('Output clipped las file')))
         self.addAdvancedModifiers()
 
     def processAlgorithm(self, progress):

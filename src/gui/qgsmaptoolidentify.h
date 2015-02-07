@@ -16,13 +16,12 @@
 #ifndef QGSMAPTOOLIDENTIFY_H
 #define QGSMAPTOOLIDENTIFY_H
 
-
-#include "qgsmaptool.h"
-#include "qgspoint.h"
+#include "qgsdistancearea.h"
 #include "qgsfeature.h"
 #include "qgsfield.h"
-#include "qgsdistancearea.h"
+#include "qgsmaptool.h"
 #include "qgsmaplayer.h"
+#include "qgspoint.h"
 
 #include <QObject>
 #include <QPointer>
@@ -32,6 +31,7 @@ class QgsVectorLayer;
 class QgsMapLayer;
 class QgsMapCanvas;
 class QgsHighlight;
+class QgsIdentifyMenu;
 
 /**
   \brief Map tool for identifying features in layers
@@ -44,6 +44,7 @@ class QgsHighlight;
 class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
 {
     Q_OBJECT
+    Q_FLAGS( LayerType )
 
   public:
 
@@ -56,25 +57,26 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
       LayerSelection
     };
 
-    enum LayerType
+    enum Type
     {
-      AllLayers = -1,
-      VectorLayer,
-      RasterLayer
+      VectorLayer = 1,
+      RasterLayer = 2,
+      AllLayers = VectorLayer | RasterLayer
     };
+    Q_DECLARE_FLAGS( LayerType, Type )
 
     struct IdentifyResult
     {
-      IdentifyResult() {}
+      IdentifyResult() : mLayer( NULL ) {}
 
       IdentifyResult( QgsMapLayer * layer, QgsFeature feature, QMap< QString, QString > derivedAttributes ):
-          mLayer( layer ), mFeature( feature ), mDerivedAttributes( derivedAttributes )  {}
+          mLayer( layer ), mFeature( feature ), mDerivedAttributes( derivedAttributes ) {}
 
       IdentifyResult( QgsMapLayer * layer, QString label, QMap< QString, QString > attributes, QMap< QString, QString > derivedAttributes ):
-          mLayer( layer ), mLabel( label ), mAttributes( attributes ), mDerivedAttributes( derivedAttributes )  {}
+          mLayer( layer ), mLabel( label ), mAttributes( attributes ), mDerivedAttributes( derivedAttributes ) {}
 
       IdentifyResult( QgsMapLayer * layer, QString label, QgsFields fields, QgsFeature feature, QMap< QString, QString > derivedAttributes ):
-          mLayer( layer ), mLabel( label ), mFields( fields ), mFeature( feature ), mDerivedAttributes( derivedAttributes )  {}
+          mLayer( layer ), mLabel( label ), mFields( fields ), mFeature( feature ), mDerivedAttributes( derivedAttributes ) {}
 
       QgsMapLayer* mLayer;
       QString mLabel;
@@ -91,17 +93,17 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
     virtual ~QgsMapToolIdentify();
 
     //! Overridden mouse move event
-    virtual void canvasMoveEvent( QMouseEvent * e );
+    virtual void canvasMoveEvent( QMouseEvent * e ) override;
 
     //! Overridden mouse press event
-    virtual void canvasPressEvent( QMouseEvent * e );
+    virtual void canvasPressEvent( QMouseEvent * e ) override;
 
     //! Overridden mouse release event
-    virtual void canvasReleaseEvent( QMouseEvent * e );
+    virtual void canvasReleaseEvent( QMouseEvent * e ) override;
 
-    virtual void activate();
+    virtual void activate() override;
 
-    virtual void deactivate();
+    virtual void deactivate() override;
 
     /** Performs the identification.
     @param x x coordinates of mouseEvent
@@ -121,20 +123,19 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
     @return a list of IdentifyResult*/
     QList<IdentifyResult> identify( int x, int y, IdentifyMode mode, LayerType layerType = AllLayers );
 
-  protected:
-    //! rubber bands for layer select mode
-    void deleteRubberBands();
+    //! return a pointer to the identify menu which will be used in layer selection mode
+    //! this menu can also be customized
+    QgsIdentifyMenu* identifyMenu() {return mIdentifyMenu;}
 
   public slots:
     void formatChanged( QgsRasterLayer *layer );
-    void layerDestroyed();
 
   signals:
     void identifyProgress( int, int );
     void identifyMessage( QString );
     void changedRasterResults( QList<IdentifyResult>& );
 
-  private:
+  protected:
     /** Performs the identification.
     To avoid beeing forced to specify IdentifyMode with a list of layers
     this has been made private and two publics methods are offered
@@ -143,14 +144,18 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
     @param mode Identification mode. Can use Qgis default settings or a defined mode.
     @param layerList Performs the identification within the given list of layers.
     @param layerType Only performs identification in a certain type of layers (raster, vector).
-    @return true if identification succeeded and a feature has been found, false otherwise.*/
+    @return a list of IdentifyResult*/
     QList<IdentifyResult> identify( int x, int y, IdentifyMode mode,  QList<QgsMapLayer*> layerList, LayerType layerType = AllLayers );
+
+    QgsIdentifyMenu* mIdentifyMenu;
 
     /** call the right method depending on layer type */
     bool identifyLayer( QList<IdentifyResult> *results, QgsMapLayer *layer, QgsPoint point, QgsRectangle viewExtent, double mapUnitsPerPixel, LayerType layerType = AllLayers );
 
     bool identifyRasterLayer( QList<IdentifyResult> *results, QgsRasterLayer *layer, QgsPoint point, QgsRectangle viewExtent, double mapUnitsPerPixel );
     bool identifyVectorLayer( QList<IdentifyResult> *results, QgsVectorLayer *layer, QgsPoint point );
+
+  private:
 
     //! Private helper
     virtual void convertMeasurement( QgsDistanceArea &calc, double &measure, QGis::UnitType &u, bool isArea );
@@ -160,22 +165,14 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
 
     QMap< QString, QString > featureDerivedAttributes( QgsFeature *feature, QgsMapLayer *layer );
 
-    // specific to layer selection mode
-    //! layer id map for layer select mode
-    QMap< QgsMapLayer*, QList<IdentifyResult> > mLayerIdResults;
-    //! rubber bands for layer select mode
-    QList<QgsHighlight*> mRubberBands;
-
     // Last point in canvas CRS
     QgsPoint mLastPoint;
 
     double mLastMapUnitsPerPixel;
 
     QgsRectangle mLastExtent;
-
-  private slots:
-    //! menu for layer selection
-    void handleMenuHover();
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsMapToolIdentify::LayerType )
 
 #endif

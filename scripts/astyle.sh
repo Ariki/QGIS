@@ -60,7 +60,7 @@ $ARTISTIC_STYLE_OPTIONS \
 
 for f in "$@"; do
 	case "$f" in
-        src/app/gps/qwtpolar-*|src/core/spatialite/*|src/core/spatialindex/src/*|src/core/gps/qextserialport/*|src/plugins/grass/qtermwidget/*|src/astyle/*|python/ext-libs/*|src/providers/spatialite/qspatialite/*|src/plugins/dxf2shp_converter/dxflib/src/*|src/plugins/globe/osgEarthQt/*|src/plugins/globe/osgEarthUtil/*)
+        src/app/gps/qwtpolar-*|src/core/gps/qextserialport/*|src/plugins/grass/qtermwidget/*|src/astyle/*|python/ext-libs/*|src/providers/spatialite/qspatialite/*|src/plugins/dxf2shp_converter/dxflib/src/*|src/plugins/globe/osgEarthQt/*|src/plugins/globe/osgEarthUtil/*)
                 echo -ne "$f skipped $elcr"
                 continue
                 ;;
@@ -69,11 +69,11 @@ for f in "$@"; do
                 cmd="$ASTYLE $ARTISTIC_STYLE_OPTIONS"
                 ;;
 
-        *.ui|*.qgm|*.txt|*.t2t|*.sip|resources/context_help/*)
+        *.ui|*.qgm|*.txt|*.t2t|resources/context_help/*)
                 cmd=:
                 ;;
 
-        *.py)
+        *.py|*.sip)
                 cmd="perl -i.prepare -pe 's/[\r\t ]+$//;'"
                 ;;
 

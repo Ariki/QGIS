@@ -25,8 +25,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QAction, QDialog, QPushButton, QDialogButtonBox, QIcon, QStyle, QMessageBox, QFileDialog, QMenu, QTreeWidgetItem
 from processing.gui import TestTools
 from processing.core.ProcessingLog import ProcessingLog
 from processing.ui.ui_DlgHistory import Ui_DlgHistory
@@ -40,9 +40,9 @@ class HistoryDialog(QDialog, Ui_DlgHistory):
 
         self.groupIcon = QIcon()
         self.groupIcon.addPixmap(self.style().standardPixmap(
-                QStyle.SP_DirClosedIcon), QIcon.Normal, QIcon.Off)
+            QStyle.SP_DirClosedIcon), QIcon.Normal, QIcon.Off)
         self.groupIcon.addPixmap(self.style().standardPixmap(
-                QStyle.SP_DirOpenIcon), QIcon.Normal, QIcon.On)
+            QStyle.SP_DirOpenIcon), QIcon.Normal, QIcon.On)
 
         self.keyIcon = QIcon()
         self.keyIcon.addPixmap(self.style().standardPixmap(QStyle.SP_FileIcon))
@@ -51,9 +51,14 @@ class HistoryDialog(QDialog, Ui_DlgHistory):
         self.clearButton.setToolTip(self.tr('Clear history and log'))
         self.buttonBox.addButton(self.clearButton, QDialogButtonBox.ActionRole)
 
+        self.saveButton = QPushButton(self.tr('Save As...'))
+        self.saveButton.setToolTip(self.tr('Save history and log'))
+        self.buttonBox.addButton(self.saveButton, QDialogButtonBox.ActionRole)
+
         self.tree.doubleClicked.connect(self.executeAlgorithm)
         self.tree.currentItemChanged.connect(self.changeText)
         self.clearButton.clicked.connect(self.clearLog)
+        self.saveButton.clicked.connect(self.saveLog)
 
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.showPopupMenu)
@@ -62,13 +67,26 @@ class HistoryDialog(QDialog, Ui_DlgHistory):
 
     def clearLog(self):
         reply = QMessageBox.question(self,
-                    self.tr('Confirmation'),
-                    self.tr('Are you sure you want to clear log?'),
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No)
+            self.tr('Confirmation'),
+            self.tr('Are you sure you want to clear log?'),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
         if reply == QMessageBox.Yes:
             ProcessingLog.clearLog()
             self.fillTree()
+
+    def saveLog(self):
+        fileName = QFileDialog.getSaveFileName(self,
+            self.tr('Save file'), '.', self.tr('Log files (*.log *.LOG)'))
+
+        if fileName == '':
+            return
+
+        if not fileName.lower().endswith('.log'):
+            fileName += '.log'
+
+        ProcessingLog.saveLog(fileName)
 
     def fillTree(self):
         self.tree.clear()

@@ -21,29 +21,43 @@
 #include "qgscomposerlegenditem.h"
 #include "qgscomposermap.h"
 #include "qgscomposition.h"
+#include "qgscomposermodel.h"
+#include "qgsmaplayerregistry.h"
+#include "qgslayertree.h"
+#include "qgslayertreemodel.h"
 #include "qgslegendrenderer.h"
 #include "qgslogger.h"
+#include "qgsproject.h"
 #include <QDomDocument>
 #include <QDomElement>
 #include <QPainter>
 
 QgsComposerLegend::QgsComposerLegend( QgsComposition* composition )
     : QgsComposerItem( composition )
+    , mCustomLayerTree( 0 )
     , mComposerMap( 0 )
+    , mLegendFilterByMap( false )
 {
+  mLegendModel2 = new QgsLegendModelV2( QgsProject::instance()->layerTreeRoot() );
 
   adjustBoxSize();
 
   connect( &mLegendModel, SIGNAL( layersChanged() ), this, SLOT( synchronizeWithModel() ) );
 }
 
-QgsComposerLegend::QgsComposerLegend(): QgsComposerItem( 0 ), mComposerMap( 0 )
+QgsComposerLegend::QgsComposerLegend()
+    : QgsComposerItem( 0 )
+    , mLegendModel2( 0 )
+    , mCustomLayerTree( 0 )
+    , mComposerMap( 0 )
 {
 
 }
 
 QgsComposerLegend::~QgsComposerLegend()
 {
+  delete mLegendModel2;
+  delete mCustomLayerTree;
 }
 
 void QgsComposerLegend::paint( QPainter* painter, const QStyleOptionGraphicsItem* itemStyle, QWidget* pWidget )
@@ -51,14 +65,33 @@ void QgsComposerLegend::paint( QPainter* painter, const QStyleOptionGraphicsItem
   Q_UNUSED( itemStyle );
   Q_UNUSED( pWidget );
 
-
-  if ( mComposition )
-    mSettings.setUseAdvancedEffects( mComposition->useAdvancedEffects() );
-  if ( mComposerMap )
-    mSettings.setMmPerMapUnit( mComposerMap->mapUnitsToMM() );
-
   if ( !painter )
     return;
+
+  if ( !shouldDrawItem() )
+  {
+    return;
+  }
+
+  int dpi = painter->device()->logicalDpiX();
+  double dotsPerMM = dpi / 25.4;
+
+  if ( mComposition )
+  {
+    mSettings.setUseAdvancedEffects( mComposition->useAdvancedEffects() );
+    mSettings.setDpi( dpi );
+  }
+  if ( mComposerMap )
+  {
+    mSettings.setMmPerMapUnit( mComposerMap->mapUnitsToMM() );
+
+    // use a temporary QgsMapSettings to find out real map scale
+    QgsMapSettings ms = mComposerMap->composition()->mapSettings();
+    ms.setOutputSize( QSizeF( mComposerMap->rect().width() * dotsPerMM, mComposerMap->rect().height() * dotsPerMM ).toSize() );
+    ms.setExtent( *mComposerMap->currentMapExtent() );
+    ms.setOutputDpi( dpi );
+    mSettings.setMapScale( ms.scale() );
+  }
 
   drawBackground( painter );
   painter->save();
@@ -66,8 +99,24 @@ void QgsComposerLegend::paint( QPainter* painter, const QStyleOptionGraphicsItem
   painter->setRenderHint( QPainter::Antialiasing, true );
   painter->setPen( QPen( QColor( 0, 0, 0 ) ) );
 
-  QgsLegendRenderer legendRenderer( &mLegendModel, mSettings );
+  QgsLegendRenderer legendRenderer( mLegendModel2, mSettings );
   legendRenderer.setLegendSize( rect().size() );
+
+  //adjust box if width or height is too small
+  QSizeF size = legendRenderer.minimumSize();
+  if ( size.height() > rect().height() || size.width() > rect().width() )
+  {
+    //need to resize box
+    QRectF targetRect = QRectF( pos().x(), pos().y(), rect().width(), rect().height() );
+    if ( size.height() > targetRect.height() )
+      targetRect.setHeight( size.height() );
+    if ( size.width() > rect().width() )
+      targetRect.setWidth( size.width() );
+
+    //set new rect, respecting position mode and data defined size/position
+    setSceneRect( evalItemRect( targetRect, true ) );
+  }
+
   legendRenderer.drawLegend( painter );
 
   painter->restore();
@@ -82,9 +131,9 @@ void QgsComposerLegend::paint( QPainter* painter, const QStyleOptionGraphicsItem
 
 QSizeF QgsComposerLegend::paintAndDetermineSize( QPainter* painter )
 {
-  QgsLegendRenderer legendRenderer( &mLegendModel, mSettings );
+  QgsLegendRenderer legendRenderer( mLegendModel2, mSettings );
   QSizeF size = legendRenderer.minimumSize();
-  if ( !painter )
+  if ( painter )
     legendRenderer.drawLegend( painter );
   return size;
 }
@@ -92,16 +141,57 @@ QSizeF QgsComposerLegend::paintAndDetermineSize( QPainter* painter )
 
 void QgsComposerLegend::adjustBoxSize()
 {
-  QgsLegendRenderer legendRenderer( &mLegendModel, mSettings );
+  QgsLegendRenderer legendRenderer( mLegendModel2, mSettings );
   QSizeF size = legendRenderer.minimumSize();
   QgsDebugMsg( QString( "width = %1 height = %2" ).arg( size.width() ).arg( size.height() ) );
   if ( size.isValid() )
   {
-    setSceneRect( QRectF( pos().x(), pos().y(), size.width(), size.height() ) );
+    QRectF targetRect = QRectF( pos().x(), pos().y(), size.width(), size.height() );
+    //set new rect, respecting position mode and data defined size/position
+    setSceneRect( evalItemRect( targetRect, true ) );
   }
 }
 
-void QgsComposerLegend::setTitle( const QString& t ) { mSettings.setTitle( t ); }
+
+void QgsComposerLegend::setCustomLayerTree( QgsLayerTreeGroup* rootGroup )
+{
+  mLegendModel2->setRootGroup( rootGroup ? rootGroup : QgsProject::instance()->layerTreeRoot() );
+
+  delete mCustomLayerTree;
+  mCustomLayerTree = rootGroup;
+}
+
+
+void QgsComposerLegend::setAutoUpdateModel( bool autoUpdate )
+{
+  if ( autoUpdate == autoUpdateModel() )
+    return;
+
+  setCustomLayerTree( autoUpdate ? 0 : QgsLayerTree::toGroup( QgsProject::instance()->layerTreeRoot()->clone() ) );
+  adjustBoxSize();
+}
+
+bool QgsComposerLegend::autoUpdateModel() const
+{
+  return !mCustomLayerTree;
+}
+
+void QgsComposerLegend::setLegendFilterByMapEnabled( bool enabled )
+{
+  mLegendFilterByMap = enabled;
+  updateFilterByMap();
+}
+
+void QgsComposerLegend::setTitle( const QString& t )
+{
+  mSettings.setTitle( t );
+
+  if ( mComposition && id().isEmpty() )
+  {
+    //notify the model that the display name has changed
+    mComposition->itemsModel()->updateItemDisplayName( this );
+  }
+}
 QString QgsComposerLegend::title() const { return mSettings.title(); }
 
 Qt::AlignmentFlag QgsComposerLegend::titleAlignment() const { return mSettings.titleAlignment(); }
@@ -207,10 +297,56 @@ bool QgsComposerLegend::writeXML( QDomElement& elem, QDomDocument & doc ) const
   style( QgsComposerLegendStyle::Symbol ).writeXML( "symbol", composerLegendStyles, doc );
   style( QgsComposerLegendStyle::SymbolLabel ).writeXML( "symbolLabel", composerLegendStyles, doc );
 
-  //write model properties
-  mLegendModel.writeXML( composerLegendElem, doc );
+  if ( mCustomLayerTree )
+  {
+    // if not using auto-update - store the custom layer tree
+    mCustomLayerTree->writeXML( composerLegendElem );
+  }
+
+  if ( mLegendFilterByMap )
+    composerLegendElem.setAttribute( "legendFilterByMap", "1" );
 
   return _writeXML( composerLegendElem, doc );
+}
+
+static void _readOldLegendGroup( QDomElement& elem, QgsLayerTreeGroup* parentGroup )
+{
+  QDomElement itemElem = elem.firstChildElement();
+
+  while ( !itemElem.isNull() )
+  {
+
+    if ( itemElem.tagName() == "LayerItem" )
+    {
+      QString layerId = itemElem.attribute( "layerId" );
+      if ( QgsMapLayer* layer = QgsMapLayerRegistry::instance()->mapLayer( layerId ) )
+      {
+        QgsLayerTreeLayer* nodeLayer = parentGroup->addLayer( layer );
+        QString userText = itemElem.attribute( "userText" );
+        if ( !userText.isEmpty() )
+          nodeLayer->setCustomProperty( "legend/title-label", userText );
+        QString style = itemElem.attribute( "style" );
+        if ( !style.isEmpty() )
+          nodeLayer->setCustomProperty( "legend/title-style", style );
+        QString showFeatureCount = itemElem.attribute( "showFeatureCount" );
+        if ( showFeatureCount.toInt() )
+          nodeLayer->setCustomProperty( "showFeatureCount", 1 );
+
+        // support for individual legend items (user text, order) not implemented yet
+      }
+    }
+    else if ( itemElem.tagName() == "GroupItem" )
+    {
+      QgsLayerTreeGroup* nodeGroup = parentGroup->addGroup( itemElem.attribute( "userText" ) );
+      QString style = itemElem.attribute( "style" );
+      if ( !style.isEmpty() )
+        nodeGroup->setCustomProperty( "legend/title-style", style );
+
+      _readOldLegendGroup( itemElem, nodeGroup );
+    }
+
+    itemElem = itemElem.nextSiblingElement();
+  }
 }
 
 bool QgsComposerLegend::readXML( const QDomElement& itemElem, const QDomDocument& doc )
@@ -268,17 +404,25 @@ bool QgsComposerLegend::readXML( const QDomElement& itemElem, const QDomDocument
   mSettings.setWrapChar( itemElem.attribute( "wrapChar" ) );
 
   //composer map
+  mLegendFilterByMap = itemElem.attribute( "legendFilterByMap", "0" ).toInt();
   if ( !itemElem.attribute( "map" ).isEmpty() )
   {
-    mComposerMap = mComposition->getComposerMapById( itemElem.attribute( "map" ).toInt() );
+    setComposerMap( mComposition->getComposerMapById( itemElem.attribute( "map" ).toInt() ) );
   }
 
-  //read model properties
-  QDomNodeList modelNodeList = itemElem.elementsByTagName( "Model" );
-  if ( modelNodeList.size() > 0 )
+  QDomElement oldLegendModelElem = itemElem.firstChildElement( "Model" );
+  if ( !oldLegendModelElem.isNull() )
   {
-    QDomElement modelElem = modelNodeList.at( 0 ).toElement();
-    mLegendModel.readXML( modelElem, doc );
+    // QGIS <= 2.4
+    QgsLayerTreeGroup* nodeRoot = new QgsLayerTreeGroup();
+    _readOldLegendGroup( oldLegendModelElem, nodeRoot );
+    setCustomLayerTree( nodeRoot );
+  }
+  else
+  {
+    // QGIS >= 2.6
+    QDomElement layerTreeElem = itemElem.firstChildElement( "layer-tree-group" );
+    setCustomLayerTree( QgsLayerTreeGroup::readXML( layerTreeElem ) );
   }
 
   //restore general composer item properties
@@ -335,20 +479,119 @@ bool QgsComposerLegend::readXML( const QDomElement& itemElem, const QDomDocument
   return true;
 }
 
-void QgsComposerLegend::setComposerMap( const QgsComposerMap* map )
+QString QgsComposerLegend::displayName() const
 {
-  mComposerMap = map;
-  if ( map )
+  if ( !id().isEmpty() )
   {
-    QObject::connect( map, SIGNAL( destroyed( QObject* ) ), this, SLOT( invalidateCurrentMap() ) );
+    return id();
+  }
+
+  //if no id, default to portion of title text
+  QString text = mSettings.title();
+  if ( text.isEmpty() )
+  {
+    return tr( "<legend>" );
+  }
+  if ( text.length() > 25 )
+  {
+    return QString( tr( "%1..." ) ).arg( text.left( 25 ) );
+  }
+  else
+  {
+    return text;
   }
 }
 
-void QgsComposerLegend::invalidateCurrentMap()
+void QgsComposerLegend::setComposerMap( const QgsComposerMap* map )
 {
   if ( mComposerMap )
   {
     disconnect( mComposerMap, SIGNAL( destroyed( QObject* ) ), this, SLOT( invalidateCurrentMap() ) );
+    disconnect( mComposerMap, SIGNAL( itemChanged() ), this, SLOT( updateFilterByMap() ) );
+    disconnect( mComposerMap, SIGNAL( extentChanged() ), this, SLOT( updateFilterByMap() ) );
   }
-  mComposerMap = 0;
+
+  mComposerMap = map;
+
+  if ( map )
+  {
+    QObject::connect( map, SIGNAL( destroyed( QObject* ) ), this, SLOT( invalidateCurrentMap() ) );
+    QObject::connect( map, SIGNAL( itemChanged() ), this, SLOT( updateFilterByMap() ) );
+    QObject::connect( map, SIGNAL( extentChanged() ), this, SLOT( updateFilterByMap() ) );
+  }
+
+  updateFilterByMap();
+}
+
+void QgsComposerLegend::invalidateCurrentMap()
+{
+  setComposerMap( 0 );
+}
+
+void QgsComposerLegend::updateFilterByMap()
+{
+  if ( isRemoved() )
+    return;
+
+  if ( mComposerMap && mLegendFilterByMap )
+  {
+    int dpi = mComposition->printResolution();
+
+    QgsRectangle requestRectangle;
+    mComposerMap->requestedExtent( requestRectangle );
+
+    QSizeF theSize( requestRectangle.width(), requestRectangle.height() );
+    theSize *= mComposerMap->mapUnitsToMM() * dpi / 25.4;
+
+    QgsMapSettings ms = mComposerMap->mapSettings( requestRectangle, theSize, dpi );
+
+    mLegendModel2->setLegendFilterByMap( &ms );
+  }
+  else
+    mLegendModel2->setLegendFilterByMap( 0 );
+
+  adjustBoxSize();
+  update();
+}
+
+// -------------------------------------------------------------------------
+#include "qgslayertreemodellegendnode.h"
+#include "qgsvectorlayer.h"
+
+QgsLegendModelV2::QgsLegendModelV2( QgsLayerTreeGroup* rootNode, QObject* parent )
+    : QgsLayerTreeModel( rootNode, parent )
+{
+  setFlag( QgsLayerTreeModel::AllowLegendChangeState, false );
+  setFlag( QgsLayerTreeModel::AllowNodeReorder, true );
+}
+
+QVariant QgsLegendModelV2::data( const QModelIndex& index, int role ) const
+{
+  // handle custom layer node labels
+  if ( QgsLayerTreeNode* node = index2node( index ) )
+  {
+    if ( QgsLayerTree::isLayer( node ) && ( role == Qt::DisplayRole || role == Qt::EditRole ) && !node->customProperty( "legend/title-label" ).isNull() )
+    {
+      QgsLayerTreeLayer* nodeLayer = QgsLayerTree::toLayer( node );
+      QString name = node->customProperty( "legend/title-label" ).toString();
+      if ( nodeLayer->customProperty( "showFeatureCount", 0 ).toInt() && role == Qt::DisplayRole )
+      {
+        QgsVectorLayer* vlayer = qobject_cast<QgsVectorLayer*>( nodeLayer->layer() );
+        if ( vlayer && vlayer->pendingFeatureCount() >= 0 )
+          name += QString( " [%1]" ).arg( vlayer->pendingFeatureCount() );
+      }
+      return name;
+    }
+  }
+
+  return QgsLayerTreeModel::data( index, role );
+}
+
+Qt::ItemFlags QgsLegendModelV2::flags( const QModelIndex& index ) const
+{
+  // make the legend nodes selectable even if they are not by default
+  if ( index2legendNode( index ) )
+    return QgsLayerTreeModel::flags( index ) | Qt::ItemIsSelectable;
+
+  return QgsLayerTreeModel::flags( index );
 }

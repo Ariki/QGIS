@@ -212,7 +212,7 @@ void QgsSpatialQueryDialog::showResultQuery( QDateTime *datetimeStart, QDateTime
   teStatus->append( msg );
   msg = QString( "%1" ).arg( getDescriptionLayerShow( false ) );
   teStatus->append( msg );
-  msg = tr( "Total of features =  %1" ).arg( mFeatureResult.size() );
+  msg = tr( "Total of features = %1" ).arg( mFeatureResult.size() );
   teStatus->append( msg );
   teStatus->append( "" );
   teStatus->append( tr( "Total of invalid features:" ) );
@@ -353,7 +353,7 @@ QString QgsSpatialQueryDialog::getDescriptionInvalidFeaturesShow( bool isTarget 
 void QgsSpatialQueryDialog::connectAll()
 {
   connect( QgsMapLayerRegistry::instance(), SIGNAL( layerWasAdded( QgsMapLayer* ) ),
-           this, SLOT( signal_qgis_layerWasAdded( QgsMapLayer* ) ) ) ;
+           this, SLOT( signal_qgis_layerWasAdded( QgsMapLayer* ) ) );
   connect( QgsMapLayerRegistry::instance(), SIGNAL( layerWillBeRemoved( QString ) ),
            this, SLOT( signal_qgis_layerWillBeRemoved( QString ) ) );
   connect( ckbLogProcessing, SIGNAL( clicked( bool ) ),
@@ -363,7 +363,7 @@ void QgsSpatialQueryDialog::connectAll()
 void QgsSpatialQueryDialog::disconnectAll()
 {
   disconnect( QgsMapLayerRegistry::instance(), SIGNAL( layerWasAdded( QgsMapLayer* ) ),
-              this, SLOT( signal_qgis_layerWasAdded( QgsMapLayer* ) ) ) ;
+              this, SLOT( signal_qgis_layerWasAdded( QgsMapLayer* ) ) );
   disconnect( QgsMapLayerRegistry::instance(), SIGNAL( layerWillBeRemoved( QString ) ),
               this, SLOT( signal_qgis_layerWillBeRemoved( QString ) ) );
 

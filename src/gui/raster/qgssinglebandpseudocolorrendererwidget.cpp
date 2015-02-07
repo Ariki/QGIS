@@ -22,15 +22,17 @@
 // for color ramps - todo add rasterStyle and refactor raster vs. vector ramps
 #include "qgsstylev2.h"
 #include "qgsvectorcolorrampv2.h"
+#include "qgscolordialog.h"
 
-#include <QColorDialog>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTextStream>
 
-QgsSingleBandPseudoColorRendererWidget::QgsSingleBandPseudoColorRendererWidget( QgsRasterLayer* layer, const QgsRectangle &extent ):
-    QgsRasterRendererWidget( layer, extent )
+QgsSingleBandPseudoColorRendererWidget::QgsSingleBandPseudoColorRendererWidget( QgsRasterLayer* layer, const QgsRectangle &extent )
+    : QgsRasterRendererWidget( layer, extent )
+    , mMinMaxWidget( NULL )
+    , mMinMaxOrigin( 0 )
 {
   QSettings settings;
 
@@ -544,7 +546,7 @@ void QgsSingleBandPseudoColorRendererWidget::on_mColormapTreeWidget_itemDoubleCl
   if ( column == 1 ) //change item color
   {
     item->setFlags( Qt::ItemIsEnabled | Qt::ItemIsSelectable );
-    QColor newColor = QColorDialog::getColor( item->background( column ).color(), this, "Change color", QColorDialog::ShowAlphaChannel );
+    QColor newColor = QgsColorDialogV2::getColor( item->background( column ).color(), this, "Change color", true );
     if ( newColor.isValid() )
     {
       item->setBackground( 1, QBrush( newColor ) );
@@ -561,6 +563,8 @@ void QgsSingleBandPseudoColorRendererWidget::setFromRenderer( const QgsRasterRen
   const QgsSingleBandPseudoColorRenderer* pr = dynamic_cast<const QgsSingleBandPseudoColorRenderer*>( r );
   if ( pr )
   {
+    mBandComboBox->setCurrentIndex( mBandComboBox->findData( pr->band() ) );
+
     const QgsRasterShader* rasterShader = pr->shader();
     if ( rasterShader )
     {

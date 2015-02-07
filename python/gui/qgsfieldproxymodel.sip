@@ -29,7 +29,7 @@ class QgsFieldProxyModel : QSortFilterProxyModel
     explicit QgsFieldProxyModel( QObject *parent /TransferThis/ = 0 );
 
     //! sourceFieldModel returns the QgsFieldModel used in this QSortFilterProxyModel
-    QgsFieldModel* sourceFieldModel() ;
+    QgsFieldModel* sourceFieldModel();
 
     /**
      * @brief setFilters set flags that affect how fields are filtered
@@ -44,4 +44,6 @@ class QgsFieldProxyModel : QSortFilterProxyModel
     bool filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const;
     bool lessThan( const QModelIndex &left, const QModelIndex &right ) const;
 };
+
+QFlags<QgsFieldProxyModel::Filter> operator|(QgsFieldProxyModel::Filter f1, QFlags<QgsFieldProxyModel::Filter> f2);
 

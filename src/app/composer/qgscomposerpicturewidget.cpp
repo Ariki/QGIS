@@ -52,8 +52,20 @@ QgsComposerPictureWidget::QgsComposerPictureWidget( QgsComposerPicture* picture 
 
   connect( mPicture, SIGNAL( itemChanged() ), this, SLOT( setGuiElementValues() ) );
   connect( mPicture, SIGNAL( pictureRotationChanged( double ) ), this, SLOT( setPicRotationSpinValue( double ) ) );
-  connect( mPictureExpressionLineEdit, SIGNAL( editingFinished() ), this, SLOT( setPictureExpression() ) );
 
+  QgsAtlasComposition* atlas = atlasComposition();
+  if ( atlas )
+  {
+    // repopulate data defined buttons if atlas layer changes
+    connect( atlas, SIGNAL( coverageLayerChanged( QgsVectorLayer* ) ),
+             this, SLOT( populateDataDefinedButtons() ) );
+    connect( atlas, SIGNAL( toggled( bool ) ), this, SLOT( populateDataDefinedButtons() ) );
+  }
+
+  //connections for data defined buttons
+  connect( mSourceDDBtn, SIGNAL( dataDefinedChanged( const QString& ) ), this, SLOT( updateDataDefinedProperty() ) );
+  connect( mSourceDDBtn, SIGNAL( dataDefinedActivated( bool ) ), this, SLOT( updateDataDefinedProperty() ) );
+  connect( mSourceDDBtn, SIGNAL( dataDefinedActivated( bool ) ), mPictureLineEdit, SLOT( setDisabled( bool ) ) );
 }
 
 QgsComposerPictureWidget::~QgsComposerPictureWidget()
@@ -102,7 +114,7 @@ void QgsComposerPictureWidget::on_mPictureBrowseButton_clicked()
   if ( mPicture )
   {
     mPicture->beginCommand( tr( "Picture changed" ) );
-    mPicture->setPictureFile( filePath );
+    mPicture->setPicturePath( filePath );
     mPicture->update();
     mPicture->endCommand();
   }
@@ -118,32 +130,9 @@ void QgsComposerPictureWidget::on_mPictureLineEdit_editingFinished()
     QFileInfo fileInfo( filePath );
 
     mPicture->beginCommand( tr( "Picture changed" ) );
-    mPicture->setPictureFile( filePath );
+    mPicture->setPicturePath( filePath );
     mPicture->update();
     mPicture->endCommand();
-  }
-}
-
-void QgsComposerPictureWidget::on_mPictureExpressionButton_clicked()
-{
-  if ( !mPicture )
-  {
-    return;
-  }
-
-  // use the atlas coverage layer, if any
-  QgsVectorLayer* coverageLayer = atlasCoverageLayer();
-
-  QgsExpressionBuilderDialog exprDlg( coverageLayer, mPictureExpressionLineEdit->text(), this );
-  exprDlg.setWindowTitle( tr( "Expression based image path" ) );
-  if ( exprDlg.exec() == QDialog::Accepted )
-  {
-    QString expression =  exprDlg.expressionText();
-    if ( !expression.isEmpty() )
-    {
-      mPictureExpressionLineEdit->setText( expression );
-      setPictureExpression();
-    }
   }
 }
 
@@ -167,7 +156,7 @@ void QgsComposerPictureWidget::on_mPreviewListWidget_currentItemChanged( QListWi
 
   QString absoluteFilePath = current->data( Qt::UserRole ).toString();
   mPicture->beginCommand( tr( "Picture changed" ) );
-  mPicture->setPictureFile( absoluteFilePath );
+  mPicture->setPicturePath( absoluteFilePath );
   mPictureLineEdit->setText( absoluteFilePath );
   mPicture->update();
   mPicture->endCommand();
@@ -236,7 +225,8 @@ void QgsComposerPictureWidget::on_mResizeModeComboBox_currentIndexChanged( int i
   mPicture->endCommand();
 
   //disable picture rotation for non-zoom modes
-  mRotationGroupBox->setEnabled( mPicture->resizeMode() == QgsComposerPicture::Zoom );
+  mRotationGroupBox->setEnabled( mPicture->resizeMode() == QgsComposerPicture::Zoom ||
+                                 mPicture->resizeMode() == QgsComposerPicture::ZoomResizeFrame );
 
   //disable anchor point control for certain zoom modes
   if ( mPicture->resizeMode() == QgsComposerPicture::Zoom ||
@@ -259,52 +249,6 @@ void QgsComposerPictureWidget::on_mAnchorPointComboBox_currentIndexChanged( int 
 
   mPicture->beginCommand( tr( "Picture placement changed" ) );
   mPicture->setPictureAnchor(( QgsComposerItem::ItemPositionMode )index );
-  mPicture->endCommand();
-}
-
-void QgsComposerPictureWidget::on_mRadioPath_clicked()
-{
-  if ( !mPicture )
-  {
-    return;
-  }
-
-  mPicture->beginCommand( tr( "Picture source changed" ) );
-  mPicture->setUsePictureExpression( false );
-  mPicture->endCommand();
-
-  mPictureLineEdit->setEnabled( true );
-  mPictureBrowseButton->setEnabled( true );
-  mPictureExpressionLineEdit->setEnabled( false );
-  mPictureExpressionButton->setEnabled( false );
-}
-
-void QgsComposerPictureWidget::on_mRadioExpression_clicked()
-{
-  if ( !mPicture )
-  {
-    return;
-  }
-
-  mPicture->beginCommand( tr( "Picture source changed" ) );
-  mPicture->setUsePictureExpression( true );
-  mPicture->endCommand();
-
-  mPictureLineEdit->setEnabled( false );
-  mPictureBrowseButton->setEnabled( false );
-  mPictureExpressionLineEdit->setEnabled( true );
-  mPictureExpressionButton->setEnabled( true );
-}
-
-void QgsComposerPictureWidget::setPictureExpression()
-{
-  if ( !mPicture )
-  {
-    return;
-  }
-
-  mPicture->beginCommand( tr( "Picture source expression" ) );
-  mPicture->setPictureExpression( mPictureExpressionLineEdit->text() );
   mPicture->endCommand();
 }
 
@@ -438,11 +382,8 @@ void QgsComposerPictureWidget::setGuiElementValues()
     mRotationFromComposerMapCheckBox->blockSignals( true );
     mResizeModeComboBox->blockSignals( true );
     mAnchorPointComboBox->blockSignals( true );
-    mRadioPath->blockSignals( true );
-    mRadioExpression->blockSignals( true );
-    mPictureExpressionLineEdit->blockSignals( true );
 
-    mPictureLineEdit->setText( mPicture->pictureFile() );
+    mPictureLineEdit->setText( mPicture->picturePath() );
     mPictureRotationSpinBox->setValue( mPicture->pictureRotation() );
 
     refreshMapComboBox();
@@ -468,7 +409,8 @@ void QgsComposerPictureWidget::setGuiElementValues()
 
     mResizeModeComboBox->setCurrentIndex(( int )mPicture->resizeMode() );
     //disable picture rotation for non-zoom modes
-    mRotationGroupBox->setEnabled( mPicture->resizeMode() == QgsComposerPicture::Zoom );
+    mRotationGroupBox->setEnabled( mPicture->resizeMode() == QgsComposerPicture::Zoom ||
+                                   mPicture->resizeMode() == QgsComposerPicture::ZoomResizeFrame );
 
     mAnchorPointComboBox->setCurrentIndex(( int )mPicture->pictureAnchor() );
     //disable anchor point control for certain zoom modes
@@ -482,24 +424,14 @@ void QgsComposerPictureWidget::setGuiElementValues()
       mAnchorPointComboBox->setEnabled( false );
     }
 
-    mRadioPath->setChecked( !( mPicture->usePictureExpression() ) );
-    mRadioExpression->setChecked( mPicture->usePictureExpression() );
-    mPictureLineEdit->setEnabled( !( mPicture->usePictureExpression() ) );
-    mPictureBrowseButton->setEnabled( !( mPicture->usePictureExpression() ) );
-    mPictureExpressionLineEdit->setEnabled( mPicture->usePictureExpression() );
-    mPictureExpressionButton->setEnabled( mPicture->usePictureExpression() );
-
-    mPictureExpressionLineEdit->setText( mPicture->pictureExpression() );
-
     mRotationFromComposerMapCheckBox->blockSignals( false );
     mPictureRotationSpinBox->blockSignals( false );
     mPictureLineEdit->blockSignals( false );
     mComposerMapComboBox->blockSignals( false );
     mResizeModeComboBox->blockSignals( false );
     mAnchorPointComboBox->blockSignals( false );
-    mRadioPath->blockSignals( false );
-    mRadioExpression->blockSignals( false );
-    mPictureExpressionLineEdit->blockSignals( false );
+
+    populateDataDefinedButtons();
   }
 }
 
@@ -669,5 +601,33 @@ void QgsComposerPictureWidget::resizeEvent( QResizeEvent * event )
 {
   Q_UNUSED( event );
   mSearchDirectoriesComboBox->setMinimumWidth( mPreviewListWidget->sizeHint().width() );
+}
+
+QgsComposerObject::DataDefinedProperty QgsComposerPictureWidget::ddPropertyForWidget( QgsDataDefinedButton *widget )
+{
+  if ( widget == mSourceDDBtn )
+  {
+    return QgsComposerObject::PictureSource;
+  }
+
+  return QgsComposerObject::NoProperty;
+}
+
+void QgsComposerPictureWidget::populateDataDefinedButtons()
+{
+  QgsVectorLayer* vl = atlasCoverageLayer();
+
+  //block signals from data defined buttons
+  mSourceDDBtn->blockSignals( true );
+
+  //initialise buttons to use atlas coverage layer
+  mSourceDDBtn->init( vl, mPicture->dataDefinedProperty( QgsComposerObject::PictureSource ),
+                      QgsDataDefinedButton::AnyType, QgsDataDefinedButton::anyStringDesc() );
+
+  //initial state of controls - disable related controls when dd buttons are active
+  mPictureLineEdit->setEnabled( !mSourceDDBtn->isActive() );
+
+  //unblock signals from data defined buttons
+  mSourceDDBtn->blockSignals( false );
 }
 

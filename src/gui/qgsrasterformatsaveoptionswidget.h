@@ -79,7 +79,7 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget,
     void updateControls();
 
   protected:
-    virtual void showEvent( QShowEvent * event );
+    virtual void showEvent( QShowEvent * event ) override;
 
   signals:
     void optionsChanged();
@@ -99,11 +99,11 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget,
     QString currentProfileKey() const;
     QString createOptions( QString profile ) const;
     void deleteCreateOptions( QString profile );
-    void setCreateOptions( );
+    void setCreateOptions();
     void setCreateOptions( QString profile, QString options );
     void setCreateOptions( QString profile, QStringList list );
     QStringList profiles() const;
-    bool eventFilter( QObject *obj, QEvent *event );
+    bool eventFilter( QObject *obj, QEvent *event ) override;
 
 };
 

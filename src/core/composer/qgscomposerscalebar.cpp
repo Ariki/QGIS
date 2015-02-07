@@ -17,6 +17,7 @@
 #include "qgscomposerscalebar.h"
 #include "qgscomposermap.h"
 #include "qgscomposition.h"
+#include "qgscomposerutils.h"
 #include "qgsdistancearea.h"
 #include "qgsscalebarstyle.h"
 #include "qgsdoubleboxscalebarstyle.h"
@@ -63,12 +64,16 @@ void QgsComposerScaleBar::paint( QPainter* painter, const QStyleOptionGraphicsIt
   {
     return;
   }
+  if ( !shouldDrawItem() )
+  {
+    return;
+  }
 
   drawBackground( painter );
 
   //x-offset is half of first label width because labels are drawn centered
   QString firstLabel = firstLabelString();
-  double firstLabelWidth = textWidthMillimeters( mFont, firstLabel );
+  double firstLabelWidth = QgsComposerUtils::textWidthMM( mFont, firstLabel );
 
   mStyle->draw( painter, firstLabelWidth / 2 );
 
@@ -382,15 +387,58 @@ void QgsComposerScaleBar::adjustBoxSize()
   }
 
   QRectF box = mStyle->calculateBoxSize();
+  if ( rect().height() > box.height() )
+  {
+    //keep user specified item height if higher than minimum scale bar height
+    box.setHeight( rect().height() );
+  }
 
   //update rect for data defined size and position
-  setSceneRect( evalItemRect( box ) );
+  QRectF newRect = evalItemRect( box, true );
+
+  //scale bars have a minimum size, respect that regardless of data defined settings
+  if ( newRect.width() < box.width() )
+  {
+    newRect.setWidth( box.width() );
+  }
+  if ( newRect.height() < box.height() )
+  {
+    newRect.setHeight( box.height() );
+  }
+
+  QgsComposerItem::setSceneRect( newRect );
+}
+
+void QgsComposerScaleBar::setSceneRect( const QRectF& rectangle )
+{
+  QRectF box = mStyle->calculateBoxSize();
+  if ( rectangle.height() > box.height() )
+  {
+    //keep user specified item height if higher than minimum scale bar height
+    box.setHeight( rectangle.height() );
+  }
+  box.moveTopLeft( rectangle.topLeft() );
+
+  //update rect for data defined size and position
+  QRectF newRect = evalItemRect( rectangle );
+
+  //scale bars have a minimum size, respect that regardless of data defined settings
+  if ( newRect.width() < box.width() )
+  {
+    newRect.setWidth( box.width() );
+  }
+  if ( newRect.height() < box.height() )
+  {
+    newRect.setHeight( box.height() );
+  }
+
+  QgsComposerItem::setSceneRect( newRect );
 }
 
 void QgsComposerScaleBar::update()
 {
   //Don't adjust box size for numeric scale bars:
-  if ( mStyle->name() != "Numeric" )
+  if ( mStyle && mStyle->name() != "Numeric" )
   {
     adjustBoxSize();
   }
@@ -417,10 +465,11 @@ void QgsComposerScaleBar::segmentPositions( QList<QPair<double, double> >& posWi
   double mCurrentXCoord = mPen.widthF() + mBoxContentSpace;
 
   //left segments
+  double leftSegmentSize = mSegmentMillimeters / mNumSegmentsLeft;
   for ( int i = 0; i < mNumSegmentsLeft; ++i )
   {
-    posWidthList.push_back( qMakePair( mCurrentXCoord, mSegmentMillimeters / mNumSegmentsLeft ) );
-    mCurrentXCoord += mSegmentMillimeters / mNumSegmentsLeft;
+    posWidthList.push_back( qMakePair( mCurrentXCoord, leftSegmentSize ) );
+    mCurrentXCoord += leftSegmentSize;
   }
 
   //right segments

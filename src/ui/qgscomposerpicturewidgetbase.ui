@@ -23,16 +23,7 @@
    <property name="spacing">
     <number>0</number>
    </property>
-   <property name="leftMargin">
-    <number>0</number>
-   </property>
-   <property name="topMargin">
-    <number>0</number>
-   </property>
-   <property name="rightMargin">
-    <number>0</number>
-   </property>
-   <property name="bottomMargin">
+   <property name="margin">
     <number>0</number>
    </property>
    <item>
@@ -62,12 +53,15 @@
         <x>0</x>
         <y>0</y>
         <width>314</width>
-        <height>589</height>
+        <height>554</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="mainLayout">
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="mPreviewGroupBox">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Main properties</string>
          </property>
@@ -78,15 +72,15 @@
           <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Image source</string>
+            </property>
+           </widget>
+          </item>
           <item row="1" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <item>
-             <widget class="QRadioButton" name="mRadioPath">
-              <property name="text">
-               <string>Path</string>
-              </property>
-             </widget>
-            </item>
             <item>
              <widget class="QLineEdit" name="mPictureLineEdit"/>
             </item>
@@ -109,30 +103,23 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QgsDataDefinedButton" name="mSourceDDBtn">
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Image source</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Placement</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
+          <item row="2" column="0">
            <widget class="QLabel" name="label_4">
             <property name="text">
              <string>Resize mode</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
+          <item row="3" column="0">
            <widget class="QComboBox" name="mResizeModeComboBox">
             <item>
              <property name="text">
@@ -161,38 +148,14 @@
             </item>
            </widget>
           </item>
-          <item row="2" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_3">
-            <item>
-             <widget class="QRadioButton" name="mRadioExpression">
-              <property name="text">
-               <string>Expression</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="mPictureExpressionLineEdit"/>
-            </item>
-            <item>
-             <widget class="QToolButton" name="mPictureExpressionButton">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>...</string>
-              </property>
-              <property name="icon">
-               <iconset resource="../../images/images.qrc">
-                <normaloff>:/images/themes/default/mIconExpression.svg</normaloff>:/images/themes/default/mIconExpression.svg</iconset>
-              </property>
-             </widget>
-            </item>
-           </layout>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Placement</string>
+            </property>
+           </widget>
           </item>
-          <item row="6" column="0">
+          <item row="5" column="0">
            <widget class="QComboBox" name="mAnchorPointComboBox">
             <item>
              <property name="text">
@@ -251,6 +214,9 @@
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
          </property>
          <property name="title">
           <string>Search directories</string>
@@ -348,6 +314,9 @@
        </item>
        <item>
         <widget class="QgsCollapsibleGroupBoxBasic" name="mRotationGroupBox">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
          <property name="title">
           <string>Image rotation</string>
          </property>
@@ -357,13 +326,7 @@
          <property name="collapsed" stdset="0">
           <bool>false</bool>
          </property>
-         <layout class="QFormLayout" name="formLayout">
-          <property name="fieldGrowthPolicy">
-           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-          </property>
-          <property name="labelAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
+         <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
           <item row="1" column="0">
            <widget class="QCheckBox" name="mRotationFromComposerMapCheckBox">
             <property name="text">
@@ -375,7 +338,7 @@
            <widget class="QComboBox" name="mComposerMapComboBox"/>
           </item>
           <item row="0" column="0" colspan="2">
-           <widget class="QDoubleSpinBox" name="mPictureRotationSpinBox">
+           <widget class="QgsDoubleSpinBox" name="mPictureRotationSpinBox">
             <property name="suffix">
              <string> °</string>
             </property>
@@ -401,15 +364,35 @@
    <header location="global">qgscollapsiblegroupbox.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>QgsDataDefinedButton</class>
+   <extends>QToolButton</extends>
+   <header>qgsdatadefinedbutton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qgsdoublespinbox.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>mSearchDirectoriesComboBox</tabstop>
+  <tabstop>scrollArea</tabstop>
+  <tabstop>mPreviewGroupBox</tabstop>
   <tabstop>mPictureLineEdit</tabstop>
   <tabstop>mPictureBrowseButton</tabstop>
+  <tabstop>mSourceDDBtn</tabstop>
+  <tabstop>mResizeModeComboBox</tabstop>
+  <tabstop>mAnchorPointComboBox</tabstop>
+  <tabstop>mSearchDirectoriesGroupBox</tabstop>
+  <tabstop>mPreviewListWidget</tabstop>
+  <tabstop>mSearchDirectoriesComboBox</tabstop>
+  <tabstop>mRemoveDirectoryButton</tabstop>
+  <tabstop>mAddDirectoryButton</tabstop>
+  <tabstop>mRotationGroupBox</tabstop>
+  <tabstop>mPictureRotationSpinBox</tabstop>
   <tabstop>mRotationFromComposerMapCheckBox</tabstop>
+  <tabstop>mComposerMapComboBox</tabstop>
  </tabstops>
- <resources>
-  <include location="../../images/images.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

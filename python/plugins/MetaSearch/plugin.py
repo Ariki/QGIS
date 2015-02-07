@@ -24,9 +24,8 @@
 ###############################################################################
 
 import logging
-import os
 
-from PyQt4.QtCore import QCoreApplication, QLocale, QSettings, QTranslator
+from PyQt4.QtCore import QCoreApplication
 from PyQt4.QtGui import QAction, QIcon
 
 from MetaSearch.dialogs.maindialog import MetaSearchDialog
@@ -47,31 +46,6 @@ class MetaSearchPlugin(object):
         self.dialog = None
         self.web_menu = '&MetaSearch'
 
-        LOGGER.debug('Setting up i18n')
-
-        # TODO: does this work for locales like: pt_BR ?
-        locale_name = QSettings().value("locale/userLocale")[0:2]
-        # this one below does not pick up when you load QGIS with --lang param
-#        locale_name = str(QLocale.system().name()).split('_')[0]
-
-        LOGGER.debug('Locale name: %s', locale_name)
-
-        # load if exists
-        tr_file = os.path.join(self.context.ppath, 'locale', locale_name,
-                               'LC_MESSAGES', 'ui.qm')
-
-        if os.path.exists(tr_file):
-            self.translator = QTranslator()
-            result = self.translator.load(tr_file)
-            if not result:
-                msg = 'Failed to load translation: %s' % tr_file
-                LOGGER.error(msg)
-                raise RuntimeError(msg)
-            QCoreApplication.installTranslator(self.translator)
-
-        LOGGER.debug(QCoreApplication.translate('MetaSearch',
-                     'Translation loaded: %s' % tr_file))
-
     def initGui(self):
         """startup"""
 
@@ -87,7 +61,7 @@ class MetaSearchPlugin(object):
 
         self.action_run.triggered.connect(self.run)
 
-        self.iface.addToolBarIcon(self.action_run)
+        self.iface.addWebToolBarIcon(self.action_run)
         self.iface.addPluginToWebMenu(self.web_menu, self.action_run)
 
         # help
@@ -110,8 +84,7 @@ class MetaSearchPlugin(object):
         # remove the plugin menu item and icon
         self.iface.removePluginWebMenu(self.web_menu, self.action_run)
         self.iface.removePluginWebMenu(self.web_menu, self.action_help)
-        self.iface.removeToolBarIcon(self.action_run)
-        self.iface.removeToolBarIcon(self.action_help)
+        self.iface.removeWebToolBarIcon(self.action_run)
 
     def run(self):
         """open MetaSearch"""

@@ -25,8 +25,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon
+
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.gui.EditScriptAction import EditScriptAction
@@ -35,14 +35,13 @@ from processing.gui.CreateNewScriptAction import CreateNewScriptAction
 from processing.script.ScriptUtils import ScriptUtils
 from processing.script.AddScriptFromFileAction import AddScriptFromFileAction
 from processing.gui.GetScriptsAndModels import GetScriptsAction
-import processing.resources_rc
 
 
 class ScriptAlgorithmProvider(AlgorithmProvider):
 
     def __init__(self):
         AlgorithmProvider.__init__(self)
-        self.actions.extend([CreateNewScriptAction('Create new script',
+        self.actions.extend([CreateNewScriptAction(self.tr('Create new script', 'ScriptAlgorithmProvider'),
                             CreateNewScriptAction.SCRIPT_PYTHON),
                             AddScriptFromFileAction(),
                             GetScriptsAction()])
@@ -54,7 +53,7 @@ class ScriptAlgorithmProvider(AlgorithmProvider):
         AlgorithmProvider.initializeSettings(self)
         ProcessingConfig.addSetting(Setting(self.getDescription(),
                                     ScriptUtils.SCRIPTS_FOLDER,
-                                    'Scripts folder',
+                                    self.tr('Scripts folder', 'ScriptAlgorithmProvider'),
                                     ScriptUtils.scriptsFolder()))
 
     def unload(self):
@@ -68,10 +67,8 @@ class ScriptAlgorithmProvider(AlgorithmProvider):
         return 'script'
 
     def getDescription(self):
-        return 'Scripts'
+        return self.tr('Scripts', 'ScriptAlgorithmProvider')
 
     def _loadAlgorithms(self):
         folder = ScriptUtils.scriptsFolder()
         self.algs = ScriptUtils.loadFromFolder(folder)
-
-

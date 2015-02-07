@@ -36,7 +36,7 @@ class QgsComposerPicture;
 class QgsComposerRuler;
 class QgsComposerScaleBar;
 class QgsComposerShape;
-class QgsComposerAttributeTable;
+class QgsComposerAttributeTableV2;
 
 /** \ingroup MapComposer
  * \ingroup gui
@@ -55,18 +55,19 @@ class GUI_EXPORT QgsComposerView: public QGraphicsView
     enum Tool
     {
       Select = 0,      // Select/Move item
-      AddArrow,         //add arrow
+      AddArrow,        // add arrow
       AddHtml,
       AddMap,          // add new map
-      AddLegend, // add vector legend
+      AddLegend,       // add vector legend
       AddLabel,        // add label
       AddScalebar,     // add scalebar
-      AddPicture,       // add raster/vector picture
+      AddPicture,      // add raster/vector picture
       AddRectangle,
       AddEllipse,
       AddTriangle,
-      AddTable, //add attribute table
-      MoveItemContent, //move content of item (e.g. content of map)
+      AddTable,        // add attribute table
+      AddAttributeTable,
+      MoveItemContent, // move content of item (e.g. content of map)
       Pan,
       Zoom
     };
@@ -158,23 +159,23 @@ class GUI_EXPORT QgsComposerView: public QGraphicsView
     void setPreviewMode( QgsPreviewEffect::PreviewMode mode );
 
   protected:
-    void mousePressEvent( QMouseEvent* );
-    void mouseReleaseEvent( QMouseEvent* );
-    void mouseMoveEvent( QMouseEvent* );
-    void mouseDoubleClickEvent( QMouseEvent* e );
+    void mousePressEvent( QMouseEvent* ) override;
+    void mouseReleaseEvent( QMouseEvent* ) override;
+    void mouseMoveEvent( QMouseEvent* ) override;
+    void mouseDoubleClickEvent( QMouseEvent* e ) override;
 
-    void keyPressEvent( QKeyEvent * e );
-    void keyReleaseEvent( QKeyEvent * e );
+    void keyPressEvent( QKeyEvent * e ) override;
+    void keyReleaseEvent( QKeyEvent * e ) override;
 
-    void wheelEvent( QWheelEvent* event );
+    void wheelEvent( QWheelEvent* event ) override;
 
-    void paintEvent( QPaintEvent* event );
+    void paintEvent( QPaintEvent* event ) override;
 
-    void hideEvent( QHideEvent* e );
-    void showEvent( QShowEvent* e );
+    void hideEvent( QHideEvent* e ) override;
+    void showEvent( QShowEvent* e ) override;
 
-    void resizeEvent( QResizeEvent* event );
-    void scrollContentsBy( int dx, int dy );
+    void resizeEvent( QResizeEvent* event ) override;
+    void scrollContentsBy( int dx, int dy ) override;
 
   private:
     /**Current composer tool*/
@@ -229,8 +230,10 @@ class GUI_EXPORT QgsComposerView: public QGraphicsView
 
     /**Zoom composition from a mouse wheel event*/
     void wheelZoom( QWheelEvent * event );
-    /**Redraws the rubber band*/
-    void updateRubberBand( QPointF & pos );
+    /**Redraws the rectangular rubber band*/
+    void updateRubberBandRect( QPointF & pos, const bool constrainSquare = false, const bool fromCenter = false );
+    /**Redraws the linear rubber band*/
+    void updateRubberBandLine( const QPointF & pos, const bool constrainAngles = false );
     /**Removes the rubber band and cleans up*/
     void removeRubberBand();
 

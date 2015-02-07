@@ -12,7 +12,7 @@ Email                : sherman at mrcc dot com
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <QtTest>
+#include <QtTest/QtTest>
 #include <iostream>
 
 #include <QPixmap>
@@ -25,11 +25,12 @@ Email                : sherman at mrcc dot com
 
 class TestQgsApplication: public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
   private slots:
     void checkPaths();
     void checkGdalSkip();
     void initTestCase();
+    void cleanupTestCase();
   private:
     QString getQgisPath();
 };
@@ -46,6 +47,11 @@ void TestQgsApplication::initTestCase()
   qDebug( "%s", QgsApplication::showSettings().toUtf8().constData() );
 };
 
+void TestQgsApplication::cleanupTestCase()
+{
+  QgsApplication::exitQgis();
+}
+
 void TestQgsApplication::checkPaths()
 {
   QString myPath = QgsApplication::authorsFilePath();
@@ -58,11 +64,11 @@ void TestQgsApplication::checkGdalSkip()
 {
   GDALAllRegister();
   QgsApplication::skipGdalDriver( "GTiff" );
-  QVERIFY( QgsApplication::skippedGdalDrivers( ).contains( "GTiff" ) );
+  QVERIFY( QgsApplication::skippedGdalDrivers().contains( "GTiff" ) );
   QgsApplication::restoreGdalDriver( "GTiff" );
-  QVERIFY( !QgsApplication::skippedGdalDrivers( ).contains( "GTiff" ) );
+  QVERIFY( !QgsApplication::skippedGdalDrivers().contains( "GTiff" ) );
 }
 
 QTEST_MAIN( TestQgsApplication )
-#include "moc_testqgsapplication.cxx"
+#include "testqgsapplication.moc"
 

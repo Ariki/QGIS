@@ -17,7 +17,6 @@
 ***************************************************************************
 """
 
-
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
@@ -31,23 +30,20 @@ import sys
 import copy
 import time
 import json
-from PyQt4 import QtCore, QtGui
-from qgis.core import *
+import codecs
+import traceback
+from PyQt4.QtCore import QCoreApplication, QPointF
+from PyQt4.QtGui import QIcon
+from qgis.core import QgsRasterLayer, QgsVectorLayer
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.modeler.WrongModelException import WrongModelException
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
-from processing.gui.Help2Html import  getHtmlFromHelpFile
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.modeler.ModelerUtils import ModelerUtils
-from processing.parameters.ParameterRaster import ParameterRaster
-from processing.parameters.ParameterDataObject import ParameterDataObject
-from processing.parameters.ParameterExtent import ParameterExtent
-from processing.parameters.ParameterMultipleInput import ParameterMultipleInput
-from processing.parameters.ParameterVector import ParameterVector
+from processing.core.parameters import getParameterFromString, ParameterRaster, ParameterVector, ParameterTable, ParameterTableField, ParameterBoolean, ParameterString, ParameterNumber, ParameterExtent, ParameterDataObject, ParameterMultipleInput
 from processing.tools import dataobjects
+from processing.gui.Help2Html import getHtmlFromDescriptionsDict
 
-
-class Input():
+class ModelerParameter():
 
     def __init__(self, param=None, pos=None):
         self.param = param
@@ -58,10 +54,10 @@ class Input():
 
     @staticmethod
     def fromdict(d):
-        return Input(d["param"], d["pos"])
+        return ModelerParameter(d["param"], d["pos"])
 
 
-class Output():
+class ModelerOutput():
 
     def __init__(self, description=""):
         self.description = description
@@ -69,8 +65,6 @@ class Output():
 
     def todict(self):
         return self.__dict__
-
-
 
 
 class Algorithm():
@@ -103,12 +97,12 @@ class Algorithm():
 
 
     def todict(self):
-        return {k:v for k,v in self.__dict__.iteritems() if  not k.startswith("_")}
+        return {k:v for k,v in self.__dict__.iteritems() if not k.startswith("_")}
 
     @property
     def algorithm(self):
         if self._algInstance is None:
-            self._algInstance = ModelerUtils.getAlgorithm(self.consoleName).getCopy();
+            self._algInstance = ModelerUtils.getAlgorithm(self.consoleName).getCopy()
         return self._algInstance
 
     def setName(self, model):
@@ -119,6 +113,7 @@ class Algorithm():
                 i += 1
                 name = self.consoleName + "_" + str(i)
             self.name = name
+
 
 class ValueFromInput():
 
@@ -136,6 +131,7 @@ class ValueFromInput():
             return self.name == other.name
         except:
             return False
+
 
 class ValueFromOutput():
 
@@ -155,6 +151,7 @@ class ValueFromOutput():
     def __str__(self):
         return self.alg + "," + self.output
 
+
 class ModelerAlgorithm(GeoAlgorithm):
 
     CANVAS_SIZE = 4000
@@ -168,10 +165,11 @@ class ModelerAlgorithm(GeoAlgorithm):
         newone.name = self.name
         newone.group = self.group
         newone.descriptionFile = self.descriptionFile
+        newone.helpContent = copy.deepcopy(self.helpContent)
         return newone
 
     def __init__(self):
-        self.name = "Model"
+        self.name = self.tr('Model', 'ModelerAlgorithm')
         # The dialog where this model is being edited
         self.modelerdialog = None
         self.descriptionFile = None
@@ -185,10 +183,19 @@ class ModelerAlgorithm(GeoAlgorithm):
         GeoAlgorithm.__init__(self)
 
     def getIcon(self):
-        return QtGui.QIcon(os.path.dirname(__file__) + '/../images/model.png')
+        return QIcon(os.path.dirname(__file__) + '/../images/model.png')
 
     def defineCharacteristics(self):
-        self.parameters = [inp.param for inp in self.inputs.values()]
+        classes = [ParameterRaster, ParameterVector, ParameterTable, ParameterTableField,
+                   ParameterBoolean, ParameterString, ParameterNumber]
+        self.parameters = []
+        for c in classes:
+            for inp in self.inputs.values():
+                if isinstance(inp.param, c):
+                    self.parameters.append(inp.param)
+        for inp in self.inputs.values():
+            if inp.param not in self.parameters:
+                self.parameters.append(inp.param)
         self.outputs = []
         for alg in self.algs.values():
             if alg.active:
@@ -222,8 +229,9 @@ class ModelerAlgorithm(GeoAlgorithm):
         from processing.modeler.ModelerGraphicItem import ModelerGraphicItem
         for i, out in enumerate(alg.outputs):
             alg.outputs[out].pos = (alg.outputs[out].pos or
-                    alg.pos + QtCore.QPointF(ModelerGraphicItem.BOX_WIDTH,
-                                             (i + 1.5) * ModelerGraphicItem.BOX_HEIGHT))
+                    alg.pos + QPointF(
+                        ModelerGraphicItem.BOX_WIDTH,
+                        (i + 1.5) * ModelerGraphicItem.BOX_HEIGHT))
 
     def removeAlgorithm(self, name):
         """Returns True if the algorithm could be removed, False if
@@ -331,8 +339,8 @@ class ModelerAlgorithm(GeoAlgorithm):
                 # algorithms to skip some conversion routines
                 if not param.setValue(value) and not isinstance(param,
                         ParameterDataObject):
-                    raise GeoAlgorithmExecutionException('Wrong value: '
-                            + str(value))
+                    raise GeoAlgorithmExecutionException(
+                        self.tr('Wrong value: %s', 'ModelerAlgorithm') % value)
         for out in algInstance.outputs:
             if not out.hidden:
                 if out.name in alg.outputs:
@@ -425,9 +433,11 @@ class ModelerAlgorithm(GeoAlgorithm):
                             break
                     if canExecute:
                         try:
-                            progress.setDebugInfo('Prepare algorithm: ' + alg.name)
+                            progress.setDebugInfo(
+                                self.tr('Prepare algorithm: %s', 'ModelerAlgorithm') % alg.name)
                             self.prepareAlgorithm(alg)
-                            progress.setText('Running %s [%i/%i]' % ( alg.description, len(executed) + 1 ,len(toExecute)))
+                            progress.setText(
+                                self.tr('Running %s [%i/%i]', 'ModelerAlgorithm') % (alg.description, len(executed) + 1 ,len(toExecute)))
                             progress.setDebugInfo('Parameters: ' + ', '.join([unicode(p).strip()
                                                 + '=' + unicode(p.value) for p in alg.algorithm.parameters]))
                             t0 = time.time()
@@ -435,15 +445,14 @@ class ModelerAlgorithm(GeoAlgorithm):
                             dt = time.time() - t0
                             executed.append(alg.name)
                             progress.setDebugInfo(
-                                    'OK. Execution took %0.3f ms (%i outputs).'
-                                    % (dt, len(alg.algorithm.outputs)))
+                                self.tr('OK. Execution took %0.3f ms (%i outputs).', 'ModelerAlgorithm') % (dt, len(alg.algorithm.outputs)))
                         except GeoAlgorithmExecutionException, e:
-                            progress.setDebugInfo('Failed')
+                            progress.setDebugInfo(self.tr('Failed', 'ModelerAlgorithm'))
                             raise GeoAlgorithmExecutionException(
-                                    'Error executing algorithm %s\n%s' % (alg.description, e.msg))
+                                self.tr('Error executing algorithm %s\n%s', 'ModelerAlgorithm') % (alg.description, e.msg))
 
         progress.setDebugInfo(
-                'Model processed ok. Executed %i algorithms total' % len(executed))
+            self.tr('Model processed ok. Executed %i algorithms total', 'ModelerAlgorithm') % len(executed))
 
 
     def getAsCommand(self):
@@ -466,19 +475,19 @@ class ModelerAlgorithm(GeoAlgorithm):
             self.modelerdialog.repaintModel()
 
     def help(self):
+        print self.helpContent
         try:
-            helpfile = self.descriptionFile + '.help'
-            return True, getHtmlFromHelpFile(self, helpfile)
+            return True, getHtmlFromDescriptionsDict(self, self.helpContent)
         except:
             return False, None
 
     def todict(self):
-        keys = ["inputs", "group", "name", "algs"]
+        keys = ["inputs", "group", "name", "algs", "helpContent"]
         return {k:v for k,v in self.__dict__.iteritems() if k in keys}
 
     def toJson(self):
         def todict(o):
-            if isinstance(o, QtCore.QPointF):
+            if isinstance(o, QPointF):
                 return {"class": "point", "values": {"x": o.x(), "y": o.y()}}
             try:
                 d = o.todict()
@@ -486,6 +495,7 @@ class ModelerAlgorithm(GeoAlgorithm):
             except Exception, e:
                 pass
         return json.dumps(self, default=todict, indent=4)
+
 
     @staticmethod
     def fromJson(s):
@@ -497,10 +507,14 @@ class ModelerAlgorithm(GeoAlgorithm):
                 moduleName = ".".join(tokens[:-1])
                 values = d["values"]
                 if className == "point":
-                    return QtCore.QPointF(values["x"], values["y"])
+                    return QPointF(values["x"], values["y"])
+
                 def _import(name):
                     __import__(name)
                     return sys.modules[name]
+
+                if moduleName.startswith("processing.parameters"):
+                    moduleName = "processing.core.parameters"
                 module = _import(moduleName)
                 clazz = getattr(module, className)
                 instance = clazz()
@@ -512,7 +526,7 @@ class ModelerAlgorithm(GeoAlgorithm):
             except Exception, e:
                 raise e
         try:
-            model = json.loads(s, object_hook = fromdict)
+            model = json.loads(s, object_hook=fromdict)
         except Exception, e:
             raise WrongModelException(e.args[0])
         return model
@@ -526,3 +540,112 @@ class ModelerAlgorithm(GeoAlgorithm):
         alg.descriptionFile = filename
         return alg
 
+
+    ############LEGACY METHOD TO SUPPORT OLD FORMAT###########
+
+    LINE_BREAK_STRING = '%%%'
+
+    @staticmethod
+    def fromFile(filename):
+        try:
+            alg = ModelerAlgorithm.fromJsonFile(filename)
+            return alg
+        except WrongModelException, e:
+            alg = ModelerAlgorithm.fromOldFormatFile(filename)
+            return alg
+
+
+    @staticmethod
+    def fromOldFormatFile(filename):
+        def _tr(s):
+            return QCoreApplication.translate('ModelerAlgorithm', s)
+        hardcodedValues = {}
+        modelParameters = []
+        modelAlgs = []
+        model = ModelerAlgorithm()
+        model.descriptionFile = filename
+        lines = codecs.open(filename, 'r', encoding='utf-8')
+        line = lines.readline().strip('\n').strip('\r')
+        try:
+            while line != '':
+                if line.startswith('PARAMETER:'):
+                    paramLine = line[len('PARAMETER:'):]
+                    param = getParameterFromString(paramLine)
+                    if param:
+                        pass
+                    else:
+                        raise WrongModelException(
+                            _tr('Error in parameter line: %s', 'ModelerAlgorithm') % line)
+                    line = lines.readline().strip('\n')
+                    tokens = line.split(',')
+                    model.addParameter(ModelerParameter(param,
+                                       QPointF( float(tokens[0]), float(tokens[1]))))
+                    modelParameters.append(param.name)
+                elif line.startswith('VALUE:'):
+                    valueLine = line[len('VALUE:'):]
+                    tokens = valueLine.split('===')
+                    name = tokens[0]
+                    value = tokens[1].replace(ModelerAlgorithm.LINE_BREAK_STRING, '\n')
+                    hardcodedValues[name] = value
+                elif line.startswith('NAME:'):
+                    model.name = line[len('NAME:'):]
+                elif line.startswith('GROUP:'):
+                    model.group = line[len('GROUP:'):]
+                elif line.startswith('ALGORITHM:'):
+                    algLine = line[len('ALGORITHM:'):]
+                    alg = ModelerUtils.getAlgorithm(algLine)
+                    if alg is not None:
+                        modelAlg = Algorithm(alg.commandLineName())
+                        modelAlg.description = alg.name
+                        posline = lines.readline().strip('\n').strip('\r')
+                        tokens = posline.split(',')
+                        modelAlg.pos = QPointF(float(tokens[0]), float(tokens[1]))
+                        # dependenceline = lines.readline().strip('\n').strip('\r')
+                        for param in alg.parameters:
+                            if not param.hidden:
+                                line = lines.readline().strip('\n').strip('\r')
+                                if line == str(None):
+                                    modelAlg.params[param.name]  = None
+                                else:
+                                    tokens = line.split('|')
+                                    algIdx = int(tokens[0])
+                                    if algIdx == -1:
+                                        if tokens[1] in modelParameters:
+                                            modelAlg.params[param.name] = ValueFromInput(tokens[1])
+                                        else:
+                                            modelAlg.params[param.name] = hardcodedValues[tokens[1]]
+                                    else:
+                                        modelAlg.params[param.name] = ValueFromOutput(algIdx, tokens[1])
+
+                        for out in alg.outputs:
+                            if not out.hidden:
+                                line = lines.readline().strip('\n').strip('\r')
+                                if str(None) != line:
+                                    if '|' in line:
+                                        tokens = line.split('|')
+                                        name = tokens[0]
+                                        tokens = tokens[1].split(',')
+                                        pos = QPointF( float(tokens[0]), float(tokens[1]))
+                                    else:
+                                        name = line
+                                        pos = None
+                                    modelerOutput = ModelerOutput(name)
+                                    modelerOutput.pos = pos
+                                    modelAlg.outputs[out.name] = modelerOutput
+
+                        model.addAlgorithm(modelAlg)
+                        modelAlgs.append(modelAlg.name)
+                    else:
+                        raise WrongModelException(
+                            _tr('Error in algorithm name: %s', ) % algLine)
+                line = lines.readline().strip('\n').strip('\r')
+            for modelAlg in model.algs.values():
+                for name, value in modelAlg.params.iteritems():
+                    if isinstance(value, ValueFromOutput):
+                        value.alg = modelAlgs[value.alg]
+            return model
+        except Exception, e:
+            if isinstance(e, WrongModelException):
+                raise e
+            else:
+                raise WrongModelException(_tr('Error in model definition line: ') + '%s\n%s' % (line.strip(), traceback.format_exc()))

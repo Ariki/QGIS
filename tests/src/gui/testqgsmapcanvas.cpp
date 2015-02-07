@@ -1,9 +1,18 @@
 
-#include <QtTest>
+#include <QtTest/QtTest>
 
 #include <qgsapplication.h>
 #include <qgsmapcanvas.h>
 #include <qgsmaprenderer.h>
+
+namespace QTest
+{
+  template<>
+  char* toString( const QgsRectangle& r ) {
+    QByteArray ba = r.toString().toLocal8Bit();
+    return qstrdup(ba.data());
+  }
+}
 
 class TestQgsMapCanvas : public QObject
 {
@@ -91,4 +100,4 @@ void TestQgsMapCanvas::testMapRendererInteraction()
 
 
 QTEST_MAIN( TestQgsMapCanvas )
-#include "moc_testqgsmapcanvas.cxx"
+#include "testqgsmapcanvas.moc"

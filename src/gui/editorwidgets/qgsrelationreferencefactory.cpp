@@ -15,23 +15,24 @@
 
 #include "qgsrelationreferencefactory.h"
 
-#include "qgsrelationreferencewidget.h"
-#include "qgsrelreferenceconfigdlg.h"
+#include "qgsrelationreferencewidgetwrapper.h"
+#include "qgsrelationreferenceconfigdlg.h"
 
-QgsRelationReferenceFactory::QgsRelationReferenceFactory( QgsAttributeEditorContext context, QString name )
+QgsRelationReferenceFactory::QgsRelationReferenceFactory( QString name, QgsMapCanvas* canvas, QgsMessageBar* messageBar )
     : QgsEditorWidgetFactory( name )
-    , mEditorContext( context )
+    , mCanvas( canvas )
+    , mMessageBar( messageBar )
 {
 }
 
 QgsEditorWidgetWrapper* QgsRelationReferenceFactory::create( QgsVectorLayer* vl, int fieldIdx, QWidget* editor, QWidget* parent ) const
 {
-  return new QgsRelationReferenceWidget( vl, fieldIdx, editor, mEditorContext, parent );
+  return new QgsRelationReferenceWidgetWrapper( vl, fieldIdx, editor, mCanvas, mMessageBar, parent );
 }
 
 QgsEditorConfigWidget* QgsRelationReferenceFactory::configWidget( QgsVectorLayer* vl, int fieldIdx, QWidget* parent ) const
 {
-  return new QgsRelReferenceConfigDlg( vl, fieldIdx, parent );
+  return new QgsRelationReferenceConfigDlg( vl, fieldIdx, parent );
 }
 
 QgsEditorWidgetConfig QgsRelationReferenceFactory::readConfig( const QDomElement& configElement, QgsVectorLayer* layer, int fieldIdx )
@@ -41,8 +42,11 @@ QgsEditorWidgetConfig QgsRelationReferenceFactory::readConfig( const QDomElement
   QMap<QString, QVariant> cfg;
 
   cfg.insert( "AllowNULL", configElement.attribute( "AllowNULL" ) == "1" );
+  cfg.insert( "OrderByValue", configElement.attribute( "OrderByValue" ) == "1" );
   cfg.insert( "ShowForm", configElement.attribute( "ShowForm" ) == "1" );
   cfg.insert( "Relation", configElement.attribute( "Relation" ) );
+  cfg.insert( "MapIdentification", configElement.attribute( "MapIdentification" ) == "1" );
+  cfg.insert( "ReadOnly", configElement.attribute( "ReadOnly" ) == "1" );
 
   return cfg;
 }
@@ -54,6 +58,9 @@ void QgsRelationReferenceFactory::writeConfig( const QgsEditorWidgetConfig& conf
   Q_UNUSED( fieldIdx );
 
   configElement.setAttribute( "AllowNULL", config["AllowNULL"].toBool() );
+  configElement.setAttribute( "OrderByValue", config["OrderByValue"].toBool() );
   configElement.setAttribute( "ShowForm", config["ShowForm"].toBool() );
   configElement.setAttribute( "Relation", config["Relation"].toString() );
+  configElement.setAttribute( "MapIdentification", config["MapIdentification"].toBool() );
+  configElement.setAttribute( "ReadOnly", config["ReadOnly"].toBool() );
 }

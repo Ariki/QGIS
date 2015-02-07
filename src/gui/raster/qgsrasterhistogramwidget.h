@@ -55,7 +55,7 @@ class GUI_EXPORT QgsRasterHistogramWidget : public QWidget, private Ui::QgsRaste
     bool computeHistogram( bool forceComputeFlag );
 
     /** Apply a histoActionTriggered() event. */
-    void histoAction( const QString actionName, bool actionFlag = true );
+    void histoAction( const QString &actionName, bool actionFlag = true );
 
     /** Apply a histoActionTriggered() event. */
     void setSelectedBand( int index );
@@ -70,8 +70,8 @@ class GUI_EXPORT QgsRasterHistogramWidget : public QWidget, private Ui::QgsRaste
     /** Used when the histogram band selector changes, or when tab is loaded. */
     void on_cboHistoBand_currentIndexChanged( int );
     /** Applies the selected min/max values to the renderer widget. */
-    void applyHistoMin( );
-    void applyHistoMax( );
+    void applyHistoMin();
+    void applyHistoMax();
     /** Button to activate picking of the min/max value on the graph. */
     void on_btnHistoMin_toggled();
     void on_btnHistoMax_toggled();

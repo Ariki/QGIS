@@ -33,7 +33,7 @@ QgsLayerTreeViewDefaultActions::QgsLayerTreeViewDefaultActions( QgsLayerTreeView
 
 QAction* QgsLayerTreeViewDefaultActions::actionAddGroup( QObject* parent )
 {
-  QAction* a = new QAction( tr( "&Add Group" ), parent );
+  QAction* a = new QAction( QgsApplication::getThemeIcon( "/mActionFolder.png" ), tr( "&Add Group" ), parent );
   connect( a, SIGNAL( triggered() ), this, SLOT( addGroup() ) );
   return a;
 }
@@ -113,6 +113,8 @@ QAction* QgsLayerTreeViewDefaultActions::actionGroupSelected( QObject* parent )
 void QgsLayerTreeViewDefaultActions::addGroup()
 {
   QgsLayerTreeGroup* group = mView->currentGroupNode();
+  if ( !group )
+    group = mView->layerTreeModel()->rootGroup();
 
   QgsLayerTreeGroup* newGroup = group->addGroup( uniqueGroupName( group ) );
   mView->edit( mView->layerTreeModel()->node2index( newGroup ) );
@@ -149,8 +151,6 @@ void QgsLayerTreeViewDefaultActions::showFeatureCount()
 
 
   node->setCustomProperty( "showFeatureCount", node->customProperty( "showFeatureCount", 0 ).toInt() ? 0 : 1 );
-
-  mView->layerTreeModel()->refreshLayerSymbology( QgsLayerTree::toLayer( node ) );
 }
 
 
@@ -167,8 +167,12 @@ void QgsLayerTreeViewDefaultActions::zoomToLayer( QgsMapCanvas* canvas )
 
 void QgsLayerTreeViewDefaultActions::zoomToGroup( QgsMapCanvas* canvas )
 {
+  QgsLayerTreeGroup* groupNode = mView->currentGroupNode();
+  if ( !groupNode )
+    return;
+
   QList<QgsMapLayer*> layers;
-  foreach ( QString layerId, mView->currentGroupNode()->findLayerIds() )
+  foreach ( QString layerId, groupNode->findLayerIds() )
     layers << QgsMapLayerRegistry::instance()->mapLayer( layerId );
 
   zoomToLayers( canvas, layers );
@@ -192,6 +196,7 @@ void QgsLayerTreeViewDefaultActions::zoomToGroup()
 void QgsLayerTreeViewDefaultActions::zoomToLayers( QgsMapCanvas* canvas, const QList<QgsMapLayer*>& layers )
 {
   QgsRectangle extent;
+  extent.setMinimal();
 
   for ( int i = 0; i < layers.size(); ++i )
   {
@@ -199,23 +204,26 @@ void QgsLayerTreeViewDefaultActions::zoomToLayers( QgsMapCanvas* canvas, const Q
     QgsRectangle layerExtent = layer->extent();
 
     QgsVectorLayer *vLayer = qobject_cast<QgsVectorLayer*>( layer );
-    if ( vLayer && vLayer->geometryType() == QGis::NoGeometry )
-      continue;
-
-    if ( layerExtent.isEmpty() && layer->type() == QgsMapLayer::VectorLayer )
+    if ( vLayer )
     {
-      qobject_cast<QgsVectorLayer*>( layer )->updateExtents();
-      layerExtent = vLayer->extent();
+      if ( vLayer->geometryType() == QGis::NoGeometry )
+        continue;
+
+      if ( layerExtent.isEmpty() )
+      {
+        vLayer->updateExtents();
+        layerExtent = vLayer->extent();
+      }
     }
+
+    if ( layerExtent.isNull() )
+      continue;
 
     //transform extent if otf-projection is on
     if ( canvas->hasCrsTransformEnabled() )
       layerExtent = canvas->mapSettings().layerExtentToOutputExtent( layer, layerExtent );
 
-    if ( i == 0 )
-      extent = layerExtent;
-    else
-      extent.combineExtentWith( &layerExtent );
+    extent.combineExtentWith( &layerExtent );
   }
 
   if ( extent.isNull() )
@@ -260,16 +268,17 @@ void QgsLayerTreeViewDefaultActions::makeTopLevel()
 void QgsLayerTreeViewDefaultActions::groupSelected()
 {
   QList<QgsLayerTreeNode*> nodes = mView->selectedNodes( true );
-  if ( nodes.count() < 2 )
+  if ( nodes.count() < 2 || ! QgsLayerTree::isGroup( nodes[0]->parent() ) )
     return;
 
-  QgsLayerTreeGroup* parentGroup = mView->layerTreeModel()->rootGroup();
+  QgsLayerTreeGroup* parentGroup = QgsLayerTree::toGroup( nodes[0]->parent() );
+  int insertIdx = parentGroup->children().indexOf( nodes[0] );
 
   QgsLayerTreeGroup* newGroup = new QgsLayerTreeGroup( uniqueGroupName( parentGroup ) );
   foreach ( QgsLayerTreeNode* node, nodes )
     newGroup->addChildNode( node->clone() );
 
-  parentGroup->addChildNode( newGroup );
+  parentGroup->insertChildNode( insertIdx, newGroup );
 
   foreach ( QgsLayerTreeNode* node, nodes )
   {
@@ -277,4 +286,6 @@ void QgsLayerTreeViewDefaultActions::groupSelected()
     if ( group )
       group->removeChildNode( node );
   }
+
+  mView->setCurrentIndex( mView->layerTreeModel()->node2index( newGroup ) );
 }

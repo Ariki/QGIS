@@ -494,6 +494,7 @@ QDomDocument QgsManageConnectionsDialog::saveOracleConnections( const QStringLis
     el.setAttribute( "host", settings.value( path + "/host", "" ).toString() );
     el.setAttribute( "port", settings.value( path + "/port", "" ).toString() );
     el.setAttribute( "database", settings.value( path + "/database", "" ).toString() );
+    el.setAttribute( "dboptions", settings.value( path + "/dboptions", "" ).toString() );
     el.setAttribute( "estimatedMetadata", settings.value( path + "/estimatedMetadata", "0" ).toString() );
     el.setAttribute( "userTablesOnly", settings.value( path + "/userTablesOnly", "0" ).toString() );
     el.setAttribute( "geometryColumnsOnly", settings.value( path + "/geometryColumnsOnly", "0" ).toString() );
@@ -585,7 +586,7 @@ void QgsManageConnectionsDialog::loadOWSConnections( const QDomDocument &doc, co
 
     // no dups detected or overwrite is allowed
     settings.beginGroup( "/Qgis/connections-" + service.toLower() );
-    settings.setValue( QString( "/" + connectionName + "/url" ) , child.attribute( "url" ) );
+    settings.setValue( QString( "/" + connectionName + "/url" ), child.attribute( "url" ) );
     settings.setValue( QString( "/" + connectionName + "/ignoreGetMapURI" ), child.attribute( "ignoreGetMapURI" ) == "true" );
     settings.setValue( QString( "/" + connectionName + "/ignoreGetFeatureInfoURI" ), child.attribute( "ignoreGetFeatureInfoURI" ) == "true" );
     settings.setValue( QString( "/" + connectionName + "/ignoreAxisOrientation" ), child.attribute( "ignoreAxisOrientation" ) == "true" );
@@ -672,7 +673,7 @@ void QgsManageConnectionsDialog::loadWFSConnections( const QDomDocument &doc, co
 
     // no dups detected or overwrite is allowed
     settings.beginGroup( "/Qgis/connections-wfs" );
-    settings.setValue( QString( "/" + connectionName + "/url" ) , child.attribute( "url" ) );
+    settings.setValue( QString( "/" + connectionName + "/url" ), child.attribute( "url" ) );
     settings.endGroup();
 
     if ( !child.attribute( "username" ).isEmpty() )
@@ -937,6 +938,7 @@ void QgsManageConnectionsDialog::loadOracleConnections( const QDomDocument &doc,
     settings.setValue( "/host", child.attribute( "host" ) );
     settings.setValue( "/port", child.attribute( "port" ) );
     settings.setValue( "/database", child.attribute( "database" ) );
+    settings.setValue( "/dboptions", child.attribute( "dboptions" ) );
     settings.setValue( "/estimatedMetadata", child.attribute( "estimatedMetadata" ) );
     settings.setValue( "/userTablesOnly", child.attribute( "userTablesOnly" ) );
     settings.setValue( "/geometryColumnsOnly", child.attribute( "geometryColumnsOnly" ) );

@@ -84,6 +84,7 @@ class QgsSimpleLineSymbolLayerV2 : QgsLineSymbolLayerV2
     Qt::PenStyle dxfPenStyle() const;
 
     double dxfWidth( const QgsDxfExport& e, const QgsSymbolV2RenderContext& context ) const;
+    double dxfOffset( const QgsDxfExport& e, const QgsSymbolV2RenderContext& context ) const;
     QColor dxfColor( const QgsSymbolV2RenderContext& context ) const;
 };
 
@@ -124,6 +125,8 @@ class QgsMarkerLineSymbolLayerV2 : QgsLineSymbolLayerV2
     void stopRender( QgsSymbolV2RenderContext& context );
 
     void renderPolyline( const QPolygonF& points, QgsSymbolV2RenderContext& context );
+
+    void renderPolygonOutline( const QPolygonF& points, QList<QPolygonF>* rings, QgsSymbolV2RenderContext& context );
 
     QgsStringMap properties() const;
 

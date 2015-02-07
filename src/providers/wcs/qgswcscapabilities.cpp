@@ -62,10 +62,11 @@
 #include <QDir>
 #endif
 
-QgsWcsCapabilities::QgsWcsCapabilities( QgsDataSourceURI const &theUri ):
-    mUri( theUri ),
-    mCoverageCount( 0 ),
-    mCacheLoadControl( QNetworkRequest::PreferNetwork )
+QgsWcsCapabilities::QgsWcsCapabilities( QgsDataSourceURI const &theUri )
+    : mUri( theUri )
+    , mCapabilitiesReply( NULL )
+    , mCoverageCount( 0 )
+    , mCacheLoadControl( QNetworkRequest::PreferNetwork )
 {
   QgsDebugMsg( "uri = " + mUri.encodedUri() );
 
@@ -75,7 +76,8 @@ QgsWcsCapabilities::QgsWcsCapabilities( QgsDataSourceURI const &theUri ):
 }
 
 QgsWcsCapabilities::QgsWcsCapabilities()
-    : mCoverageCount( 0 )
+    : mCapabilitiesReply( NULL )
+    , mCoverageCount( 0 )
 {
 }
 
@@ -107,7 +109,7 @@ void QgsWcsCapabilities::setUri( QgsDataSourceURI const &theUri )
 
   parseUri();
 
-  retrieveServerCapabilities( );
+  retrieveServerCapabilities();
 }
 
 QString QgsWcsCapabilities::prepareUri( QString uri )
@@ -220,12 +222,12 @@ QString QgsWcsCapabilities::getCapabilitiesUrl( const QString version ) const
   return url;
 }
 
-QString QgsWcsCapabilities::getCapabilitiesUrl( ) const
+QString QgsWcsCapabilities::getCapabilitiesUrl() const
 {
   return getCapabilitiesUrl( mVersion );
 }
 
-bool QgsWcsCapabilities::retrieveServerCapabilities( )
+bool QgsWcsCapabilities::retrieveServerCapabilities()
 {
   clear();
 
@@ -560,7 +562,7 @@ QList<QDomElement> QgsWcsCapabilities::domElements( const QDomElement &element, 
         }
         else
         {
-          list.append( domElements( el,  names.join( "." ) ) );
+          list.append( domElements( el, names.join( "." ) ) );
         }
       }
     }
@@ -700,7 +702,7 @@ void QgsWcsCapabilities::parseCoverageOfferingBrief( QDomElement const & e, QgsW
     QList<double> high = parseDoubles( posElements.value( 1 ).text() );
     if ( low.size() == 2 && high.size() == 2 )
     {
-      coverageSummary.wgs84BoundingBox = QgsRectangle( low[0], low[1], high[0], high[1] ) ;
+      coverageSummary.wgs84BoundingBox = QgsRectangle( low[0], low[1], high[0], high[1] );
       QgsDebugMsg( "wgs84BoundingBox = " + coverageSummary.wgs84BoundingBox.toString() );
     }
   }
@@ -844,7 +846,7 @@ bool QgsWcsCapabilities::parseDescribeCoverageDom10( QByteArray const &xml, QgsW
     QList<double> high = parseDoubles( posElements.value( 1 ).text() );
     if ( low.size() == 2 && high.size() == 2 )
     {
-      QgsRectangle box( low[0], low[1], high[0], high[1] ) ;
+      QgsRectangle box( low[0], low[1], high[0], high[1] );
       coverage->boundingBoxes.insert( srsName, box );
       QgsDebugMsg( "Envelope: " + srsName + " : " + box.toString() );
     }
@@ -1213,9 +1215,9 @@ QgsWcsCoverageSummary* QgsWcsCapabilities::coverageSummary( QString const & theI
   return 0;
 }
 
-QList<QgsWcsCoverageSummary> QgsWcsCapabilities::coverages( )
+QList<QgsWcsCoverageSummary> QgsWcsCapabilities::coverages()
 {
-  return coverageSummaries( );
+  return coverageSummaries();
 }
 
 QList<QgsWcsCoverageSummary> QgsWcsCapabilities::coverageSummaries( QgsWcsCoverageSummary* parent )

@@ -37,12 +37,14 @@
 #include <climits>
 #include <cfloat>
 
-QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl , int fieldIdx )
+QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl, int fieldIdx )
     : QDialog()
     , mLayer( vl )
     , mFieldIdx( fieldIdx )
 {
   setupUi( this );
+  setWindowTitle( tr( "Edit Widget Properties - %1 (%2)" ).arg( vl->pendingFields()[fieldIdx].name() ).arg( vl->name() ) );
+
   connect( selectionListWidget, SIGNAL( currentRowChanged( int ) ), this, SLOT( setStackPage( int ) ) );
 
   QMapIterator<QString, QgsEditorWidgetFactory*> it( QgsEditorWidgetRegistry::instance()->factories() );
@@ -62,6 +64,13 @@ QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl , int fieldId
                                         + 2 );
   selectionListWidget->setMaximumWidth( selectionListWidget->sizeHintForColumn( 0 )
                                         + 2 );
+
+  if ( vl->pendingFields().fieldOrigin( fieldIdx ) == QgsFields::OriginJoin ||
+       vl->pendingFields().fieldOrigin( fieldIdx ) == QgsFields::OriginExpression )
+  {
+    isFieldEditableCheckBox->setEnabled( false );
+  }
+
   QSettings settings;
   restoreGeometry( settings.value( "/Windows/QgsAttributeTypeDialog/geometry" ).toByteArray() );
 }
@@ -70,6 +79,8 @@ QgsAttributeTypeDialog::~QgsAttributeTypeDialog()
 {
   QSettings settings;
   settings.setValue( "/Windows/QgsAttributeTypeDialog/geometry", saveGeometry() );
+
+  qDeleteAll( mEditorConfigWidgets.values() );
 }
 
 const QString QgsAttributeTypeDialog::editorWidgetV2Type()

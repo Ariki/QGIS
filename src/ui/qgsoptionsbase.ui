@@ -45,7 +45,16 @@
        <property name="spacing">
         <number>0</number>
        </property>
-       <property name="margin">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
         <number>0</number>
        </property>
        <item>
@@ -129,6 +138,18 @@
           <property name="icon">
            <iconset resource="../../images/images.qrc">
             <normaloff>:/images/themes/default/propertyicons/rendering.png</normaloff>:/images/themes/default/propertyicons/rendering.png</iconset>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Colors</string>
+          </property>
+          <property name="toolTip">
+           <string>Colors</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../images/images.qrc">
+            <normaloff>:/images/themes/default/propertyicons/symbology.png</normaloff>:/images/themes/default/propertyicons/symbology.png</iconset>
           </property>
          </item>
          <item>
@@ -245,7 +266,16 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
-       <property name="margin">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
         <number>0</number>
        </property>
        <item>
@@ -255,7 +285,16 @@
          </property>
          <widget class="QWidget" name="mOptionsPageGeneral">
           <layout class="QVBoxLayout" name="verticalLayout_3">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -271,8 +310,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>610</width>
-                <height>640</height>
+                <width>604</width>
+                <height>689</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -400,6 +439,16 @@
                       <item>
                        <property name="text">
                         <string>32</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>48</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>64</string>
                        </property>
                       </item>
                      </widget>
@@ -602,29 +651,34 @@
                   <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_31">
                     <item>
+                     <widget class="QCheckBox" name="mNativeColorDialogsChkBx">
+                      <property name="text">
+                       <string>Use native color chooser dialogs</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QCheckBox" name="mLiveColorDialogsChkBx">
                       <property name="text">
                        <string>Use live-updating color chooser dialogs</string>
                       </property>
                      </widget>
                     </item>
-                    <item>
-                     <widget class="Line" name="line_5">
-                      <property name="minimumSize">
-                       <size>
-                        <width>12</width>
-                        <height>0</height>
-                       </size>
-                      </property>
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                     </widget>
-                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_32">
                     <item>
                      <widget class="QCheckBox" name="mCustomSideBarSide">
                       <property name="text">
                        <string>Custom side bar style</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="cbxCanvasRotation">
+                      <property name="text">
+                       <string>Experimental canvas rotation support (restart required)</string>
                       </property>
                      </widget>
                     </item>
@@ -918,7 +972,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageSystem">
           <layout class="QVBoxLayout" name="verticalLayout_7">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -934,8 +997,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>655</width>
-                <height>862</height>
+                <width>607</width>
+                <height>893</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_22">
@@ -1074,7 +1137,7 @@
                   <item row="0" column="0">
                    <widget class="QLabel" name="mRestoreDefaultWindowStateLbl">
                     <property name="text">
-                     <string>Reset the User Interface settings, to reset QGIS to it's default view</string>
+                     <string>Reset user interface to default settings (restart required)</string>
                     </property>
                    </widget>
                   </item>
@@ -1293,7 +1356,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageDataSources">
           <layout class="QVBoxLayout" name="verticalLayout_26">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -1309,8 +1381,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>531</width>
-                <height>440</height>
+                <width>549</width>
+                <height>427</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_27">
@@ -1404,7 +1476,7 @@
                     <item>
                      <widget class="QSpinBox" name="spinBoxAttrTableRowCache">
                       <property name="minimum">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <property name="maximum">
                        <number>100000</number>
@@ -1603,7 +1675,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageRendering">
           <layout class="QVBoxLayout" name="verticalLayout_12">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -1619,8 +1700,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>710</width>
-                <height>796</height>
+                <width>711</width>
+                <height>838</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1838,7 +1919,16 @@
                   <string>Rendering quality</string>
                  </property>
                  <layout class="QVBoxLayout" name="_5">
-                  <property name="margin">
+                  <property name="leftMargin">
+                   <number>11</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>11</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>11</number>
+                  </property>
+                  <property name="bottomMargin">
                    <number>11</number>
                   </property>
                   <item>
@@ -1860,7 +1950,16 @@
                   <item>
                    <widget class="QWidget" name="widget" native="true">
                     <layout class="QHBoxLayout" name="horizontalLayout_19">
-                     <property name="margin">
+                     <property name="leftMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="bottomMargin">
                       <number>0</number>
                      </property>
                      <item>
@@ -1944,7 +2043,16 @@
                      <item>
                       <widget class="QWidget" name="widget_3" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_22">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -1976,7 +2084,16 @@
                      <item>
                       <widget class="QWidget" name="widget_4" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_23">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -2008,7 +2125,16 @@
                      <item>
                       <widget class="QWidget" name="widget_5" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_24">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -2047,7 +2173,16 @@
                      <item>
                       <widget class="QWidget" name="widget_6" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_25">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -2079,7 +2214,16 @@
                      <item>
                       <widget class="QWidget" name="widget_7" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_18">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -2136,7 +2280,16 @@
                      <item>
                       <widget class="QWidget" name="widget_2" native="true">
                        <layout class="QHBoxLayout" name="horizontalLayout_20">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -2240,9 +2393,123 @@
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="mOptionsPageColors">
+          <layout class="QVBoxLayout" name="verticalLayout_38">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QScrollArea" name="scrollArea">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>262</width>
+                <height>274</height>
+               </rect>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_46">
+               <item>
+                <widget class="QgsCollapsibleGroupBox" name="groupBox_7">
+                 <property name="title">
+                  <string>Standard colors</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_12">
+                  <item row="3" column="1">
+                   <widget class="QPushButton" name="mButtonPasteColors">
+                    <property name="text">
+                     <string>Paste colors</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="1">
+                   <widget class="QPushButton" name="mButtonExportColors">
+                    <property name="text">
+                     <string>Export</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QPushButton" name="mButtonAddColor">
+                    <property name="text">
+                     <string>Add color</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QPushButton" name="mButtonRemoveColor">
+                    <property name="text">
+                     <string>Remove color</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="1">
+                   <spacer name="verticalSpacer_12">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QPushButton" name="mButtonCopyColors">
+                    <property name="text">
+                     <string>Copy colors</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QPushButton" name="mButtonImportColors">
+                    <property name="text">
+                     <string>Import</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0" rowspan="8">
+                   <widget class="QgsColorSchemeList" name="mTreeCustomColors"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
          <widget class="QWidget" name="mOptionsPageMapCanvas">
           <layout class="QVBoxLayout" name="verticalLayout_16">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -2258,8 +2525,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>486</width>
-                <height>330</height>
+                <width>538</width>
+                <height>340</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_25">
@@ -2270,7 +2537,7 @@
                  </property>
                  <layout class="QGridLayout" name="gridLayout_7">
                   <item row="0" column="4">
-                   <widget class="QgsColorButton" name="pbnCanvasColor">
+                   <widget class="QgsColorButtonV2" name="pbnCanvasColor">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -2279,13 +2546,13 @@
                     </property>
                     <property name="minimumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>0</height>
                      </size>
                     </property>
                     <property name="maximumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>16777215</height>
                      </size>
                     </property>
@@ -2334,7 +2601,7 @@
                    </widget>
                   </item>
                   <item row="0" column="1">
-                   <widget class="QgsColorButton" name="pbnSelectionColor">
+                   <widget class="QgsColorButtonV2" name="pbnSelectionColor">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -2343,13 +2610,13 @@
                     </property>
                     <property name="minimumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>0</height>
                      </size>
                     </property>
                     <property name="maximumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>16777215</height>
                      </size>
                     </property>
@@ -2571,7 +2838,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageMapTools">
           <layout class="QVBoxLayout" name="verticalLayout_14">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -2587,8 +2863,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>664</width>
-                <height>628</height>
+                <width>666</width>
+                <height>679</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -2658,7 +2934,7 @@
                      </widget>
                     </item>
                     <item>
-                     <widget class="QgsColorButton" name="mIdentifyHighlightColorButton">
+                     <widget class="QgsColorButtonV2" name="mIdentifyHighlightColorButton">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                         <horstretch>0</horstretch>
@@ -2667,13 +2943,13 @@
                       </property>
                       <property name="minimumSize">
                        <size>
-                        <width>100</width>
+                        <width>120</width>
                         <height>0</height>
                        </size>
                       </property>
                       <property name="maximumSize">
                        <size>
-                        <width>100</width>
+                        <width>120</width>
                         <height>16777215</height>
                        </size>
                       </property>
@@ -2857,7 +3133,7 @@
                    </spacer>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QgsColorButton" name="pbnMeasureColor">
+                   <widget class="QgsColorButtonV2" name="pbnMeasureColor">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -2866,13 +3142,13 @@
                     </property>
                     <property name="minimumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>0</height>
                      </size>
                     </property>
                     <property name="maximumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>16777215</height>
                      </size>
                     </property>
@@ -2890,9 +3166,6 @@
                   <string>Panning and zooming</string>
                  </property>
                  <layout class="QGridLayout" name="_8">
-                  <property name="margin">
-                   <number>9</number>
-                  </property>
                   <item row="1" column="0">
                    <widget class="QLabel" name="label_3">
                     <property name="text">
@@ -3067,7 +3340,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageComposer">
           <layout class="QVBoxLayout" name="verticalLayout_36">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -3083,8 +3365,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>626</width>
-                <height>549</height>
+                <width>522</width>
+                <height>334</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_39">
@@ -3124,25 +3406,40 @@
                  </property>
                  <layout class="QGridLayout" name="gridLayout_9">
                   <item row="0" column="0">
-                   <layout class="QHBoxLayout" name="horizontalLayout_32">
-                    <item>
-                     <widget class="QLabel" name="label_66">
-                      <property name="text">
-                       <string>Grid style</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QComboBox" name="mGridStyleComboBox"/>
-                    </item>
-                    <item>
-                     <widget class="QgsColorButton" name="mGridColorButton">
-                      <property name="text">
-                       <string>Color...</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
+                   <widget class="QLabel" name="label_66">
+                    <property name="text">
+                     <string>Grid style</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="2">
+                   <widget class="QComboBox" name="mGridStyleComboBox"/>
+                  </item>
+                  <item row="0" column="3">
+                   <widget class="QLabel" name="label_4">
+                    <property name="text">
+                     <string>Grid color</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="4">
+                   <widget class="QgsColorButtonV2" name="mGridColorButton">
+                    <property name="minimumSize">
+                     <size>
+                      <width>120</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                    <property name="maximumSize">
+                     <size>
+                      <width>120</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </widget>
@@ -3248,7 +3545,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageDigitizing">
           <layout class="QVBoxLayout" name="verticalLayout_17">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -3264,8 +3570,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>501</width>
-                <height>640</height>
+                <width>520</width>
+                <height>638</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_31">
@@ -3387,7 +3693,7 @@
                    </spacer>
                   </item>
                   <item row="0" column="3">
-                   <widget class="QgsColorButton" name="mLineColorToolButton">
+                   <widget class="QgsColorButtonV2" name="mLineColorToolButton">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -3396,13 +3702,13 @@
                     </property>
                     <property name="minimumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>0</height>
                      </size>
                     </property>
                     <property name="maximumSize">
                      <size>
-                      <width>100</width>
+                      <width>120</width>
                       <height>16777215</height>
                      </size>
                     </property>
@@ -3739,7 +4045,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageGDAL">
           <layout class="QVBoxLayout" name="verticalLayout_4">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -3755,8 +4070,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>462</width>
-                <height>372</height>
+                <width>528</width>
+                <height>361</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -3869,7 +4184,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageCRS">
           <layout class="QVBoxLayout" name="verticalLayout_18">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -3885,8 +4209,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>650</width>
-                <height>707</height>
+                <width>542</width>
+                <height>663</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_15">
@@ -3908,59 +4232,8 @@
                  <property name="title">
                   <string>CRS for new layers</string>
                  </property>
-                 <layout class="QGridLayout" name="gridLayout_23">
-                  <item row="4" column="1">
-                   <widget class="QLineEdit" name="leLayerGlobalCrs">
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="2">
-                   <widget class="QPushButton" name="pbnSelectProjection">
-                    <property name="text">
-                     <string>Select...</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QRadioButton" name="radUseProjectProjection">
-                    <property name="text">
-                     <string>Use &amp;project CRS</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QRadioButton" name="radPromptForProjection">
-                    <property name="text">
-                     <string>Prompt for &amp;CRS</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QRadioButton" name="radUseGlobalProjection">
-                    <property name="text">
-                     <string>Use default CRS displa&amp;yed below</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <spacer name="horizontalSpacer_27">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeType">
-                     <enum>QSizePolicy::Fixed</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>8</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item row="0" column="0" colspan="4">
+                 <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,1">
+                  <item row="0" column="0" colspan="2">
                    <widget class="QLabel" name="label_8">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -3976,6 +4249,37 @@
                     </property>
                    </widget>
                   </item>
+                  <item row="1" column="0">
+                   <widget class="QRadioButton" name="radPromptForProjection">
+                    <property name="text">
+                     <string>Prompt for &amp;CRS</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QRadioButton" name="radUseProjectProjection">
+                    <property name="text">
+                     <string>Use &amp;project CRS</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QRadioButton" name="radUseGlobalProjection">
+                    <property name="text">
+                     <string>Use a default CRS</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QgsProjectionSelectionWidget" name="leLayerGlobalCrs" native="true">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="focusPolicy">
+                     <enum>Qt::StrongFocus</enum>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
                 </widget>
                </item>
@@ -3984,13 +4288,26 @@
                  <property name="title">
                   <string>Default CRS for new projects</string>
                  </property>
-                 <layout class="QGridLayout" name="gridLayout_22">
-                  <item row="2" column="0">
-                   <widget class="QRadioButton" name="radOtfTransform">
+                 <layout class="QGridLayout" name="gridLayout_16" columnstretch="0,1">
+                  <item row="0" column="0">
+                   <widget class="QRadioButton" name="radOtfNone">
                     <property name="text">
-                     <string>Enable 'on the &amp;fly' reprojection by default</string>
+                     <string>Don't enable 'on the fly' reprojection</string>
                     </property>
                    </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <spacer name="horizontalSpacer_43">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
                   </item>
                   <item row="1" column="0">
                    <widget class="QRadioButton" name="radOtfAuto">
@@ -4002,41 +4319,31 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="0">
-                   <widget class="QLineEdit" name="leProjectGlobalCrs">
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QRadioButton" name="radOtfNone">
+                  <item row="2" column="0">
+                   <widget class="QRadioButton" name="radOtfTransform">
                     <property name="text">
-                     <string>Don't enable 'on the fly' reprojection</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="1">
-                   <widget class="QPushButton" name="pbnSelectOtfProjection">
-                    <property name="text">
-                     <string>Select...</string>
+                     <string>Enable 'on the &amp;fly' reprojection by default</string>
                     </property>
                    </widget>
                   </item>
                   <item row="3" column="0">
                    <widget class="QLabel" name="label_16">
                     <property name="text">
-                     <string>Always start new projects with this CRS</string>
+                     <string>Always start new projects with following CRS</string>
                     </property>
-                    <property name="buddy">
-                     <cstring>leProjectGlobalCrs</cstring>
+                   </widget>
+                  </item>
+                  <item row="4" column="0" colspan="2">
+                   <widget class="QgsProjectionSelectionWidget" name="leProjectGlobalCrs" native="true">
+                    <property name="focusPolicy">
+                     <enum>Qt::StrongFocus</enum>
                     </property>
                    </widget>
                   </item>
                  </layout>
                 </widget>
                </item>
-               <item row="3" column="0">
+               <item row="3" column="0" rowspan="2">
                 <widget class="QgsCollapsibleGroupBox" name="mDefaultDatumTransformGroupBox">
                  <property name="title">
                   <string>Default datum transformations</string>
@@ -4123,7 +4430,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageLocale">
           <layout class="QVBoxLayout" name="verticalLayout_19">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -4139,8 +4455,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>300</width>
-                <height>226</height>
+                <width>619</width>
+                <height>534</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_32">
@@ -4213,7 +4529,16 @@
          </widget>
          <widget class="QWidget" name="mOptionsPageNetwork">
           <layout class="QVBoxLayout" name="verticalLayout_20">
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -4228,9 +4553,9 @@
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>0</y>
-                <width>531</width>
-                <height>685</height>
+                <y>-188</y>
+                <width>604</width>
+                <height>742</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_33">
@@ -4386,81 +4711,7 @@
                   <bool>true</bool>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_1">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="lblProxyHost">
-                    <property name="text">
-                     <string>Host</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1" colspan="4">
-                   <widget class="QLineEdit" name="leProxyHost"/>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="lblProxyPort">
-                    <property name="text">
-                     <string>Port</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1" colspan="4">
-                   <widget class="QLineEdit" name="leProxyPort"/>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="lblUser">
-                    <property name="text">
-                     <string>User</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1" colspan="4">
-                   <widget class="QLineEdit" name="leProxyUser">
-                    <property name="toolTip">
-                     <string>Leave this blank if no proxy username / password are required</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="0">
-                   <widget class="QLabel" name="lblPassword">
-                    <property name="text">
-                     <string>Password</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1" colspan="4">
-                   <widget class="QLineEdit" name="leProxyPassword">
-                    <property name="toolTip">
-                     <string>Leave this blank if no proxy username / password are required</string>
-                    </property>
-                    <property name="echoMode">
-                     <enum>QLineEdit::Password</enum>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
-                   <widget class="QLabel" name="mTypeLabel">
-                    <property name="text">
-                     <string>Proxy type</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="1" colspan="2">
-                   <widget class="QComboBox" name="mProxyTypeComboBox"/>
-                  </item>
-                  <item row="4" column="3" colspan="2">
-                   <spacer>
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>241</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item row="5" column="0" rowspan="2" colspan="5">
+                  <item row="7" column="0" rowspan="2" colspan="5">
                    <widget class="QGroupBox" name="grpUrlExclude">
                     <property name="title">
                      <string>Exclude URLs (starting with)</string>
@@ -4469,6 +4720,12 @@
                      <bool>true</bool>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_5">
+                     <property name="leftMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
                      <item row="2" column="2">
                       <widget class="QPushButton" name="mRemoveUrlPushButton">
                        <property name="text">
@@ -4501,6 +4758,121 @@
                      </item>
                     </layout>
                    </widget>
+                  </item>
+                  <item row="0" column="0" colspan="5">
+                   <layout class="QGridLayout" name="gridLayout_17">
+                    <item row="0" column="1">
+                     <widget class="QComboBox" name="mProxyTypeComboBox"/>
+                    </item>
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="mTypeLabel">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Proxy type</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="2">
+                     <widget class="QLabel" name="label_41">
+                      <property name="styleSheet">
+                       <string notr="true">QLabel {color: rgb(120, 120, 120);}</string>
+                      </property>
+                      <property name="text">
+                       <string>Default uses system's proxy</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0" colspan="3">
+                     <widget class="QFrame" name="frameManualProxy">
+                      <property name="frameShape">
+                       <enum>QFrame::NoFrame</enum>
+                      </property>
+                      <property name="frameShadow">
+                       <enum>QFrame::Raised</enum>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_18">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <item row="2" column="2">
+                        <widget class="QLineEdit" name="leProxyUser">
+                         <property name="toolTip">
+                          <string>Leave this blank if no proxy username / password are required</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="2">
+                        <widget class="QLineEdit" name="leProxyPassword">
+                         <property name="toolTip">
+                          <string>Leave this blank if no proxy username / password are required</string>
+                         </property>
+                         <property name="echoMode">
+                          <enum>QLineEdit::Password</enum>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="lblUser">
+                         <property name="text">
+                          <string>User</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="lblPassword">
+                         <property name="text">
+                          <string>Password</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="2">
+                        <widget class="QLineEdit" name="leProxyHost"/>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="lblProxyPort">
+                         <property name="text">
+                          <string>Port</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="2">
+                        <widget class="QLineEdit" name="leProxyPort"/>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="lblProxyHost">
+                         <property name="text">
+                          <string>Host</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <spacer name="horizontalSpacer_27">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeType">
+                          <enum>QSizePolicy::Fixed</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>12</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </widget>
@@ -4587,16 +4959,216 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsColorButton</class>
-   <extends>QPushButton</extends>
-   <header>qgscolorbutton.h</header>
+   <class>QgsColorButtonV2</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbuttonv2.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsColorSchemeList</class>
+   <extends>QTreeView</extends>
+   <header>qgscolorschemelist.h</header>
   </customwidget>
   <customwidget>
    <class>QgsScaleComboBox</class>
    <extends>QWidget</extends>
    <header>qgsscalecombobox.h</header>
   </customwidget>
+  <customwidget>
+   <class>QgsProjectionSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">qgsprojectionselectionwidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>mOptionsListWidget</tabstop>
+  <tabstop>mOptionsScrollArea_01</tabstop>
+  <tabstop>cmbStyle</tabstop>
+  <tabstop>cmbTheme</tabstop>
+  <tabstop>cmbIconSize</tabstop>
+  <tabstop>mFontFamilyRadioQt</tabstop>
+  <tabstop>mFontFamilyRadioCustom</tabstop>
+  <tabstop>mFontFamilyComboBox</tabstop>
+  <tabstop>spinFontSize</tabstop>
+  <tabstop>mMessageTimeoutSpnBx</tabstop>
+  <tabstop>cbxHideSplash</tabstop>
+  <tabstop>cbxShowTips</tabstop>
+  <tabstop>mBoldGroupBoxTitleChkBx</tabstop>
+  <tabstop>mCustomGroupBoxChkBx</tabstop>
+  <tabstop>mNativeColorDialogsChkBx</tabstop>
+  <tabstop>mLiveColorDialogsChkBx</tabstop>
+  <tabstop>mCustomSideBarSide</tabstop>
+  <tabstop>cbxCanvasRotation</tabstop>
+  <tabstop>mProjectOnLaunchCmbBx</tabstop>
+  <tabstop>mProjectOnLaunchLineEdit</tabstop>
+  <tabstop>mProjectOnLaunchPushBtn</tabstop>
+  <tabstop>cbxProjectDefaultNew</tabstop>
+  <tabstop>pbnProjectDefaultSetCurrent</tabstop>
+  <tabstop>pbnProjectDefaultReset</tabstop>
+  <tabstop>leTemplateFolder</tabstop>
+  <tabstop>pbnTemplateFolderBrowse</tabstop>
+  <tabstop>pbnTemplateFolderReset</tabstop>
+  <tabstop>chbAskToSaveProjectChanges</tabstop>
+  <tabstop>mLayerDeleteConfirmationChkBx</tabstop>
+  <tabstop>chbWarnOldProjectVersion</tabstop>
+  <tabstop>cmbEnableMacros</tabstop>
+  <tabstop>mOptionsScrollArea_03</tabstop>
+  <tabstop>mBtnAddSVGPath</tabstop>
+  <tabstop>mBtnRemoveSVGPath</tabstop>
+  <tabstop>mListSVGPaths</tabstop>
+  <tabstop>mBtnAddPluginPath</tabstop>
+  <tabstop>mBtnRemovePluginPath</tabstop>
+  <tabstop>mListPluginPaths</tabstop>
+  <tabstop>mRestoreDefaultWindowStateBtn</tabstop>
+  <tabstop>mCustomVariablesChkBx</tabstop>
+  <tabstop>mAddCustomVarBtn</tabstop>
+  <tabstop>mRemoveCustomVarBtn</tabstop>
+  <tabstop>mCustomVariablesTable</tabstop>
+  <tabstop>mCurrentVariablesTable</tabstop>
+  <tabstop>mCurrentVariablesQGISChxBx</tabstop>
+  <tabstop>mOptionsScrollArea_11</tabstop>
+  <tabstop>cbxAttributeTableDocked</tabstop>
+  <tabstop>cbxCopyWKTGeomFromTable</tabstop>
+  <tabstop>cmbAttrTableBehaviour</tabstop>
+  <tabstop>spinBoxAttrTableRowCache</tabstop>
+  <tabstop>leNullValue</tabstop>
+  <tabstop>cmbScanItemsInBrowser</tabstop>
+  <tabstop>cmbScanZipInBrowser</tabstop>
+  <tabstop>cmbPromptRasterSublayers</tabstop>
+  <tabstop>cbxIgnoreShapeEncoding</tabstop>
+  <tabstop>cbxAddPostgisDC</tabstop>
+  <tabstop>cbxAddOracleDC</tabstop>
+  <tabstop>mOptionsScrollArea_04</tabstop>
+  <tabstop>chkAddedVisibility</tabstop>
+  <tabstop>chkUseRenderCaching</tabstop>
+  <tabstop>chkParallelRendering</tabstop>
+  <tabstop>chkMaxThreads</tabstop>
+  <tabstop>spinMaxThreads</tabstop>
+  <tabstop>spinMapUpdateInterval</tabstop>
+  <tabstop>mSimplifyDrawingGroupBox</tabstop>
+  <tabstop>mSimplifyDrawingSpinBox</tabstop>
+  <tabstop>mSimplifyDrawingAtProvider</tabstop>
+  <tabstop>chkAntiAliasing</tabstop>
+  <tabstop>spnRed</tabstop>
+  <tabstop>spnGreen</tabstop>
+  <tabstop>spnBlue</tabstop>
+  <tabstop>cboxContrastEnhancementAlgorithmSingleBand</tabstop>
+  <tabstop>cboxContrastEnhancementAlgorithmMultiBandSingleByte</tabstop>
+  <tabstop>cboxContrastEnhancementAlgorithmMultiBandMultiByte</tabstop>
+  <tabstop>cboxContrastEnhancementLimits</tabstop>
+  <tabstop>mRasterCumulativeCutLowerDoubleSpinBox</tabstop>
+  <tabstop>mRasterCumulativeCutUpperDoubleSpinBox</tabstop>
+  <tabstop>spnThreeBandStdDev</tabstop>
+  <tabstop>mLogCanvasRefreshChkBx</tabstop>
+  <tabstop>scrollArea</tabstop>
+  <tabstop>mTreeCustomColors</tabstop>
+  <tabstop>mButtonAddColor</tabstop>
+  <tabstop>mButtonRemoveColor</tabstop>
+  <tabstop>mButtonCopyColors</tabstop>
+  <tabstop>mButtonPasteColors</tabstop>
+  <tabstop>mButtonImportColors</tabstop>
+  <tabstop>mButtonExportColors</tabstop>
+  <tabstop>mOptionsScrollArea_06</tabstop>
+  <tabstop>pbnSelectionColor</tabstop>
+  <tabstop>pbnCanvasColor</tabstop>
+  <tabstop>cmbLegendDoubleClickAction</tabstop>
+  <tabstop>capitaliseCheckBox</tabstop>
+  <tabstop>mLegendLayersBoldChkBx</tabstop>
+  <tabstop>mLegendGroupsBoldChkBx</tabstop>
+  <tabstop>cbxLegendClassifiers</tabstop>
+  <tabstop>cbxCreateRasterLegendIcons</tabstop>
+  <tabstop>mLegendGraphicResolutionSpinBox</tabstop>
+  <tabstop>mOptionsScrollArea_05</tabstop>
+  <tabstop>spinBoxIdentifyValue</tabstop>
+  <tabstop>mIdentifyHighlightColorButton</tabstop>
+  <tabstop>mIdentifyHighlightBufferSpinBox</tabstop>
+  <tabstop>mIdentifyHighlightMinWidthSpinBox</tabstop>
+  <tabstop>pbnMeasureColor</tabstop>
+  <tabstop>mDecimalPlacesSpinBox</tabstop>
+  <tabstop>mKeepBaseUnitCheckBox</tabstop>
+  <tabstop>radMeters</tabstop>
+  <tabstop>radFeet</tabstop>
+  <tabstop>radNautical</tabstop>
+  <tabstop>radDegrees</tabstop>
+  <tabstop>mDegreesRadioButton</tabstop>
+  <tabstop>mRadiansRadioButton</tabstop>
+  <tabstop>mGonRadioButton</tabstop>
+  <tabstop>cmbWheelAction</tabstop>
+  <tabstop>spinZoomFactor</tabstop>
+  <tabstop>mListGlobalScales</tabstop>
+  <tabstop>pbnAddScale</tabstop>
+  <tabstop>pbnRemoveScale</tabstop>
+  <tabstop>pbnDefaultScaleValues</tabstop>
+  <tabstop>pbnImportScales</tabstop>
+  <tabstop>pbnExportScales</tabstop>
+  <tabstop>mOptionsScrollArea_12</tabstop>
+  <tabstop>mComposerFontComboBox</tabstop>
+  <tabstop>mGridStyleComboBox</tabstop>
+  <tabstop>mGridColorButton</tabstop>
+  <tabstop>mGridResolutionSpinBox</tabstop>
+  <tabstop>mOffsetXSpinBox</tabstop>
+  <tabstop>mOffsetYSpinBox</tabstop>
+  <tabstop>mSnapToleranceSpinBox</tabstop>
+  <tabstop>mOptionsScrollArea_07</tabstop>
+  <tabstop>chkDisableAttributeValuesDlg</tabstop>
+  <tabstop>chkReuseLastValues</tabstop>
+  <tabstop>mValidateGeometries</tabstop>
+  <tabstop>mLineWidthSpinBox</tabstop>
+  <tabstop>mLineColorToolButton</tabstop>
+  <tabstop>cbxSnappingOptionsDocked</tabstop>
+  <tabstop>mDefaultSnapModeComboBox</tabstop>
+  <tabstop>mDefaultSnappingToleranceSpinBox</tabstop>
+  <tabstop>mDefaultSnappingToleranceComboBox</tabstop>
+  <tabstop>mSearchRadiusVertexEditSpinBox</tabstop>
+  <tabstop>mSearchRadiusVertexEditComboBox</tabstop>
+  <tabstop>mMarkersOnlyForSelectedCheckBox</tabstop>
+  <tabstop>mMarkerStyleComboBox</tabstop>
+  <tabstop>mMarkerSizeSpinBox</tabstop>
+  <tabstop>mOffsetJoinStyleComboBox</tabstop>
+  <tabstop>mOffsetQuadSegSpinBox</tabstop>
+  <tabstop>mCurveOffsetMiterLimitComboBox</tabstop>
+  <tabstop>mOptionsScrollArea_02</tabstop>
+  <tabstop>cmbEditCreateOptions</tabstop>
+  <tabstop>pbnEditCreateOptions</tabstop>
+  <tabstop>pbnEditPyramidsOptions</tabstop>
+  <tabstop>lstGdalDrivers</tabstop>
+  <tabstop>mOptionsScrollArea_08</tabstop>
+  <tabstop>radOtfNone</tabstop>
+  <tabstop>radOtfAuto</tabstop>
+  <tabstop>radOtfTransform</tabstop>
+  <tabstop>leProjectGlobalCrs</tabstop>
+  <tabstop>radPromptForProjection</tabstop>
+  <tabstop>radUseProjectProjection</tabstop>
+  <tabstop>radUseGlobalProjection</tabstop>
+  <tabstop>leLayerGlobalCrs</tabstop>
+  <tabstop>chkShowDatumTransformDialog</tabstop>
+  <tabstop>mAddDefaultTransformButton</tabstop>
+  <tabstop>mRemoveDefaultTransformButton</tabstop>
+  <tabstop>mDefaultDatumTransformTreeWidget</tabstop>
+  <tabstop>mOptionsScrollArea_09</tabstop>
+  <tabstop>grpLocale</tabstop>
+  <tabstop>cboLocale</tabstop>
+  <tabstop>mOptionsScrollArea_10</tabstop>
+  <tabstop>leWmsSearch</tabstop>
+  <tabstop>mNetworkTimeoutSpinBox</tabstop>
+  <tabstop>mDefaultTileExpirySpinBox</tabstop>
+  <tabstop>mDefaultTileMaxRetrySpinBox</tabstop>
+  <tabstop>leUserAgent</tabstop>
+  <tabstop>mCacheDirectory</tabstop>
+  <tabstop>mBrowseCacheDirectory</tabstop>
+  <tabstop>mCacheSize</tabstop>
+  <tabstop>mClearCache</tabstop>
+  <tabstop>grpProxy</tabstop>
+  <tabstop>mProxyTypeComboBox</tabstop>
+  <tabstop>leProxyHost</tabstop>
+  <tabstop>leProxyPort</tabstop>
+  <tabstop>leProxyUser</tabstop>
+  <tabstop>leProxyPassword</tabstop>
+  <tabstop>mExcludeUrlListWidget</tabstop>
+  <tabstop>mAddUrlPushButton</tabstop>
+  <tabstop>mRemoveUrlPushButton</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources>
   <include location="../../images/images.qrc"/>
  </resources>
@@ -4612,8 +5184,8 @@
      <y>196</y>
     </hint>
     <hint type="destinationlabel">
-     <x>923</x>
-     <y>34</y>
+     <x>790</x>
+     <y>43</y>
     </hint>
    </hints>
   </connection>
@@ -4628,8 +5200,8 @@
      <y>110</y>
     </hint>
     <hint type="destinationlabel">
-     <x>689</x>
-     <y>110</y>
+     <x>753</x>
+     <y>126</y>
     </hint>
    </hints>
   </connection>
@@ -4640,92 +5212,12 @@
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>310</x>
-     <y>285</y>
+     <x>290</x>
+     <y>295</y>
     </hint>
     <hint type="destinationlabel">
-     <x>644</x>
-     <y>312</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radUseGlobalProjection</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pbnSelectProjection</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>345</x>
-     <y>287</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>717</x>
-     <y>303</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radUseProjectProjection</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>leLayerGlobalCrs</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>310</x>
-     <y>285</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>644</x>
-     <y>312</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radUseProjectProjection</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pbnSelectProjection</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>345</x>
-     <y>287</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>717</x>
-     <y>303</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radPromptForProjection</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>leLayerGlobalCrs</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>310</x>
-     <y>285</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>644</x>
-     <y>312</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radPromptForProjection</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pbnSelectProjection</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>345</x>
-     <y>287</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>717</x>
-     <y>303</y>
+     <x>367</x>
+     <y>315</y>
     </hint>
    </hints>
   </connection>

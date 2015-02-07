@@ -63,6 +63,8 @@
 #include "simplemutex.h"
 #include "util.h"
 
+#include <qgsgeometry.h> // for GEOS context
+
 namespace pal
 {
 
@@ -71,6 +73,7 @@ namespace pal
     va_list list;
     va_start( list, fmt );
     vfprintf( stderr, fmt, list );
+    va_end( list );
   }
 
   void geosNotice( const char *fmt, ... )
@@ -78,6 +81,12 @@ namespace pal
     va_list list;
     va_start( list, fmt );
     vfprintf( stdout, fmt, list );
+    va_end( list );
+  }
+
+  GEOSContextHandle_t geosContext()
+  {
+    return QgsGeometry::getGEOSHandler();
   }
 
   Pal::Pal()
@@ -230,7 +239,7 @@ namespace pal
     FeatCallBackCtx *context = ( FeatCallBackCtx* ) ctx;
 
 #ifdef _EXPORT_MAP_
-    bool svged = false; // is the feature has been written into the svg map ?
+    bool svged = false; // is the feature has been written into the svg map?
     int dpi = context->layer->pal->getDpi();
 #endif
 
@@ -248,7 +257,7 @@ namespace pal
 
     // first do some checks whether to extract candidates or not
 
-    // feature has to be labeled ?
+    // feature has to be labeled?
     if ( !context->layer->toLabel )
       return true;
 
@@ -256,7 +265,7 @@ namespace pal
     if ( !context->layer->isScaleValid( context->scale ) )
       return true;
 
-    // is the feature well defined ?  TODO Check epsilon
+    // is the feature well defined?  TODO Check epsilon
     if ( ft_ptr->getLabelWidth() < 0.0000001 || ft_ptr->getLabelHeight() < 0.0000001 )
       return true;
 
@@ -429,8 +438,8 @@ namespace pal
             if ( layer->getMergeConnectedLines() )
               layer->joinConnectedFeatures();
 
-            if ( layer->getRepeatDistance() > 0 )
-              layer->chopFeatures( layer->getRepeatDistance() );
+            layer->chopFeaturesAtRepeatDistance();
+
 
             context->layer = layer;
             context->priority = layersFactor[i];
@@ -687,7 +696,7 @@ namespace pal
   /*
    * BIG MACHINE
    */
-  std::list<LabelPosition*>* Pal::labeller( int nbLayers, char **layersName , double *layersFactor, double scale, double bbox[4], PalStat **stats, bool displayAll )
+  std::list<LabelPosition*>* Pal::labeller( int nbLayers, char **layersName, double *layersFactor, double scale, double bbox[4], PalStat **stats, bool displayAll )
   {
 #ifdef _DEBUG_
     std::cout << "LABELLER (selection)" << std::endl;
@@ -729,7 +738,7 @@ namespace pal
     t.start();
 
     // First, extract the problem
-    // TODO which is the minimum scale ? (> 0, >= 0, >= 1, >1 )
+    // TODO which is the minimum scale? (> 0, >= 0, >= 1, >1 )
     if ( scale < 1 || ( prob = extract( nbLayers, layersName, layersFactor, bbox[0], bbox[1], bbox[2], bbox[3], scale,
 #ifdef _EXPORT_MAP_
                                         & svgmap
